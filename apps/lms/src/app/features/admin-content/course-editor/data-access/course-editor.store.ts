@@ -320,6 +320,11 @@ export class CourseEditorStore {
     ),
   );
 
+  /** Where this page's unsaved draft is kept when the session ends: per user and course. */
+  readonly keptDraftKey$ = computed(
+    () => `course:${this.userId() ?? ''}:${this.courseId() ?? 'new'}`,
+  );
+
   private readonly scormData = serverData(
     (query: { page: number; q: string }) =>
       this.client.call(scormEndpoints.list, { query: { ...query, size: 100 } }),

@@ -9,6 +9,7 @@ import { seedProfile } from '../../session/session.testing';
 import type { Profile } from '../../session/profile';
 import { provideEnvelopeHttpClient } from '../../http/http.testing';
 import { DevToolbar } from './dev-toolbar';
+import { SESSION_ENDED_STATE } from '../../routing/unsaved-changes.guard';
 
 class FakeSession {
   readonly user = signal<Profile | null>(seedProfile('000004'));
@@ -96,6 +97,7 @@ describe('DevToolbar', () => {
       expect(session.expire).toHaveBeenCalledOnce();
       expect(router.navigate).toHaveBeenCalledWith(['/login'], {
         queryParams: { next: '/catalog?q=a' },
+        state: { [SESSION_ENDED_STATE]: true },
       });
     });
 

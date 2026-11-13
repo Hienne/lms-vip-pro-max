@@ -26,6 +26,7 @@ import { finalize, of, Subscription, switchMap } from 'rxjs';
 import { activeHref } from '../menu/menu-catalog';
 import { CourseJobTrackerStore } from '../course-jobs/course-job-tracker.store';
 import { toAppError } from '../errors/app-error';
+import { isStaleBuildError, PAGE_LOCATION } from '../errors/stale-build';
 import { EndpointClient } from '../http/endpoint-client';
 import { NetworkStore } from '../network/network.store';
 import { SessionStore } from '../session/session.store';
@@ -74,6 +75,7 @@ export class AgentChatStore {
   private readonly courseJobs = inject(CourseJobTrackerStore);
   private readonly prefill = inject(CourseFormPrefillStore);
   private readonly router = inject(Router);
+  private readonly location = inject(PAGE_LOCATION);
   private readonly destroyRef = inject(DestroyRef);
 
   private streaming: Subscription | null = null;
@@ -697,9 +699,22 @@ export class AgentChatStore {
       this.prefill.set({ file: this.attachedFile, fields: said ?? {} });
     }
     this.attachedFile = null;
-    void Promise.resolve(this.router.navigateByUrl(path)).then((opened) => {
-      if (opened === false) this.prefill.clear();
-    });
+    Promise.resolve(this.router.navigateByUrl(path)).then(
+      (opened) => {
+        if (opened === false) this.prefill.clear();
+      },
+      (error: unknown) => {
+        // A tab older than the last deploy cannot load the page's chunk: the full page load gets
+        // the new build and still lands where the user asked. The prefill store is in memory, so
+        // a course form opened this way starts empty.
+        if (isStaleBuildError(error)) {
+          this.location.assign(path);
+          return;
+        }
+        this.prefill.clear();
+        this.fail(id, GENERIC_ERROR);
+      },
+    );
   }
 
   private fail(id: number, error: string): void {

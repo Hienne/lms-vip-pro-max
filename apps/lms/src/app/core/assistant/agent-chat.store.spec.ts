@@ -5,6 +5,7 @@ import {
 import { ErrorHandler } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
+import { PAGE_LOCATION } from '../errors/stale-build';
 import type {
   AgentStreamEvent,
   PendingAction,
@@ -916,6 +917,44 @@ describe('AgentChatStore', () => {
         status: 'done',
         navigatedTo: { path: '/profile', title: 'Hồ sơ cá nhân' },
         text: 'Đã mở trang Hồ sơ cá nhân.',
+      });
+    });
+
+    it('loads the whole page when the tab is older than the last deploy', async () => {
+      const location = TestBed.inject(PAGE_LOCATION);
+      const assign = vi
+        .spyOn(location, 'assign')
+        .mockImplementation(() => undefined);
+      vi.mocked(router.navigateByUrl).mockRejectedValueOnce(
+        new TypeError(
+          'Failed to fetch dynamically imported module: /chunk-X.js',
+        ),
+      );
+
+      await converse(
+        'mở hồ sơ',
+        agentNavigateEvents('/profile', 'Hồ sơ cá nhân'),
+      );
+      await settle();
+
+      expect(assign).toHaveBeenCalledWith('/profile');
+      expect(lastReply()?.status).toBe('done');
+    });
+
+    it('shows the generic error when the screen fails to open for another reason', async () => {
+      vi.mocked(router.navigateByUrl).mockRejectedValueOnce(
+        new Error('guard threw'),
+      );
+
+      await converse(
+        'mở hồ sơ',
+        agentNavigateEvents('/profile', 'Hồ sơ cá nhân'),
+      );
+      await settle();
+
+      expect(lastReply()).toMatchObject({
+        status: 'error',
+        error: GENERIC_ERROR,
       });
     });
 

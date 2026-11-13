@@ -24,12 +24,17 @@ import {
 import { NEVER, of } from 'rxjs';
 import { LeavePrompt } from '../../../core/routing/unsaved-changes.guard';
 import { BackgroundUploads } from '../../../core/uploads/background-uploads';
-import { fakeSession } from '../../../core/session/session.testing';
+import {
+  fakeSession,
+  seedProfile,
+} from '../../../core/session/session.testing';
 import { setUpAdminScreen } from '../../../core/dev/mock-api/admin-screen.testing';
 import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
 import { DEFAULT_COURSE_COVER } from '../../../shared/course/course-card';
 import { CourseFormPrefillStore } from '../../../core/assistant/course-form-prefill.store';
-import { CourseEditor } from './course-editor';
+import { Toaster } from '@lms/ui';
+import { KeptDrafts } from '../../../core/session/kept-drafts';
+import { CourseEditor, KEPT_DRAFT_TITLE, RESTORE_LABEL } from './course-editor';
 import { POLL_MS, SERVER_RETRY_MS } from './data-access/chunked-upload';
 import { digestOf, FakeHasher } from './data-access/fake-hasher.testing';
 import { KeptUploads } from './data-access/kept-uploads.storage';
@@ -240,6 +245,35 @@ describe('CourseEditor', () => {
 
     await screen.click(screen.button('Lưu nháp'));
     expect(page.hasUnsavedChanges()).toBe(false);
+  });
+
+  it('keeps unsaved edits when the session ends and offers them back after sign-in', async () => {
+    sessionStorage.clear();
+    await screen.open('/admin/courses/6/edit');
+    await screen.type(screen.field('Tên khóa học') as HTMLInputElement, 'Mới');
+
+    // What SessionExpiry does on a 401: keep the draft, forget the user, go to sign-in.
+    TestBed.inject(KeptDrafts).keepAll();
+    fakeSession().user.set(null);
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/login');
+    await screen.settle();
+    fakeSession().user.set(seedProfile('000002'));
+    await router.navigateByUrl('/admin/courses/6/edit');
+    await screen.settle();
+    const page = screen.page<CourseEditor>();
+    expect(page.hasUnsavedChanges()).toBe(false);
+    const offer = TestBed.inject(Toaster)
+      .toasts()
+      .find((toast) => toast.title === KEPT_DRAFT_TITLE);
+    expect(offer?.action?.label).toBe(RESTORE_LABEL);
+
+    TestBed.inject(Toaster).act(offer?.id ?? 0);
+    await screen.settle();
+    expect((screen.field('Tên khóa học') as HTMLInputElement).value).toBe(
+      'Mới',
+    );
+    expect(page.hasUnsavedChanges()).toBe(true);
   });
 
   it('does not save without a title, and says which step to fix', async () => {

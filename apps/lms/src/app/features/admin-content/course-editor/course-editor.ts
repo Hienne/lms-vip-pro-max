@@ -3,6 +3,7 @@ import {
   Component,
   afterNextRender,
   Injector,
+  afterRenderEffect,
   computed,
   inject,
   linkedSignal,
@@ -27,8 +28,10 @@ import {
   Spinner,
   Stepper,
   PageHeader,
+  Toaster,
 } from '@lms/ui';
 import { CourseFormPrefillStore } from '../../../core/assistant/course-form-prefill.store';
+import { KeptDrafts } from '../../../core/session/kept-drafts';
 import { CourseJobAccess } from '../../../core/course-jobs/course-job-access';
 import type { HasUnsavedChanges } from '../../../core/routing/unsaved-changes.guard';
 import { BottomBar } from '../../../layout/shell-insets';
@@ -57,6 +60,10 @@ import {
   CourseEditorStore,
   EDITOR_STEPS,
 } from './data-access/course-editor.store';
+
+export const KEPT_DRAFT_TITLE =
+  'Có thay đổi chưa lưu từ trước khi phiên đăng nhập hết hạn.';
+export const RESTORE_LABEL = 'Khôi phục';
 
 /** The draft without its row keys, to tell whether the author changed anything. */
 const fingerprint = (value: CourseDraftValue) =>
@@ -111,6 +118,8 @@ export class CourseEditor implements HasUnsavedChanges {
   protected readonly ai = inject(CourseAiJobStore);
   private readonly starter = inject(StartCourseStore);
   private readonly chatPrefill = inject(CourseFormPrefillStore);
+  private readonly keptDrafts = inject(KeptDrafts);
+  private readonly toaster = inject(Toaster);
   /** "Tạo bằng AI" is offered to instructors and admins on a new course only. */
   protected readonly canGenerate = inject(CourseJobAccess).canGenerate$;
   protected readonly generating = this.starter.isStarting$;
@@ -220,6 +229,43 @@ export class CourseEditor implements HasUnsavedChanges {
     this.starter.applyPrefill(prefill.fields, prefill.file);
   }
 
+  /**
+   * A 401 ends the session under unsaved edits: they are kept in this tab and, once the user has
+   * signed in and the page is open again, offered back. Nothing is restored without asking.
+   */
+  private keepDraftWhenTheSessionEnds(): void {
+    this.keptDrafts.whileOpen(() => {
+      if (this.dirty()) {
+        this.keptDrafts.keep(this.store.keptDraftKey$(), this.draftValue());
+      }
+    });
+  }
+
+  /** Once the page is ready (edit mode reads the course first), a kept draft is offered back once. */
+  private keptDraftChecked = false;
+  private readonly offerKeptDraftWhenReady = afterRenderEffect(() => {
+    if (this.keptDraftChecked || !this.ready()) return;
+    this.keptDraftChecked = true;
+    untracked(() => this.offerKeptDraft());
+  });
+
+  keepsItsDraft(): boolean {
+    return true;
+  }
+
+  private offerKeptDraft(): void {
+    const kept = this.keptDrafts.take<CourseDraftValue>(
+      this.store.keptDraftKey$(),
+    );
+    if (!kept || fingerprint(kept.value) === fingerprint(this.draftValue())) {
+      return;
+    }
+    this.toaster.offer(KEPT_DRAFT_TITLE, {
+      label: RESTORE_LABEL,
+      run: () => this.model.set(kept.value),
+    });
+  }
+
   /** Create mode shows the form at once; edit mode waits for the course to be read. */
   protected readonly ready = computed(
     () => this.store.isCreate$() || !!this.store.course$(),
@@ -283,6 +329,7 @@ export class CourseEditor implements HasUnsavedChanges {
   );
 
   constructor() {
+    this.keepDraftWhenTheSessionEnds();
     this.applyChatPrefill();
     this.store.registerBlockPositions(this.blockPositions);
     this.store.registerAssetAttacher((blockKey, asset) =>

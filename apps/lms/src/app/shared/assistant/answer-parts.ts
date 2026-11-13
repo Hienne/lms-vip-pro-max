@@ -12,12 +12,16 @@ export interface AnswerParts {
   readonly unmarked: readonly Citation[];
 }
 
-/** The backend's marker: `[1]` or `[1, 2]`. */
-const MARKER = /\[(\d+(?:\s*,\s*\d+)*)\]/g;
+/**
+ * The backend's marker, `[1]` or `[1, 2]`, or the literal `[n]` a model copies from its
+ * instructions, with the spaces before it.
+ */
+const MARKER = /([ \t]*)\[(\d+(?:\s*,\s*\d+)*|[nN])\]/g;
 
 /**
  * Splits an answer at its `[n]` markers. A number with a citation becomes a source; a number
- * without one stays as written. The backend numbers citations as the model saw them and returns
+ * without one, and the literal `[n]`, is dropped with the space before it, so the reader never
+ * sees a marker that opens nothing. The backend numbers citations as the model saw them and returns
  * only the marked ones, or every retrieved passage when the answer marks none: those, and any
  * citation no marker reaches, come back as `unmarked`. The text is never parsed as HTML.
  */
@@ -43,16 +47,14 @@ export function answerParts(
   let from = 0;
   for (const match of text.matchAll(MARKER)) {
     pushText(text.slice(from, match.index));
-    for (const n of match[1]
-      .split(',')
-      .map((digits) => Number(digits.trim()))) {
-      const citation = byNumber.get(n);
-      if (citation) {
-        parts.push({ kind: 'source', citation });
-        marked.add(n);
-      } else {
-        pushText(`[${n}]`);
-      }
+    const numbers = /^\d/.test(match[2])
+      ? match[2].split(',').map((digits) => Number(digits.trim()))
+      : [];
+    const cited = numbers.flatMap((n) => byNumber.get(n) ?? []);
+    if (cited.length > 0) pushText(match[1]);
+    for (const citation of cited) {
+      parts.push({ kind: 'source', citation });
+      marked.add(citation.n);
     }
     from = match.index + match[0].length;
   }

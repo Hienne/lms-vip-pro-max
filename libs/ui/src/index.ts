@@ -135,6 +135,7 @@ export { FormActions } from './lib/molecules/form-actions/form-actions';
 export {
   Toaster,
   type Toast,
+  type ToastAction,
   type ToastKind,
 } from './lib/organisms/toaster/toaster';
 

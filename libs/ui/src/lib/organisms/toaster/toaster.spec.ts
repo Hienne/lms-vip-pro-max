@@ -154,6 +154,40 @@ describe('Toaster', () => {
     expect(toasts()).toHaveLength(0);
   });
 
+  it('offers one action that stays until used, then runs it and closes', () => {
+    const { toaster, toasts, flush } = setup();
+    const run = vi.fn();
+    toaster.offer('Đã có phiên bản mới. Tải lại trang?', {
+      label: 'Tải lại',
+      run,
+    });
+    flush();
+
+    vi.advanceTimersByTime(TOAST_DURATION_MS * 3);
+    flush();
+    const action =
+      toasts()[0]?.querySelector<HTMLButtonElement>('.toast__action');
+    expect(action?.textContent?.trim()).toBe('Tải lại');
+
+    action?.click();
+    flush();
+    expect(run).toHaveBeenCalledOnce();
+    expect(toasts()).toHaveLength(0);
+  });
+
+  it('keeps an action toast after hover ends', () => {
+    const { toaster, toasts, flush } = setup();
+    toaster.offer('Có bản mới', { label: 'Tải lại', run: () => undefined });
+    flush();
+    const [toast] = toasts();
+    toast.dispatchEvent(new MouseEvent('mouseenter'));
+    toast.dispatchEvent(new MouseEvent('mouseleave'));
+
+    vi.advanceTimersByTime(TOAST_DURATION_MS * 3);
+    flush();
+    expect(toasts()).toHaveLength(1);
+  });
+
   it('announces errors assertively and everything else politely', () => {
     const { toaster, announce } = setup();
     toaster.error('Không lưu được', 'Thử lại sau');

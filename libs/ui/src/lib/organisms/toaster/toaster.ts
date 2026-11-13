@@ -6,11 +6,18 @@ import { ToastOutlet } from './toast-outlet';
 
 export type ToastKind = 'success' | 'error' | 'warning' | 'info';
 
+/** The one action a toast may offer; running it also dismisses the toast. */
+export interface ToastAction {
+  readonly label: string;
+  readonly run: () => void;
+}
+
 export interface Toast {
   readonly id: number;
   readonly kind: ToastKind;
   readonly title: string;
   readonly message?: string;
+  readonly action?: ToastAction;
 }
 
 /** How long a non-error toast stays (the mockup's 4200ms). */
@@ -64,6 +71,21 @@ export class Toaster {
     this.show('info', title, message);
   }
 
+  /**
+   * An info toast with one action (`Tải lại`). It stays until the user acts on it or closes it,
+   * since the action is the point of the toast.
+   */
+  offer(title: string, action: ToastAction, message?: string): void {
+    this.show('info', title, message, action);
+  }
+
+  /** Runs the toast's action, then dismisses it. */
+  act(id: number): void {
+    const action = this.toasts().find((t) => t.id === id)?.action;
+    this.dismiss(id);
+    action?.run();
+  }
+
   dismiss(id: number): void {
     this.clearTimer(id);
     this.state.toasts.update((list) => list.filter((t) => t.id !== id));
@@ -93,14 +115,20 @@ export class Toaster {
     const timer = this.timers.get(id);
     if (!timer) return;
     timer.holds.delete(source);
-    if (timer.holds.size === 0 && timer.handle === undefined) {
+    const sticky = this.toasts().some((t) => t.id === id && t.action);
+    if (timer.holds.size === 0 && timer.handle === undefined && !sticky) {
       this.start(id, timer);
     }
   }
 
-  private show(kind: ToastKind, title: string, message?: string): void {
+  private show(
+    kind: ToastKind,
+    title: string,
+    message?: string,
+    action?: ToastAction,
+  ): void {
     const id = this.nextId++;
-    const toast: Toast = { id, kind, title, message };
+    const toast: Toast = { id, kind, title, message, action };
     const kept = this.toasts().slice(-(MAX_TOASTS - 1));
     this.toasts()
       .filter((t) => !kept.includes(t))
@@ -114,7 +142,7 @@ export class Toaster {
       holds: new Set(),
     };
     this.timers.set(id, timer);
-    this.start(id, timer);
+    if (!action) this.start(id, timer);
     this.attach();
     void this.announcer.announce(
       message ? `${title}. ${message}` : title,

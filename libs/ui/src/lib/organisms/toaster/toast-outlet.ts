@@ -2,6 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { Icon } from '../../atoms/icon/icon';
 import type { IconName } from '../../atoms/icon/icon-registry';
 import { IconButton } from '../../atoms/icon-button/icon-button.directive';
+import { LinkButton } from '../../atoms/link-button/link-button.directive';
 import { Toaster, type ToastKind } from './toaster';
 
 const ICON_BY_KIND: Record<ToastKind, IconName> = {
@@ -14,7 +15,7 @@ const ICON_BY_KIND: Record<ToastKind, IconName> = {
 /** The stack rendered on the toaster's overlay. Internal: use `Toaster`. */
 @Component({
   selector: 'ui-toast-outlet',
-  imports: [Icon, IconButton],
+  imports: [Icon, IconButton, LinkButton],
   templateUrl: './toast-outlet.html',
   host: { class: 'toasts' },
 })
