@@ -55,6 +55,7 @@ export type LessonView =
   | 'missing'
   | 'not-enrolled'
   | 'quiz'
+  | 'scorm'
   | 'empty'
   | 'ready';
 
@@ -296,6 +297,15 @@ export class LessonStore {
     return index < 0 ? undefined : this.lessons()[index];
   });
 
+  readonly scormPackageId$ = computed(
+    () => this.lesson$()?.lesson.scormPackageId,
+  );
+  readonly scormContext$ = computed(() => ({
+    enrollmentId: this.courseData.value()?.card.enrollmentId,
+    lessonId: this.lessonId$(),
+    courseId: this.courseId$(),
+  }));
+
   readonly chapterTitle$ = computed(
     () =>
       this.chapters().find((c) =>
@@ -319,6 +329,7 @@ export class LessonStore {
     if (this.detail$() === undefined) return 'loading';
     const lesson = this.lesson$();
     if (!lesson) return 'missing';
+    if (lesson.lesson.lessonType === 'scorm') return 'scorm';
     if (lesson.lesson.lessonType === 'quiz') return 'quiz';
     return lesson.blocks.length ? 'ready' : 'empty';
   });

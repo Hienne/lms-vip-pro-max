@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import {
+  scormEndpoints,
   assessmentV1Endpoints,
   assetEndpoints,
   courseEndpoints,
@@ -161,6 +162,40 @@ describe('CourseEditor', () => {
       expect(screen.button('Thêm chương')).toBeTruthy();
       expect(screen.button('Thêm bài học')).toBeTruthy();
     });
+  });
+
+  it('offers SCORM alongside manual content without replacing manual authoring', async () => {
+    const backend = TestBed.inject(MockBackend);
+    screen.calls.mockImplementation((endpoint, request) =>
+      endpoint === scormEndpoints.list
+        ? {
+            status: 200,
+            body: envelopeOk({
+              items: [],
+              page: 0,
+              size: 100,
+              totalElements: 0,
+              totalPages: 0,
+            }),
+          }
+        : MockBackend.prototype.handle.call(backend, endpoint, request),
+    );
+    await screen.open('/admin/courses/6/edit');
+    await step('Nội dung khóa học');
+    await screen.click(screen.button('Thêm bài học'));
+    const drawer = screen.drawer()!;
+    const kind = screen.field('Loại bài', drawer) as HTMLSelectElement;
+    expect(Array.from(kind.options).map((option) => option.value)).toEqual([
+      'content',
+      'quiz',
+      'scorm',
+    ]);
+    expect(screen.button('Văn bản', drawer)).toBeTruthy();
+    await screen.choose(kind, 'scorm');
+    expect(screen.field('Gói SCORM 1.2', drawer)).toBeTruthy();
+    expect(screen.button('Văn bản', drawer)).toBeUndefined();
+    await screen.choose(kind, 'content');
+    expect(screen.button('Văn bản', drawer)).toBeTruthy();
   });
 
   it('saves the whole draft with the revision version, then reads it again', async () => {

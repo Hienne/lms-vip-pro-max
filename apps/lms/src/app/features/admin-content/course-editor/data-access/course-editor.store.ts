@@ -18,6 +18,7 @@ import {
 } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
+  scormEndpoints,
   assessmentV1Endpoints,
   assignmentEndpoints,
   courseEndpoints,
@@ -255,6 +256,9 @@ export class CourseEditorStore {
   private readonly keptOwners = new Map<string, string>();
 
   private readonly state = {
+    scormPickerOpen: signal(false),
+    scormPage: signal(0),
+    scormQuery: signal(''),
     step: signal(this.initialStep()),
     /** The steps the author has opened, which may show ✓ once they are valid and left. */
     visited: signal<readonly number[]>([this.initialStep()]),
@@ -315,6 +319,56 @@ export class CourseEditorStore {
       }),
     ),
   );
+
+  private readonly scormData = serverData(
+    (query: { page: number; q: string }) =>
+      this.client.call(scormEndpoints.list, { query: { ...query, size: 100 } }),
+    {
+      params: () =>
+        this.state.scormPickerOpen()
+          ? {
+              page: this.state.scormPage(),
+              q: this.state.scormQuery(),
+            }
+          : undefined,
+    },
+  );
+  readonly scormPackages$ = computed(() =>
+    (this.scormData.value()?.items ?? []).filter(
+      (p) => p.canManage && p.ownerOrgId === this.ownerOrgId$(),
+    ),
+  );
+  readonly scormError$ = this.scormData.error;
+  readonly scormLoading$ = this.scormData.isLoading;
+  readonly scormPage$ = this.state.scormPage.asReadonly();
+  readonly scormQuery$ = this.state.scormQuery.asReadonly();
+  readonly scormHasNext$ = computed(
+    () =>
+      this.state.scormPage() + 1 < (this.scormData.value()?.totalPages ?? 0),
+  );
+  setScormPage(page: number): void {
+    this.state.scormPage.set(Math.max(0, page));
+  }
+  setScormQuery(q: string): void {
+    this.state.scormQuery.set(q);
+  }
+  searchScorm(q: string): void {
+    this.setScormQuery(q);
+    this.setScormPage(0);
+  }
+  private setScormPickerOpen(open: boolean): void {
+    this.state.scormPickerOpen.set(open);
+  }
+  loadScorm(kind: string): void {
+    if (kind === 'scorm') this.reloadScorm();
+  }
+  reloadScorm(): void {
+    if (!this.state.scormPickerOpen()) {
+      this.setScormPickerOpen(true);
+      return;
+    }
+    this.scormData.reload();
+  }
 
   private readonly orgId = computed(() => this.session.user$()?.org?.id);
   private readonly userId = computed(() => this.session.user$()?.userId);

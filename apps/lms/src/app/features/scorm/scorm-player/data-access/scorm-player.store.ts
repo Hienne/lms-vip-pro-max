@@ -26,7 +26,19 @@ export class ScormPlayerStore {
     initialValue: this.route.snapshot.queryParamMap,
   });
   readonly id$ = computed(() => Number(this.params().get('id')));
-  readonly preview$ = computed(() => this.query().get('preview') === 'true');
+  readonly courseContext$ = computed(() => {
+    const enrollmentId = Number(this.query().get('enrollmentId'));
+    const lessonId = Number(this.query().get('lessonId'));
+    return Number.isSafeInteger(enrollmentId) &&
+      enrollmentId > 0 &&
+      Number.isSafeInteger(lessonId) &&
+      lessonId > 0
+      ? { enrollmentId, lessonId }
+      : undefined;
+  });
+  readonly preview$ = computed(
+    () => !this.courseContext$() && this.query().get('preview') === 'true',
+  );
   private readonly state = {
     url: signal<SafeResourceUrl | null>(null),
     origin: signal(''),
@@ -34,22 +46,43 @@ export class ScormPlayerStore {
     expires: signal(''),
   };
   private readonly packageData = serverData(
-    (id) => this.client.call(scormEndpoints.get, { params: { id } }),
-    { params: this.id$ },
+    (input) =>
+      input.context
+        ? this.client.call(scormEndpoints.coursePackage, {
+            params: { id: input.id },
+            query: input.context,
+          })
+        : this.client.call(scormEndpoints.get, { params: { id: input.id } }),
+    { params: () => ({ id: this.id$(), context: this.courseContext$() }) },
   );
   private readonly progressData = serverData(
     (input) =>
       this.client.call(scormEndpoints.progress, {
         params: { id: input.id },
-        query: { preview: input.preview },
+        query: { preview: input.preview, ...input.context },
       }),
-    { params: () => ({ id: this.id$(), preview: this.preview$() }) },
+    {
+      params: () => ({
+        id: this.id$(),
+        preview: this.preview$(),
+        context: this.courseContext$(),
+      }),
+    },
   );
   private readonly launchMutation = serverMutation(
-    (input: { id: number; preview: boolean }) =>
+    (input: {
+      id: number;
+      preview: boolean;
+      enrollmentId?: number;
+      lessonId?: number;
+    }) =>
       this.client.call(scormEndpoints.launch, {
         params: { id: input.id },
-        body: { preview: input.preview },
+        body: {
+          preview: input.preview,
+          enrollmentId: input.enrollmentId,
+          lessonId: input.lessonId,
+        },
       }),
     { errors: 'alert', onSuccess: (result) => this.acceptLaunch(result) },
   );
@@ -63,21 +96,30 @@ export class ScormPlayerStore {
   readonly expires$ = this.state.expires.asReadonly();
   readonly saveState$ = this.state.saveState.asReadonly();
   readonly backLink$ = computed(() =>
-    this.preview$() ? '/admin/lessons' : '/scorm',
+    this.courseContext$() && Number(this.query().get('courseId')) > 0
+      ? '/course/' + Number(this.query().get('courseId'))
+      : this.preview$()
+        ? '/admin/lessons'
+        : '/scorm',
   );
   private expiryTimer: ReturnType<typeof setTimeout> | undefined;
   constructor() {
     effect(() => {
       const id = this.id$(),
         preview = this.preview$();
-      this.open(id, preview);
+      const context = this.courseContext$();
+      this.open(id, preview, context);
     });
     inject(DestroyRef).onDestroy(() => clearTimeout(this.expiryTimer));
   }
-  open(id = this.id$(), preview = this.preview$()): void {
+  open(
+    id = this.id$(),
+    preview = this.preview$(),
+    context = this.courseContext$(),
+  ): void {
     this.state.url.set(null);
     this.state.saveState.set('saved');
-    this.launchMutation.run({ id, preview });
+    this.launchMutation.run({ id, preview, ...context });
   }
   receive(event: MessageEvent, frame: Window | null): void {
     if (

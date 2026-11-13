@@ -15,6 +15,38 @@ import {
 } from './course-draft';
 
 describe('course draft', () => {
+  it('keeps SCORM and manual lessons in the same course and serializes their own content only', () => {
+    const value = {
+      ...emptyDraftValue(),
+      chapters: [
+        {
+          key: 'chapter',
+          title: 'Mixed',
+          lessons: [
+            {
+              ...newLesson(1),
+              lessonType: 'scorm' as const,
+              scormPackageId: 42,
+              blocks: [newBlock('text')],
+            },
+            { ...newLesson(2), blocks: [newBlock('text')] },
+          ],
+        },
+      ],
+    };
+    const [scorm, manual] = toSaveDraftCommand(value, 0).chapters[0].lessons;
+    expect(scorm).toMatchObject({
+      lessonType: 'scorm',
+      scormPackageId: 42,
+      blocks: [],
+    });
+    expect(manual.lessonType).toBe('content');
+    expect(manual.blocks).toHaveLength(1);
+    expect(lessonProblem(value.chapters[0].lessons[0])).toBeNull();
+    expect(
+      lessonProblem({ ...value.chapters[0].lessons[0], scormPackageId: null }),
+    ).toBe('Chưa chọn gói SCORM');
+  });
   const eod = courseDetailFixtures.find((d) => d.course.code === 'VH-301')!;
 
   it('round-trips a revision into the save command, minutes as seconds', () => {

@@ -446,7 +446,8 @@ const STATUS_CONFIRM: Record<
 > = {
   draft: {
     verb: 'Chuyển về nháp',
-    message: 'Mục này không còn dùng được để xếp khóa học mới.',
+    message:
+      'Chuyển về nháp sẽ chặn học và làm bài kiểm tra của các khóa thuộc danh mục này, kể cả học viên đã được giao khóa. Tiến độ và lịch sử được giữ nguyên.',
   },
   published: {
     verb: 'Xuất bản',
@@ -456,12 +457,12 @@ const STATUS_CONFIRM: Record<
   paused: {
     verb: 'Tạm dừng',
     message:
-      'Không dùng cho khóa mới, khóa đang có giữ nguyên và học viên giữ tiến độ.',
+      'Tạm dừng sẽ chặn học và làm bài kiểm tra của các khóa thuộc danh mục này, kể cả học viên đang học. Tiến độ được giữ nguyên; xuất bản lại danh mục để mở học.',
   },
   archived: {
     verb: 'Lưu trữ',
     message:
-      'Ngừng hẳn, chỉ quản trị viên xem được; lịch sử học được giữ nguyên.',
+      'Lưu trữ sẽ chặn học và làm bài kiểm tra của các khóa thuộc danh mục này, kể cả học viên đang học. Tiến độ và lịch sử được giữ nguyên; xuất bản lại danh mục để mở học.',
   },
 };
 

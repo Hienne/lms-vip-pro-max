@@ -18,7 +18,12 @@
     </ui-field>
   </div>
   <ui-field label="Loại bài">
-    <select uiSelect [formField]="lessonForm.lessonType">
+    <select
+      uiSelect
+      #lessonKind
+      [formField]="lessonForm.lessonType"
+      (change)="store.loadScorm(lessonKind.value)"
+    >
       <option
         value="content"
         [selected]="lessonForm.lessonType().value() === 'content'"
@@ -31,6 +36,7 @@
       >
         Bài kiểm tra
       </option>
+      <option value="scorm">Bài giảng SCORM 1.2</option>
     </select>
   </ui-field>
 
@@ -73,7 +79,70 @@
     </button>
     }
   </ui-alert>
-  } } } @else {
+  } } } @else if (lessonForm.lessonType().value() === 'scorm') {
+  <ui-field
+    label="Gói SCORM 1.2"
+    required
+    hint="Bài học mở bằng player SCORM. Hoàn thành khi gói báo completed hoặc passed; bài thi cuối khóa vẫn được xét riêng."
+  >
+    <select uiSelect [formField]="lessonForm.scormPackageId">
+      <option value="">— Chọn gói SCORM —</option>
+      @for (item of store.scormPackages$(); track item.id) {
+      <option [value]="'' + item.id">
+        {{ item.title }}{{ item.published ? '' : ' (Nháp — cần xuất bản gói)' }}
+      </option>
+      } @if (missingScormOption()) {
+      <option [value]="lessonForm.scormPackageId().value()" hidden>
+        Gói #{{ lessonForm.scormPackageId().value() }}
+      </option>
+      }
+    </select>
+  </ui-field>
+  @if (!store.scormLoading$() && !store.scormPackages$().length &&
+  !store.scormError$()) {
+  <p>
+    Chưa có gói SCORM phù hợp trong trang này. Nhập gói mới hoặc thay đổi từ
+    khóa tìm kiếm.
+  </p>
+  }
+  <ui-field label="Tìm gói SCORM"
+    ><input
+      uiInput
+      #scormSearch
+      [value]="store.scormQuery$()"
+      (change)="store.searchScorm(scormSearch.value)"
+  /></ui-field>
+  <p>
+    <a uiButton href="/admin/lessons" target="_blank" rel="noopener"
+      >Nhập hoặc xuất bản gói SCORM</a
+    >
+    <button uiButton type="button" (click)="store.reloadScorm()">
+      Tải lại danh sách
+    </button>
+  </p>
+  @if (store.scormLoading$()) {
+  <p>Đang tải gói SCORM…</p>
+  } @if (store.scormError$(); as error) {
+  <ui-alert tone="danger">{{ error.message }}</ui-alert> }
+  <p>
+    <button
+      uiButton
+      type="button"
+      [disabled]="store.scormPage$() === 0"
+      (click)="store.setScormPage(store.scormPage$() - 1)"
+    >
+      Trang trước
+    </button>
+    <button
+      uiButton
+      type="button"
+      [disabled]="!store.scormHasNext$()"
+      (click)="store.setScormPage(store.scormPage$() + 1)"
+    >
+      Trang sau
+    </button>
+  </p>
+  } @else {
   <section class="lesson-form__blocks" aria-label="Khối nội dung">
     <h3 class="lesson-form__heading">
       Khối nội dung ({{ lessonForm.blocks().value().length }})

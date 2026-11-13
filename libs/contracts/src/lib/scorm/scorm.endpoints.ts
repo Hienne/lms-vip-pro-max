@@ -61,6 +61,16 @@ export const scormEndpoints = {
     params,
     response: ScormPackageSchema,
   }),
+  coursePackage: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/scorm/packages/{id}',
+    params,
+    query: z.object({
+      enrollmentId: z.number().int().positive(),
+      lessonId: z.number().int().positive(),
+    }),
+    response: ScormPackageSchema,
+  }),
   upload: defineEndpoint({
     method: 'post',
     path: '/api/v1/scorm/packages',
@@ -80,14 +90,22 @@ export const scormEndpoints = {
     method: 'post',
     path: '/api/v1/scorm/packages/{id}/launch',
     params,
-    body: z.object({ preview: z.boolean() }),
+    body: z.object({
+      preview: z.boolean(),
+      enrollmentId: z.number().int().positive().optional(),
+      lessonId: z.number().int().positive().optional(),
+    }),
     response: ScormLaunchSchema,
   }),
   progress: defineEndpoint({
     method: 'get',
     path: '/api/v1/scorm/packages/{id}/progress',
     params,
-    query: z.object({ preview: z.boolean() }),
+    query: z.object({
+      preview: z.boolean(),
+      enrollmentId: z.number().int().positive().optional(),
+      lessonId: z.number().int().positive().optional(),
+    }),
     response: ScormProgressSchema,
   }),
 } as const;

@@ -2,8 +2,8 @@
 
 SCORM lecture endpoints live in `lib/scorm/scorm.endpoints.ts` and are real backend contracts.
 `/admin/lessons` imports a ZIP to a draft package and previews it; `/scorm` lists published lectures
-available to the learner; `/scorm/:id` launches and renders server progress. These are independent
-lectures and do not change existing course completion or certificates. `lessonLocation` is an opaque
+available to the learner; `/scorm/:id` launches and renders server progress. These can be independent
+lectures or course lessons. Course SCORM launches carry enrollmentId and lessonId; standalone and preview results never complete course lessons. `lessonLocation` is an opaque
 SCO bookmark, never a locally calculated page or percentage. Score/status come from the authenticated
 progress endpoint; iframe messages only trigger a refresh after checking exact source and origin.
 Executable packages must use the backend's separate SCORM player origin; embedding on the LMS origin
@@ -717,3 +717,5 @@ Deploy the matching `corebanking-academy` module and configure WebSocket upgrade
 `/api/v1/chat-room/socket` on the FE reverse proxy. The development `/api` proxy enables WebSocket.
 Apply the backend's `2026-11-09-chat-room-games.sql` upgrade first. Presence and invitations belong to one
 backend instance. Wallets and game data persist in PostgreSQL.
+
+Course lesson authoring also accepts `lessonType: "scorm"` and nullable `scormPackageId`. Manual content and quiz authoring stay available, including mixed courses. SCORM lessons send no manual blocks. The lesson player opens `/scorm/:id` with enrollmentId, lessonId, and courseId; package metadata, progress, and launch use the exact enrollment context. Completion is server-owned: completed/passed satisfies the SCORM lesson, and a configured final exam remains required. Apply backend `2026-11-13-course-scorm.sql` before deploying both applications.

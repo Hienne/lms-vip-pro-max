@@ -63,6 +63,7 @@ export interface LessonValue {
   readonly lessonType: LessonType;
   /** The quiz a quiz lesson holds; `null` until one is chosen, and always `null` for a content lesson. */
   readonly quizId: number | null;
+  readonly scormPackageId?: number | null;
   readonly minutes: number;
   readonly isRequired: boolean;
   readonly blocks: readonly BlockValue[];
@@ -220,6 +221,7 @@ function toLessonValue({ lesson, blocks }: LessonDetail): LessonValue {
     key: newKey(),
     title: lesson.title,
     lessonType: lesson.lessonType,
+    scormPackageId: lesson.scormPackageId ?? null,
     quizId: lesson.lessonType === 'quiz' ? (lesson.quizId ?? null) : null,
     minutes: Math.round((lesson.estimatedDurationSeconds ?? 0) / 60),
     isRequired: lesson.isRequired ?? true,
@@ -341,13 +343,18 @@ function toDraftContent(value: CourseDraftValue): DraftContent {
       lessons: chapter.lessons.map((lesson) => ({
         title: lesson.title.trim(),
         lessonType: lesson.lessonType,
+        ...(lesson.lessonType === 'scorm'
+          ? { scormPackageId: lesson.scormPackageId ?? null }
+          : {}),
         ...(lesson.lessonType === 'quiz' && lesson.quizId
           ? { quizId: lesson.quizId }
           : {}),
         estimatedDurationSeconds: Math.max(0, Math.round(lesson.minutes * 60)),
         isRequired: lesson.isRequired,
         blocks:
-          lesson.lessonType === 'quiz' ? [] : lesson.blocks.map(toBlockInput),
+          lesson.lessonType !== 'content'
+            ? []
+            : lesson.blocks.map(toBlockInput),
       })),
     })),
   };
@@ -422,6 +429,8 @@ export function toCreateCourseCommand(
 
 /** A content lesson needs a block and its files; a quiz lesson needs its quiz. */
 export function lessonProblem(lesson: LessonValue): string | null {
+  if (lesson.lessonType === 'scorm')
+    return lesson.scormPackageId ? null : 'Chưa chọn gói SCORM';
   if (lesson.lessonType === 'quiz') {
     return lesson.quizId ? null : 'Chưa chọn bài kiểm tra';
   }

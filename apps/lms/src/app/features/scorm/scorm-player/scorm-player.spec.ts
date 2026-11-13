@@ -46,7 +46,11 @@ describe('SCORM player integration boundary', () => {
         status: 200,
         body: envelopeOk(value),
       });
-      if (endpoint === scormEndpoints.get) return reply(lecture);
+      if (
+        endpoint === scormEndpoints.get ||
+        endpoint === scormEndpoints.coursePackage
+      )
+        return reply(lecture);
       if (endpoint === scormEndpoints.progress) return reply(progress);
       if (endpoint === scormEndpoints.launch)
         return reply({
@@ -57,6 +61,18 @@ describe('SCORM player integration boundary', () => {
         });
       return delegate.call(backend, endpoint, request);
     });
+  });
+  it('launches a course lesson with its exact enrollment and returns to that course', async () => {
+    await screen.open('/scorm/1?enrollmentId=120&lessonId=8&courseId=25');
+    const call = screen.calls.mock.calls.find(
+      ([endpoint]) => endpoint === scormEndpoints.launch,
+    );
+    expect(call?.[1]).toMatchObject({
+      body: { preview: false, enrollmentId: 120, lessonId: 8 },
+    });
+    expect(screen.callsTo(scormEndpoints.coursePackage)).toBe(1);
+    expect(screen.el.querySelector('a[href="/course/25"]')).not.toBeNull();
+    expect(screen.el.querySelector('iframe')?.getAttribute('src')).toBe(url);
   });
   it('launches once and does not recreate the iframe while loading server progress', async () => {
     await screen.open('/scorm/1?preview=true');
