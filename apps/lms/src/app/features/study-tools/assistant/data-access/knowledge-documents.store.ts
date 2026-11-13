@@ -35,8 +35,8 @@ const isReplacing = (document: KnowledgeDocument): boolean =>
 
 /**
  * The documents the assistant answers from: the upload queue, the server-paged list, duplicates,
- * renaming, replacing and removing. Provided by the `/assistant/tai-lieu` page that manages them,
- * and by the chat page, which only shows how many there are. Status and permissions are the
+ * renaming, replacing and removing. Provided by the chat page, which shows how many there are and
+ * manages them in a drawer. Status and permissions are the
  * server's; this store only shows them.
  */
 @Injectable()

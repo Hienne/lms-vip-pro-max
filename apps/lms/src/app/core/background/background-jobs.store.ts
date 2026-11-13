@@ -61,7 +61,11 @@ export class BackgroundJobsStore {
           kind: 'document',
           fileName: document.document.fileName,
           ok: document.document.status === 'ready',
-          href: '/assistant',
+          // A file that failed is explained on its row in the documents drawer.
+          href:
+            document.document.status === 'ready'
+              ? '/assistant'
+              : '/assistant?tai-lieu=1',
           action:
             document.document.status === 'ready' ? 'Mở trợ lý' : 'Xem chi tiết',
           at: document.at,

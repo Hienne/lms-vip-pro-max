@@ -3,7 +3,7 @@ import {
   type TestRequest,
 } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import {
   envelopeOk,
@@ -102,12 +102,11 @@ describe('Assistant', () => {
         ?.textContent?.replace(/\s+/g, ' ')
         .trim(),
     ).toBe(`Tra trong: Tất cả tài liệu (${knowledgeDocumentFixtures.length})`);
-    // The documents are managed on a page of their own.
-    expect(el.querySelector('app-document-list')).toBeNull();
-    const manage = Array.from(el.querySelectorAll('a')).find((a) =>
-      a.textContent?.includes('Quản lý tài liệu'),
-    );
-    expect(manage?.getAttribute('href')).toBe('/assistant/tai-lieu');
+    // The documents stay shut in their drawer until the scope line opens it.
+    expect(document.querySelector('app-document-list')).toBeNull();
+    expect(
+      el.querySelector('.chat__scope-open')?.getAttribute('aria-expanded'),
+    ).toBe('false');
   });
 
   it('is open to a learner as well as an instructor', async () => {
@@ -308,8 +307,46 @@ describe('Assistant', () => {
     });
   });
 
-  describe('documents page', () => {
-    it('manages the documents on /assistant/tai-lieu, with the upload and the list', async () => {
+  describe('documents drawer', () => {
+    const drawer = () => document.querySelector<HTMLElement>('[role="dialog"]');
+    // A query-parameter navigation lands a few turns after the click.
+    async function navigated(): Promise<void> {
+      for (let turn = 0; turn < 3; turn++) {
+        await new Promise((resolve) => setTimeout(resolve));
+        await settle();
+      }
+    }
+
+    afterEach(() =>
+      document
+        .querySelectorAll('.cdk-overlay-container')
+        .forEach((c) => (c.innerHTML = '')),
+    );
+
+    it('opens from the scope line with the upload and the list, and closes back to the chat', async () => {
+      await open();
+      el.querySelector<HTMLButtonElement>('.chat__scope-open')?.click();
+      await navigated();
+
+      expect(TestBed.inject(Router).url).toBe('/assistant?tai-lieu=1');
+      expect(drawer()?.textContent).toContain('Tài liệu của trợ lý');
+      expect(drawer()?.querySelector('label.drop')).not.toBeNull();
+      expect(drawer()?.querySelectorAll('app-document-list li')).toHaveLength(
+        knowledgeDocumentFixtures.length,
+      );
+      expect(
+        el.querySelector('.chat__scope-open')?.getAttribute('aria-expanded'),
+      ).toBe('true');
+
+      drawer()
+        ?.querySelector<HTMLButtonElement>('button[aria-label="Đóng"]')
+        ?.click();
+      await navigated();
+      expect(TestBed.inject(Router).url).toBe('/assistant');
+      expect(drawer()).toBeNull();
+    });
+
+    it('opens the drawer from the old documents URL', async () => {
       fakeSession().user.set(seedProfile('000005'));
       harness = await RouterTestingHarness.create();
       await harness.navigateByUrl('/assistant/tai-lieu');
@@ -324,18 +361,9 @@ describe('Assistant', () => {
         }),
       );
       await settle();
-      el = harness.routeNativeElement as HTMLElement;
-      expect(el.querySelector('h1')?.textContent?.trim()).toBe(
-        'Tài liệu của trợ lý',
-      );
-      expect(el.querySelector('label.drop')).not.toBeNull();
-      expect(el.querySelectorAll('app-document-list li')).toHaveLength(
-        knowledgeDocumentFixtures.length,
-      );
-      expect(text()).toContain(`${knowledgeDocumentFixtures.length} tài liệu`);
-      expect(el.querySelector('ui-breadcrumb a')?.getAttribute('href')).toBe(
-        '/assistant',
-      );
+
+      expect(TestBed.inject(Router).url).toBe('/assistant?tai-lieu=1');
+      expect(drawer()?.querySelector('app-document-list')).not.toBeNull();
     });
   });
 

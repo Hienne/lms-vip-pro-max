@@ -32,9 +32,6 @@
         Trợ lý AI tra cứu tài liệu
       </h1>
     </div>
-    <a uiButton variant="ghost" size="sm" routerLink="tai-lieu">
-      <ui-icon name="library" size="sm" />Quản lý tài liệu
-    </a>
   </header>
   <div class="chat__scroll">
     <app-chat-log
@@ -49,15 +46,29 @@
   </div>
   <div class="chat__composer">
     <div class="chat__dock">
-      <p class="chat__scope">
-        <ui-icon name="library" size="sm" />
-        <span
-          >Tra trong: <strong>Tất cả tài liệu</strong>&nbsp;<span
-            class="chat__count"
-            >({{ documents.totalDocuments$() }})</span
-          ></span
+      <div class="chat__scope">
+        <button
+          uiButton
+          type="button"
+          variant="ghost"
+          size="sm"
+          class="chat__scope-open"
+          aria-haspopup="dialog"
+          [attr.aria-expanded]="documentsOpen$()"
+          (click)="openDocuments()"
         >
-      </p>
+          <ui-icon name="library" size="sm" />
+          <span
+            >Tra trong: <strong>Tất cả tài liệu</strong>&nbsp;<span
+              class="chat__count"
+              >({{ documents.totalDocuments$() }})</span
+            ></span
+          >
+        </button>
+        @if (processing$()) {
+        <span class="chat__processing">{{ processing$() }} tệp đang xử lý</span>
+        }
+      </div>
       <app-ask-form
         [answering]="store.isAnswering$()"
         (ask)="store.ask($event)"
@@ -103,6 +114,56 @@
 >
   <div id="assistant-history" class="history__drawer">
     <ng-container [ngTemplateOutlet]="conversations" />
+  </div>
+</ng-template>
+
+<ng-template
+  [uiDrawer]="documentsOpen$()"
+  uiDrawerTitle="Tài liệu của trợ lý"
+  (uiDrawerDismiss)="closeDocuments()"
+>
+  <div id="assistant-documents" class="docs">
+    <p class="docs__intro">
+      Trợ lý chỉ trả lời từ các tài liệu ở đây. Tệp mới tra cứu được sau vài
+      phút xử lý.
+    </p>
+    <app-document-upload
+      [uploads]="documents.uploads$()"
+      [canShareGlobally]="documents.canShareGlobally$()"
+      [scope]="documents.uploadScope$()"
+      (scopeChange)="documents.setUploadScope($event)"
+      [title]="documents.uploadTitle$()"
+      (titleChange)="documents.setUploadTitle($event)"
+      (files)="documents.addFiles($event)"
+      (dismiss)="documents.dismissUpload($event)"
+      (showExisting)="documents.showDocument($event)"
+    />
+    <section class="docs__stock" aria-labelledby="assistant-documents-title">
+      <h3 id="assistant-documents-title" class="docs__title">
+        Trong kho
+        <span class="docs__count">{{ documents.totalDocuments$() }}</span>
+      </h3>
+      <app-document-list
+        [documents]="documents.documents$()"
+        [total]="documents.totalDocuments$()"
+        [page]="documents.page$()"
+        [pageSize]="pageSize"
+        [loading]="documents.isLoading$()"
+        [failed]="!!documents.loadError$()"
+        [canRemove]="documents.canRemove"
+        [canEdit]="documents.canEdit"
+        [highlightId]="documents.highlightId$()"
+        (remove)="documents.removeDocument($event)"
+        (renamed)="documents.renameDocument($event.document, $event.title)"
+        (replaced)="documents.replaceDocument($event.document, $event.file)"
+        (pageChange)="documents.setPage($event)"
+        (retry)="documents.retryLoad()"
+      />
+    </section>
+    <app-duplicate-documents
+      [groups]="documents.duplicates$()"
+      (remove)="documents.removeDocument($event)"
+    />
   </div>
 </ng-template>
 
