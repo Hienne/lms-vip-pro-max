@@ -39,6 +39,8 @@ interface UploadRecord {
   readonly ownerOrgId: number;
   readonly uploadedBy: string;
   readonly originalName: string;
+  readonly displayName?: string;
+  readonly description?: string;
   readonly mimeType: string;
   readonly sizeBytes: number;
   readonly checksumSha256: string;
@@ -86,6 +88,10 @@ export function mediaKindOf(mimeType: string): MediaKind {
 export class AssetLibrary {
   private readonly uploads = new Map<string, UploadRecord>();
   private readonly deleted = new Set<number>();
+  private readonly metadata = new Map<
+    number,
+    { displayName?: string; description?: string }
+  >();
   /** The bytes of the files uploaded in this session; seeded files have none. */
   private readonly bytes = new Map<number, Blob>();
 
@@ -102,12 +108,15 @@ export class AssetLibrary {
   entries(): [AnyEndpoint, Handler][] {
     return [
       [assetEndpoints.listAssets, (r) => this.list(r)],
+      [assetEndpoints.findDuplicates, (r) => this.duplicates(r)],
+      [assetEndpoints.updateMetadata, (r) => this.updateMetadata(r)],
       [assetEndpoints.startUpload, (r) => this.start(r)],
       [assetEndpoints.uploadStatus, (r) => this.poll(r)],
       [assetEndpoints.uploadPart, (r) => this.putPart(r)],
       [assetEndpoints.completeUpload, (r) => this.complete(r)],
       [assetEndpoints.cancelUpload, (r) => this.cancel(r)],
       [assetEndpoints.deleteAsset, (r) => this.remove(r)],
+      [assetEndpoints.deleteAssetPermanently, (r) => this.remove(r)],
       [courseEndpoints.getAssetContent, (r) => this.content(r)],
     ];
   }
@@ -134,6 +143,8 @@ export class AssetLibrary {
       ownerOrgId: command.ownerOrgId,
       uploadedBy: userId,
       originalName: command.originalName,
+      displayName: command.displayName?.trim() || command.originalName,
+      description: command.description?.trim() || undefined,
       mimeType: command.mimeType,
       sizeBytes: command.sizeBytes,
       checksumSha256: command.checksumSha256,
@@ -223,6 +234,10 @@ export class AssetLibrary {
   /** The processing step: the file becomes a library asset the course editor can attach. */
   private finish(record: UploadRecord): void {
     record.status = 'ready';
+    this.metadata.set(record.assetId, {
+      displayName: record.displayName,
+      description: record.description,
+    });
     const kind = mediaKindOf(record.mimeType);
     const parts = [...record.blobs.entries()]
       .sort(([a], [b]) => a - b)
@@ -278,6 +293,31 @@ export class AssetLibrary {
 
   // ---- library ------------------------------------------------------------------------------
 
+  private duplicates(request: FakeRequest): FakeReply {
+    const userId = this.deps.callerId(request);
+    const body = request.body as {
+      ownerOrgId: number;
+      checksumSha256: string;
+      sizeBytes: number;
+      mediaType: string;
+    };
+    const matches = [...this.uploads.values()]
+      .filter(
+        (record) =>
+          record.uploadedBy === userId &&
+          record.ownerOrgId === body.ownerOrgId &&
+          record.status === 'ready' &&
+          record.checksumSha256 === body.checksumSha256 &&
+          record.sizeBytes === body.sizeBytes &&
+          mediaKindOf(record.mimeType) === body.mediaType &&
+          !this.deleted.has(record.assetId),
+      )
+      .map((record) => this.asset(record.assetId))
+      .filter((asset): asset is LearningAsset => !!asset)
+      .map((asset) => this.row(asset, 'ready'));
+    return ok(matches.slice(0, 10));
+  }
+
   private rows(): LibraryAsset[] {
     const files = [...this.deps.seeded, ...this.deps.assets]
       .filter((asset) => !this.deleted.has(asset.id))
@@ -304,12 +344,35 @@ export class AssetLibrary {
       id: asset.id,
       ownerOrgId: asset.ownerOrgId,
       originalName: asset.originalName,
+      ...this.metadata.get(asset.id),
       mimeType: asset.mimeType,
       sizeBytes: asset.sizeBytes,
       mediaType: mediaKindOf(asset.mimeType),
       status,
       createTime: asset.createTime,
     };
+  }
+
+  private updateMetadata(request: FakeRequest): FakeReply {
+    this.deps.callerId(request);
+    const id = Number(request.params['assetId']);
+    if (!this.asset(id) || this.deleted.has(id))
+      return refuse('learningNotFound');
+    const body = request.body as {
+      displayName: string;
+      description: string | null;
+    };
+    if (
+      !body.displayName?.trim() ||
+      body.displayName.length > 255 ||
+      (body.description?.length ?? 0) > 2000
+    )
+      return refuse('validationFailed');
+    this.metadata.set(id, {
+      displayName: body.displayName.trim(),
+      description: body.description ?? undefined,
+    });
+    return ok(null);
   }
 
   private list(request: FakeRequest): FakeReply {
@@ -327,7 +390,11 @@ export class AssetLibrary {
       .filter((row) => !mediaType || row.mediaType === mediaType)
       .filter((row) => !status || row.status === status)
       .filter(
-        (row) => !needle || row.originalName.toLowerCase().includes(needle),
+        (row) =>
+          !needle ||
+          [row.originalName, row.displayName, row.description].some((value) =>
+            value?.toLowerCase().includes(needle),
+          ),
       )
       .sort((a, b) => key(a).localeCompare(key(b), 'vi'));
     if (direction === 'desc') matching.reverse();

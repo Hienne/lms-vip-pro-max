@@ -17,7 +17,7 @@ import {
   type Page,
 } from '@lms/contracts';
 import { confirm, type DataTableSort } from '@lms/ui';
-import { filter } from 'rxjs';
+import { filter, tap } from 'rxjs';
 import { invalidation } from '../../../../../../core/data-access/invalidation';
 import { serverData } from '../../../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../../../core/data-access/server-mutation';
@@ -94,6 +94,7 @@ export class AssetLibraryStore {
       size: this.state.pageSize(),
       mediaType,
       status: 'ready',
+      includeDeleting: true,
       ...(text ? { q: text.slice(0, 100) } : {}),
       sort: `${SORT_FIELD[sort().key]},${sort().dir}`,
     };
@@ -125,6 +126,44 @@ export class AssetLibraryStore {
     },
   );
 
+  private readonly metadataMutation = serverMutation(
+    (change: {
+      asset: LibraryAsset;
+      displayName: string;
+      description: string | null;
+    }) =>
+      this.client.call(assetEndpoints.updateMetadata, {
+        params: { assetId: change.asset.id },
+        body: {
+          displayName: change.displayName,
+          description: change.description,
+        },
+      }),
+    {
+      errors: 'toast',
+      success: () => 'Đã cập nhật thông tin tệp',
+      onSuccess: () => this.editing.set(null),
+      invalidates: this.changes,
+    },
+  );
+  readonly editing = signal<LibraryRow | null>(null);
+  readonly nameError = signal(false);
+  readonly isSavingMetadata$ = this.metadataMutation.isPending;
+
+  private readonly permanentMutation = serverMutation(
+    (asset: LibraryAsset) =>
+      this.client
+        .call(assetEndpoints.deleteAssetPermanently, {
+          params: { assetId: asset.id },
+        })
+        .pipe(tap({ error: () => this.listData.reload() })),
+    {
+      errors: 'toast',
+      success: () => 'Đã xóa vĩnh viễn khỏi kho',
+      invalidates: this.changes,
+    },
+  );
+
   // Selectors
   readonly target$ = this.state.target.asReadonly();
   readonly query$ = this.state.query.asReadonly();
@@ -135,13 +174,15 @@ export class AssetLibraryStore {
   readonly isLoading$ = computed(
     () => this.listData.isLoading() && this.state.shown() === undefined,
   );
-  readonly isDeleting$ = this.deleteMutation.isPending;
+  readonly isDeleting$ = computed(
+    () => this.deleteMutation.isPending() || this.permanentMutation.isPending(),
+  );
   readonly total$ = computed(() => this.state.shown()?.totalElements ?? 0);
   readonly rows$ = computed((): readonly LibraryRow[] =>
     (this.state.shown()?.items ?? []).map((asset) => ({
       id: String(asset.id),
       asset,
-      name: asset.originalName,
+      name: asset.displayName || asset.originalName,
       mimeType: asset.mimeType,
       sizeBytes: asset.sizeBytes,
       createTime: asset.createTime,
@@ -175,6 +216,7 @@ export class AssetLibraryStore {
   }
 
   close(): void {
+    this.editing.set(null);
     this.setTarget(null);
   }
 
@@ -200,6 +242,38 @@ export class AssetLibraryStore {
 
   retryLoad(): void {
     this.listData.reload();
+  }
+
+  edit(row: LibraryRow): void {
+    this.nameError.set(false);
+    this.editing.set(row);
+  }
+
+  saveMetadata(name: string, description: string): void {
+    const row = this.editing();
+    const displayName = name.trim();
+    if (!row) return;
+    if (!displayName) {
+      this.nameError.set(true);
+      return;
+    }
+    this.metadataMutation.run({
+      asset: row.asset,
+      displayName,
+      description: description.trim() || null,
+    });
+  }
+
+  removePermanently(row: LibraryRow): void {
+    confirm(this.dialog, {
+      title: `Xóa vĩnh viễn ${row.name}?`,
+      message:
+        'Tệp gốc và bản phát sẽ bị xóa khỏi kho và không thể khôi phục. Chỉ xóa được khi không còn khóa học hoặc dữ liệu tham chiếu. Nếu xóa chưa hoàn tất, hãy thử lại.',
+      confirmLabel: 'Xóa vĩnh viễn',
+      tone: 'danger',
+    })
+      .pipe(filter(Boolean), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.permanentMutation.run(row.asset));
   }
 
   /** Asks first: the file cannot be picked again. The server refuses a file a course uses. */

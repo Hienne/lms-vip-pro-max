@@ -27,6 +27,7 @@ import {
   PUBLISH_LIMITS,
   trainingCatalogEndpoints,
   type BlockType,
+  type MediaKind,
   type CourseDetail,
   type CreateCourseCommand,
   type LibraryAsset,
@@ -132,6 +133,8 @@ export interface UploadRequest {
   /** The block's place in its lesson: the key does not survive a reload, the place does. */
   readonly blockIndex: number;
   readonly file: File;
+  readonly displayName?: string;
+  readonly description?: string;
 }
 
 /** An upload the page lost in a reload: the author picks the file again to continue it. */
@@ -207,6 +210,21 @@ const UPLOAD_RULES: Partial<
   pdf: { extensions: ['pdf'], maxMb: 20 },
   image: { extensions: ['png', 'jpg', 'jpeg', 'webp'], maxMb: 5 },
   attachment: { extensions: ['pdf', 'docx', 'xlsx', 'pptx'], maxMb: 10 },
+};
+
+const duplicateKind = (type: BlockType, file: File): MediaKind | undefined => {
+  switch (type) {
+    case 'video':
+      return 'video';
+    case 'pdf':
+      return 'document';
+    case 'image':
+      return 'image';
+    case 'attachment':
+      return /\.pdf$/i.test(file.name) ? 'document' : 'attachment';
+    default:
+      return undefined;
+  }
 };
 
 export const acceptOf = (type: BlockType): string =>
@@ -1380,6 +1398,22 @@ export class CourseEditorStore {
       context,
       chunkedUpload(this.client, this.hasher, file, this.orgId() ?? 0, {
         resume: resumed,
+        displayName: request.displayName,
+        description: request.description,
+        ...(duplicateKind(request.blockType, file) && !resumed
+          ? {
+              duplicateMediaType: duplicateKind(request.blockType, file),
+              chooseDuplicate: (asset: LibraryAsset) =>
+                firstValueFrom(
+                  choose(this.dialog, {
+                    title: 'Tệp đã có trong thư viện',
+                    message: `Tệp giống với “${asset.displayName || asset.originalName}”. Dùng tệp có sẵn để không tải lại, hoặc tiếp tục tải tệp mới.`,
+                    confirmLabel: 'Dùng tệp có sẵn',
+                    cancelLabel: 'Vẫn tải lên',
+                  }),
+                ),
+            }
+          : {}),
         online: this.online,
       }),
     );
@@ -1405,6 +1439,13 @@ export class CourseEditorStore {
           state: 'hashing',
           percent: event.percent,
           status: hashingStatus(event.percent),
+        });
+        return;
+      case 'checking':
+        this.patchUpload(blockKey, {
+          state: 'hashing',
+          percent: undefined,
+          status: 'Đang tìm tệp trùng trong thư viện…',
         });
         return;
       case 'started':
@@ -1443,7 +1484,7 @@ export class CourseEditorStore {
           state: 'processing',
           uploadId: event.uploadId,
           percent: undefined,
-          status: PROCESSING_STATUS,
+          status: event.retryMessage ?? PROCESSING_STATUS,
         });
         return;
       case 'stalled':
@@ -1452,6 +1493,13 @@ export class CourseEditorStore {
           uploadId: event.uploadId,
           status: undefined,
           message: STALLED_MESSAGE,
+        });
+        return;
+      case 'reuse':
+        this.attach({
+          blockKey,
+          blockType: context.blockType,
+          asset: event.asset,
         });
         return;
       case 'ready':
