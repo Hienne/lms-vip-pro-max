@@ -12,9 +12,6 @@
   "apps/lms/src/app/features/achievements/progress/progress.scss": {
     "own-radius": 2
   },
-  "apps/lms/src/app/features/admin-content/course-editor/components/asset-library/asset-library.scss": {
-    "text-xs": 1
-  },
   "apps/lms/src/app/features/admin-content/course-editor/components/course-info/course-info.scss": {
     "text-xs": 1
   },
