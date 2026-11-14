@@ -39,7 +39,6 @@ import { LOCAL_STORAGE } from '../../../../core/storage/local-storage';
 import { clock } from '../../../../shared/learning/anchor';
 import type { BlockJump } from '../components/pdf-block/pdf-block';
 import { lessonFeedback } from './lesson-feedback';
-import { readFocus, writeFocus } from './lesson-focus';
 import { lessonNotes } from './lesson-notes';
 import {
   StudyChannel,
@@ -217,7 +216,7 @@ export class LessonStore {
     /** The side panel tab: the outline, or the notes of this lesson. */
     sideTab: signal<SideTab>('outline'),
     /** Focus mode: from `lg` the side panel is hidden and the content takes its width. Per browser. */
-    focus: signal(readFocus(this.preferences)),
+    focus: signal(false),
     /** Where the learner is in the active block, as its player tells; a new block starts over. */
     position: linkedSignal<
       number | undefined,
@@ -733,11 +732,10 @@ export class LessonStore {
     this.state.focus.set(focus);
   }
 
-  /** "Chế độ tập trung" / "Hiện mục lục": hides or shows the side panel, and remembers the choice. */
+  /** Focus mode applies only to this lesson view; a fresh entry always shows the outline. */
   toggleFocus(): void {
     const focus = !this.focus$();
     this.setFocus(focus);
-    writeFocus(this.preferences, focus);
   }
 
   /** The PDF on screen shows this page. */
@@ -906,6 +904,11 @@ export class LessonStore {
 
   retryQuiz(): void {
     this.quizData.reload();
+  }
+
+  refreshScormProgress(): void {
+    this.detailData.reload();
+    this.completionData.lessonCompleted();
   }
 
   retryLoad(): void {

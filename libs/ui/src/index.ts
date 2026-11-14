@@ -221,6 +221,15 @@ export { StatStrip } from './lib/molecules/stat-strip/stat-strip';
 export { Stat, type StatTone } from './lib/molecules/stat-strip/stat';
 export { ListRow, type ListRowTone } from './lib/molecules/list-row/list-row';
 export { DateInput } from './lib/molecules/date-input/date-input';
+export {
+  MultiSelect,
+  type MultiSelectOption,
+} from './lib/molecules/multi-select/multi-select';
 export type { DateInputKind } from './lib/molecules/date-input/date-format';
+export {
+  SearchSelect,
+  type SearchSelectOption,
+} from './lib/molecules/search-select/search-select';
+export { GuidedTour } from './lib/organisms/guided-tour/guided-tour';
 
 export { HorizontalBarChart } from './lib/organisms/charts/horizontal-bar-chart';

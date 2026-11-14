@@ -5,6 +5,7 @@ import {
   input,
   linkedSignal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { FormField, type FieldTree } from '@angular/forms/signals';
 import type { QuizSummary } from '@lms/contracts';
@@ -82,10 +83,36 @@ const QUIZ_STATUS_LABEL: Record<QuizSummary['status'], string> = {
   styleUrl: './course-rules.scss',
 })
 export class CourseRules {
+  protected readonly createOption = 'create';
   readonly draft = input.required<FieldTree<CourseDraftValue>>();
 
   protected readonly store = inject(CourseEditorStore);
   protected readonly exam = inject(CourseExamStore);
+  private readonly examForm = viewChild(CourseExamForm);
+  protected readonly selectedExam = computed(() =>
+    this.exam.formOpen$() && this.exam.creating$()
+      ? this.createOption
+      : this.draft().finalQuizId().value(),
+  );
+  protected chooseExam(event: Event): void {
+    if (this.exam.isSaving$()) return;
+    const value = (event.target as HTMLSelectElement).value;
+    if (value === this.createOption) {
+      if (
+        this.store.canCreateQuiz$() &&
+        this.canAuthor() &&
+        !this.store.pendingUploads$()
+      )
+        this.exam.openNewForm();
+      return;
+    }
+    this.exam.closeForm();
+    this.draft().finalQuizId().value.set(value);
+  }
+  submitExam(nextStep?: number): void {
+    this.exam.prepareSubmit(nextStep);
+    void this.examForm()?.save();
+  }
   protected readonly canAuthor = computed(() => {
     const f = this.draft();
     return [f.title, f.code, f.programId, f.level].every(
@@ -119,7 +146,10 @@ export class CourseRules {
 
   /** The form's starting values for a new exam. */
   protected readonly newExam = linkedSignal({
-    source: this.exam.formOpen$,
+    source: () => ({
+      open: this.exam.formOpen$(),
+      creating: this.exam.creating$(),
+    }),
     computation: () =>
       untracked(() =>
         newExamValue(this.draft().title().value(), this.exam.activeBank$()),
@@ -138,10 +168,5 @@ export class CourseRules {
    */
   protected detach(): void {
     this.draft().finalQuizId().value.set('');
-  }
-
-  /** "Gắn lại bài thi": the course requires the kept exam again. */
-  protected attach(quizId: number): void {
-    this.draft().finalQuizId().value.set(String(quizId));
   }
 }

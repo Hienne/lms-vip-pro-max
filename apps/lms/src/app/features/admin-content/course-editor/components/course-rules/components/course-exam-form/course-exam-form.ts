@@ -29,6 +29,7 @@ import {
 import type { AppError } from '../../../../../../../core/errors/app-error';
 import {
   EXAM_LIMITS,
+  POOL_LIMIT,
   toNewQuizRequest,
   type ExamFormValue,
   type ExamQuestion,
@@ -54,14 +55,11 @@ export class CourseExamForm {
   readonly questions = input<readonly ExamQuestion[]>([]);
   readonly questionsLoading = input(false);
   readonly questionsError = input<AppError>();
-  readonly submitLabel = input('Lưu khóa học và bài kiểm tra');
   readonly busy = input(false);
   readonly error = input<AppError>();
   readonly saved = output<ExamFormValue>();
-  readonly cancelled = output<void>();
   readonly retryQuestions = output<void>();
   protected readonly search = signal('');
-  protected readonly page = signal(0);
   private readonly model = linkedSignal(() => {
     const value = this.value();
     return {
@@ -74,7 +72,11 @@ export class CourseExamForm {
     };
   });
   protected readonly selectedIds = computed(
-    () => this.model().questionIds ?? this.questions().map((q) => q.id),
+    () =>
+      this.model().questionIds ??
+      this.questions()
+        .slice(0, POOL_LIMIT)
+        .map((q) => q.id),
   );
   protected readonly selected = computed(() => new Set(this.selectedIds()));
   protected readonly filtered = computed(() => {
@@ -83,18 +85,7 @@ export class CourseExamForm {
       (q.code + ' ' + q.contentPreview).toLocaleLowerCase('vi').includes(query),
     );
   });
-  protected readonly pages = computed(() =>
-    Math.max(1, Math.ceil(this.filtered().length / 20)),
-  );
-  protected readonly currentPage = computed(() =>
-    Math.min(this.page(), this.pages() - 1),
-  );
-  protected readonly rows = computed(() =>
-    this.filtered().slice(
-      this.currentPage() * 20,
-      this.currentPage() * 20 + 20,
-    ),
-  );
+  protected readonly poolLimit = POOL_LIMIT;
   protected readonly fixed = computed(
     () => this.model().selectionMode === 'FIXED',
   );
@@ -151,13 +142,17 @@ export class CourseExamForm {
           };
         if (
           !count ||
+          count > POOL_LIMIT ||
           (this.fixed() ? count > 200 : count < this.model().questionCount)
         )
           return {
             kind: 'pool',
-            message: this.fixed()
-              ? 'Chọn từ 1 đến 200 câu cho đề cố định.'
-              : 'Chọn đủ câu hỏi cho số câu mỗi lượt.',
+            message:
+              count > POOL_LIMIT
+                ? `Mỗi bài thi được chọn tối đa ${POOL_LIMIT} câu.`
+                : this.fixed()
+                  ? 'Chọn từ 1 đến 200 câu cho đề cố định.'
+                  : 'Chọn đủ câu hỏi cho số câu mỗi lượt.',
           };
         return undefined;
       });
@@ -196,28 +191,32 @@ export class CourseExamForm {
 
   protected setSearch(event: Event): void {
     this.search.set((event.target as HTMLInputElement).value);
-    this.page.set(0);
   }
   protected selectQuestion(id: number, event: Event): void {
     const ids = new Set(this.selectedIds());
-    if ((event.target as HTMLInputElement).checked) ids.add(id);
-    else ids.delete(id);
+    if ((event.target as HTMLInputElement).checked) {
+      if (ids.size >= POOL_LIMIT) return;
+      ids.add(id);
+    } else ids.delete(id);
     this.model.update((value) => ({ ...value, questionIds: [...ids] }));
   }
-  protected selectPage(): void {
+  protected selectFiltered(): void {
     this.model.update((value) => ({
       ...value,
       questionIds: [
-        ...new Set([...this.selectedIds(), ...this.rows().map((q) => q.id)]),
-      ],
+        ...new Set([
+          ...this.selectedIds(),
+          ...this.filtered().map((q) => q.id),
+        ]),
+      ].slice(0, POOL_LIMIT),
     }));
   }
   protected clearSelection(): void {
     this.model.update((value) => ({ ...value, questionIds: [] }));
   }
-  protected save(event?: Event): void {
+  save(event?: Event): Promise<boolean> {
     event?.preventDefault();
-    if (!this.busy()) void submit(this.examForm);
+    return this.busy() ? Promise.resolve(false) : submit(this.examForm);
   }
   protected enter(event: Event): void {
     if (
@@ -234,9 +233,6 @@ export class CourseExamForm {
       event.preventDefault();
       return;
     }
-    this.save(event);
-  }
-  protected cancel(): void {
-    if (!this.busy()) this.cancelled.emit();
+    event.preventDefault();
   }
 }

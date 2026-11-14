@@ -410,6 +410,17 @@ export const MIGRATION_ENTRIES = [
     status: 'todo',
   },
   {
+    id: 'multi-select',
+    kind: 'component',
+    mockupSource: null,
+    level: 'molecule',
+    targets: ['MultiSelect'],
+    checklist: ['H'],
+    status: 'todo',
+    notes:
+      'Searchable checkbox dropdown with CDK overlay/focus containment, used for course publication targets and shares. Migration visual verification pending.',
+  },
+  {
     id: 'kpi',
     kind: 'component',
     mockupSource: 'UI.Kpi',
@@ -911,7 +922,7 @@ export const MIGRATION_ENTRIES = [
   {
     id: 'route-lesson-course-id-lesson-id',
     notes:
-      'Nối API học thật: phiên học một thiết bị, heartbeat, video/PDF qua nội dung có kiểm soát. Mốc video, transcript có tìm kiếm và chế độ tập trung đã có (lesson-player-modes); chờ đối chiếu trình duyệt ở 375/768/1280 px.',
+      'Nối API học thật: phiên học một thiết bị, heartbeat, video/PDF qua nội dung có kiểm soát. Mốc video, transcript có tìm kiếm và chế độ tập trung đã có (lesson-player-modes); chờ đối chiếu trình duyệt ở 375/768/1280 px. SCORM now embeds in the lesson tree; local browser QA verified page-4 resume, quiz score and server-owned course completion.',
     kind: 'route',
     mockupSource: 'src/pages/lesson.js · lesson',
     target: 'lesson/:courseId/:lessonId',
@@ -1499,11 +1510,33 @@ export const MIGRATION_ENTRIES = [
   },
   {
     id: 'route-admin-lessons',
+    notes:
+      'Lesson library supports ZIP import and preview. Course authoring also imports ZIP directly, with the library as an optional picker. Full migration visual checks remain pending.',
     kind: 'route',
     mockupSource: null,
     target: 'admin/lessons',
     checklist: [],
     status: 'todo',
+  },
+  {
+    id: 'route-scorm',
+    kind: 'route',
+    mockupSource: null,
+    target: 'scorm',
+    checklist: [],
+    status: 'todo',
+    notes:
+      'Existing standalone library route retained for compatibility. Normal course learning embeds SCORM in the lesson route. Full migration visual checks remain pending.',
+  },
+  {
+    id: 'route-scorm-id',
+    kind: 'route',
+    mockupSource: null,
+    target: 'scorm/:id',
+    checklist: [],
+    status: 'todo',
+    notes:
+      'Existing standalone player and author preview route retained for old links; course lessons use the embedded player with enrollment and lesson context. Full migration visual checks remain pending.',
   },
   {
     id: 'route-knowledge',

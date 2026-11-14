@@ -25,8 +25,8 @@ import { coverPreviews } from '../../../../shared/course/cover-image';
 
 export const CATALOG_PAGE_SIZE = 12;
 
-/** "Tất cả" lists the catalogue, "Được giao" the caller's own courses. */
-export type CatalogScope = 'all' | 'assigned';
+/** The discoverable catalogue, all joined courses, or only assigned courses. */
+export type CatalogScope = 'all' | 'mine' | 'assigned';
 export type CatalogSort = 'due' | 'progress' | 'name';
 
 /**
@@ -128,7 +128,11 @@ export class CatalogStore {
 
   private readonly state = {
     scope: signal<CatalogScope>(
-      this.initial['scope'] === 'assigned' ? 'assigned' : 'all',
+      this.initial['scope'] === 'assigned'
+        ? 'assigned'
+        : this.initial['scope'] === 'mine'
+          ? 'mine'
+          : 'all',
     ),
     filters: signal<CatalogFilters>(filtersFrom(this.initial)),
     sort: signal<CatalogSort>(
@@ -168,9 +172,17 @@ export class CatalogStore {
   });
 
   private readonly listData = serverData(
-    (query: LearnerCatalogQuery) =>
-      this.client.call(learnerEndpoints.catalog, { query }),
-    { params: () => this.request() },
+    ({ scope, query }: { scope: CatalogScope; query: LearnerCatalogQuery }) =>
+      this.client.call(
+        scope === 'all' ? learnerEndpoints.catalog : learnerEndpoints.myCourses,
+        { query },
+      ),
+    {
+      params: (): { scope: CatalogScope; query: LearnerCatalogQuery } => ({
+        scope: this.state.scope(),
+        query: this.request(),
+      }),
+    },
   );
 
   /** The names the selects offer: only those the caller's visible courses use. */
@@ -330,7 +342,7 @@ export class CatalogStore {
   private syncUrl(): void {
     const f = this.state.filters();
     const queryParams: Params = {
-      scope: this.state.scope() === 'assigned' ? 'assigned' : null,
+      scope: this.state.scope() === 'all' ? null : this.state.scope(),
       q: f.q.trim() || null,
       field: f.fieldId ?? null,
       module: f.moduleId ?? null,

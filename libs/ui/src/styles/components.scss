@@ -24,6 +24,7 @@
 @use 'components/list-row';
 @use 'components/mai';
 @use 'components/menu';
+@use 'components/multi-select';
 @use 'components/option-card';
 @use 'components/page-header';
 @use 'components/pagination';
@@ -51,3 +52,5 @@
 @use 'components/tree';
 
 @use 'components/upload';
+@use 'components/search-select';
+@use 'components/guided-tour';

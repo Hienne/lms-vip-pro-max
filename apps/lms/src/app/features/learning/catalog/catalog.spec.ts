@@ -327,11 +327,11 @@ describe('Catalog', () => {
   it('opens on the assigned courses from the URL and shows only the caller own', async () => {
     await open('/catalog?scope=assigned&status=failed');
 
-    expect(lastQuery(learnerEndpoints.catalog)).toMatchObject({
+    expect(lastQuery(learnerEndpoints.myCourses)).toMatchObject({
       assigned: 'true',
       failed: 'true',
     });
-    expect(callsOf(learnerEndpoints.myCourses).length).toBe(0);
+    expect(callsOf(learnerEndpoints.catalog).length).toBe(0);
     expect(titles()).toEqual([
       'Quy trình quản lý thay đổi (Change Management)',
     ]);

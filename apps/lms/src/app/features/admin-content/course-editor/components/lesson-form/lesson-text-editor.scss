@@ -16,6 +16,7 @@ app-lesson-text-editor {
     border-color: ui.color(danger);
   }
 
+  &__modes,
   &__toolbar {
     @include ui.row(1);
     padding: ui.space(1);
@@ -26,6 +27,47 @@ app-lesson-text-editor {
       background: ui.color(surface);
       color: ui.color(primary);
     }
+  }
+
+  &__tool-group {
+    @include ui.row(1);
+    + .lesson-text-editor__tool-group {
+      border-left: 1px solid ui.color(border);
+      padding-left: ui.space(2);
+    }
+  }
+
+  &__markdown {
+    @include ui.stack(3);
+    padding: ui.space(3);
+    border-bottom: 1px solid ui.color(border);
+  }
+  &__markdown-head {
+    @include ui.row-between(3);
+    @include ui.text(sm, muted);
+    > p {
+      flex: 1 1 20rem;
+    }
+  }
+  &__markdown-grid {
+    @include ui.grid(
+      (
+        base: 1,
+        md: 2,
+      ),
+      3
+    );
+  }
+  &__markdown-column {
+    @include ui.stack(2);
+    min-width: 0;
+    @include ui.text(sm);
+  }
+  &__markdown-preview {
+    min-height: 12rem;
+    max-height: 22rem;
+    overflow: auto;
+    padding: ui.space(3);
   }
 
   &__body {

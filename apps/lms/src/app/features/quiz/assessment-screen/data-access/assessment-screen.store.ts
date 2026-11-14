@@ -17,6 +17,8 @@ import {
   courseEndpoints,
   trainingCatalogEndpoints,
   type TrainingProgram,
+  type CourseCard,
+  type Page,
   type ProgramQuestionQuery,
   type ProgramQuestionRequest,
   type QuizRequestV1,
@@ -51,11 +53,11 @@ export class AssessmentScreenStore {
   );
   private readonly state = {
     courseId: signal<number | undefined>(undefined),
+    coursePick: signal<CourseCard | undefined>(undefined),
     programId: signal<number | null | undefined>(undefined),
     programSearch: signal(''),
     programPage: signal(0),
     courseSearch: signal(''),
-    coursePage: signal(0),
     questionId: signal<number | undefined>(undefined),
     editorOpen: signal(false),
     importOpen: signal(false),
@@ -120,7 +122,33 @@ export class AssessmentScreenStore {
   });
   private readonly coursesData = serverData(
     (query: { q?: string; programId?: number; page: number; size: number }) =>
-      this.client.call(courseEndpoints.instructorCourses, { query }),
+      this.client.call(courseEndpoints.instructorCourses, { query }).pipe(
+        expand((page, index) => {
+          if (page.page !== index)
+            throw new Error(
+              'Danh sách khóa học trả về sai trang. Vui lòng tải lại.',
+            );
+          return page.page + 1 < page.totalPages
+            ? this.client.call(courseEndpoints.instructorCourses, {
+                query: { ...query, page: page.page + 1 },
+              })
+            : EMPTY;
+        }),
+        reduce(
+          (all, page) => ({
+            ...page,
+            page: 0,
+            items: [...all.items, ...page.items],
+          }),
+          {
+            items: [],
+            page: 0,
+            size: 50,
+            totalPages: 0,
+            totalElements: 0,
+          } as Page<CourseCard>,
+        ),
+      ),
     {
       params: () =>
         this.routeScreen$() === 'questions'
@@ -128,7 +156,7 @@ export class AssessmentScreenStore {
           : {
               q: this.state.courseSearch() || undefined,
               programId: this.courseProgramFilter$(),
-              page: this.state.coursePage(),
+              page: 0,
               size: 50,
             },
     },
@@ -191,6 +219,19 @@ export class AssessmentScreenStore {
     },
   );
   readonly courses$ = this.coursesData.value;
+  readonly coursesLoading$ = this.coursesData.isLoading;
+  readonly courseIndex$ = computed(
+    () =>
+      this.courses$()?.items.findIndex(
+        (course) => course.courseId === this.selectedCourseId$(),
+      ) ?? -1,
+  );
+  readonly hasPreviousCourse$ = computed(() => this.courseIndex$() > 0);
+  readonly hasNextCourse$ = computed(
+    () =>
+      this.courseIndex$() >= 0 &&
+      this.courseIndex$() + 1 < (this.courses$()?.items.length ?? 0),
+  );
   readonly courseSearch$ = this.state.courseSearch.asReadonly();
   readonly configDetail$ = this.configData.value;
   readonly config$ = computed(() => this.configData.value()?.quiz);
@@ -208,6 +249,9 @@ export class AssessmentScreenStore {
       this.courses$()?.items.find(
         (x) => x.courseId === this.selectedCourseId$(),
       )?.title ??
+      (this.state.coursePick()?.courseId === this.selectedCourseId$()
+        ? this.state.coursePick()?.title
+        : undefined) ??
       (this.courseData.value()?.course.id === this.selectedCourseId$()
         ? this.courseData.value()?.revision.title
         : undefined) ??
@@ -244,6 +288,9 @@ export class AssessmentScreenStore {
         ? this.courseData.value()?.revision.programId
         : undefined) ??
       this.courses$()?.items.find((c) => c.courseId === id)?.programId ??
+      (this.state.coursePick()?.courseId === id
+        ? this.state.coursePick()?.programId
+        : undefined) ??
       this.courseProgramFilter$()
     );
   });
@@ -263,6 +310,9 @@ export class AssessmentScreenStore {
       this.courses$()?.items.find(
         (c) => c.courseId === this.selectedCourseId$(),
       )?.programName ??
+      (this.state.coursePick()?.courseId === this.selectedCourseId$()
+        ? this.state.coursePick()?.programName
+        : undefined) ??
       (this.selectedProgramId$()
         ? 'Chương trình #' + this.selectedProgramId$()
         : 'Chưa gắn chương trình'),
@@ -603,9 +653,6 @@ export class AssessmentScreenStore {
   private setCourseSearch(value: string): void {
     this.state.courseSearch.set(value);
   }
-  private setCoursePage(value: number): void {
-    this.state.coursePage.set(value);
-  }
   setQuestionFilter(
     key: keyof ReturnType<typeof this.questionFilters$>,
     value: string,
@@ -667,7 +714,7 @@ export class AssessmentScreenStore {
     if (this.partialSave$()) return;
     this.setProgramId(positiveId(value) ?? null);
     this.setCourseId(undefined);
-    this.setCoursePage(0);
+    this.state.coursePick.set(undefined);
     this.setCourseSearch('');
     this.setQuizPage(1);
     this.setQuestionPage(1);
@@ -691,21 +738,42 @@ export class AssessmentScreenStore {
   selectCourse(value: string): void {
     if (this.editorOpen$() || this.isSaving$() || this.partialSave$()) return;
     this.setCourseId(positiveId(value));
+    this.state.coursePick.set(
+      this.courses$()?.items.find(
+        (course) => course.courseId === positiveId(value),
+      ) ?? this.state.coursePick(),
+    );
     this.setQuestionPage(1);
     this.setQuizPage(1);
   }
   searchCourses(value: string): void {
     if (this.editorOpen$() || this.isSaving$() || this.partialSave$()) return;
+    if (value === this.state.courseSearch()) return;
+    this.retainCoursePick();
     this.setCourseSearch(value);
-    this.setCoursePage(0);
   }
-  nextCoursePage(delta: number): void {
-    if (this.partialSave$() || this.isSaving$()) return;
-    const page = this.courses$();
-    if (page)
-      this.setCoursePage(
-        Math.max(0, Math.min(page.totalPages - 1, page.page + delta)),
-      );
+  nextCourse(delta: -1 | 1): void {
+    if (
+      this.partialSave$() ||
+      this.isSaving$() ||
+      this.coursesLoading$() ||
+      this.editorOpen$()
+    )
+      return;
+    const index = this.courseIndex$();
+    if (index < 0) return;
+    const course = this.courses$()?.items[index + delta];
+    if (course) this.selectCourse(String(course.courseId));
+  }
+
+  /** Paging/search narrows available options, without changing the selected course or its program. */
+  private retainCoursePick(): void {
+    const id = this.selectedCourseId$();
+    this.setCourseId(id);
+    const course = this.courses$()?.items.find(
+      (course) => course.courseId === id,
+    );
+    if (course) this.state.coursePick.set(course);
   }
   editQuestion(id: number | null): void {
     if (!this.selectedProgramId$() || this.isSaving$()) return;

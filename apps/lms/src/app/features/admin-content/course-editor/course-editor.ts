@@ -46,6 +46,7 @@ import { CourseRules } from './components/course-rules/course-rules';
 import { LessonForm } from './components/lesson-form/lesson-form';
 import {
   emptyDraftValue,
+  draftChecks,
   mergeLive,
   toDraftValue,
   toSaveDraftCommand,
@@ -194,8 +195,12 @@ export class CourseEditor implements HasUnsavedChanges {
       submission: {
         onInvalid: () => this.showInvalidStep(),
         action: async () => {
-          if (this.store.pendingUploads$() || this.store.examEditing$()) return;
+          if (this.store.pendingUploads$()) return;
           this.validationRequested.set([true, true, true]);
+          if (this.store.step$() === 2 && this.store.examEditing$()) {
+            this.rules()?.submitExam();
+            return;
+          }
           if (this.store.isCreate$()) this.store.create(this.draftValue());
           else this.store.save(this.command());
         },
@@ -282,6 +287,11 @@ export class CourseEditor implements HasUnsavedChanges {
     () =>
       this.store.isDraft$() && fingerprint(this.draftValue()) !== this.saved(),
   );
+  protected readonly outlineProblems = computed(() =>
+    draftChecks(this.draftValue(), this.store.quizzes$())
+      .filter((check) => check.step === 1 && !check.optional && !check.ok)
+      .map((check) => check.label),
+  );
 
   /**
    * The fields of steps 1 to 3 in the order the page shows them; the publish step is checked by
@@ -296,19 +306,16 @@ export class CourseEditor implements HasUnsavedChanges {
     ];
   };
 
-  /** "Tiếp tục" on step 1 of a new course creates the course and moves to its URL: the cover must be done. */
+  /** "Tiếp theo" on step 1 of a new course creates the course and moves to its URL: the cover must be done. */
   protected readonly continueBlocked = computed(
     () =>
-      this.store.examEditing$() ||
-      (this.store.isCreate$() &&
-        this.store.step$() === 0 &&
-        this.store.coverUploading$()),
+      this.store.isCreate$() &&
+      this.store.step$() === 0 &&
+      this.store.coverUploading$(),
   );
 
   /** Why saving waits: a block saved now would have no asset. */
   protected readonly uploadHint = computed(() => {
-    if (this.store.examEditing$())
-      return 'Lưu bài kiểm tra hoặc Hủy trước khi chuyển bước.';
     const pending = this.store.pendingUploads$();
     if (this.continueBlocked()) return 'Ảnh bìa đang tải lên';
     return pending ? `Còn ${pending} tệp đang tải` : '';
@@ -370,7 +377,12 @@ export class CourseEditor implements HasUnsavedChanges {
     });
     this.store.registerStepChecks(
       this.stepFields().map((fields, index) => ({
-        invalid: () => fields.some((field) => field().invalid()),
+        invalid: () =>
+          fields.some((field) => field().invalid()) ||
+          (index === 1 &&
+            draftChecks(this.draftValue(), this.store.quizzes$()).some(
+              (check) => check.step === 1 && !check.optional && !check.ok,
+            )),
         touched: () => this.validationRequested()[index],
         touch: () => {
           this.validationRequested.update((steps) =>
@@ -388,6 +400,7 @@ export class CourseEditor implements HasUnsavedChanges {
    * form the author is typing in (the form's own files already include the finished upload).
    */
   private readonly lessonForm = viewChild(LessonForm);
+  private readonly rules = viewChild(CourseRules);
   protected readonly inlineUploading = computed(
     () => this.lessonForm()?.inlineUploading$() ?? false,
   );
@@ -417,10 +430,29 @@ export class CourseEditor implements HasUnsavedChanges {
       : undefined;
   }
 
-  /** "Tiếp tục": when the step stays because of an error, the first one gets focus. */
+  /** "Tiếp theo": when the step stays because of an error, the first one gets focus. */
   protected continue(): void {
+    this.navigate(this.store.step$() + 1);
+  }
+
+  protected navigate(target: number): void {
+    if (this.store.isSaving$()) return;
+    const current = this.store.step$();
+    if (target <= current || !this.store.isDraft$()) {
+      this.store.goToStep(target);
+      return;
+    }
+    const next = this.store.isCreate$() && current === 0 ? 1 : target;
+    if (this.store.validateBefore(next)) {
+      if (next > 2 && this.store.examEditing$()) {
+        this.store.goToStep(2);
+        this.rules()?.submitExam(next);
+        return;
+      }
+      this.store.continue(this.draftValue(), next);
+      return;
+    }
     const step = this.store.step$();
-    if (this.store.continue(this.draftValue())) return;
     this.stepFields()
       [step]?.find((field) => field().invalid())?.()
       .errorSummary()[0]

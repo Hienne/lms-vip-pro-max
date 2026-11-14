@@ -18,12 +18,7 @@
     </ui-field>
   </div>
   <ui-field label="Loại bài">
-    <select
-      uiSelect
-      #lessonKind
-      [formField]="lessonForm.lessonType"
-      (change)="store.loadScorm(lessonKind.value)"
-    >
+    <select uiSelect [formField]="lessonForm.lessonType">
       <option
         value="content"
         [selected]="lessonForm.lessonType().value() === 'content'"
@@ -80,75 +75,99 @@
     }
   </ui-alert>
   } } } @else if (lessonForm.lessonType().value() === 'scorm') {
-  <ui-field
-    label="Gói SCORM 1.2"
-    required
-    hint="Bài học mở bằng player SCORM. Hoàn thành khi gói báo completed hoặc passed; bài thi cuối khóa vẫn được xét riêng."
-  >
-    <select uiSelect [formField]="lessonForm.scormPackageId">
-      <option value="">— Chọn gói SCORM —</option>
-      @for (item of store.scormPackages$(); track item.id) {
-      <option [value]="'' + item.id">
-        {{ item.title }}{{ item.published ? '' : ' (Nháp — cần xuất bản gói)' }}
-      </option>
-      } @if (missingScormOption()) {
-      <option [value]="lessonForm.scormPackageId().value()" hidden>
-        Gói #{{ lessonForm.scormPackageId().value() }}
-      </option>
-      }
-    </select>
+  <p>
+    Tải tệp ZIP SCORM 1.2 trực tiếp vào bài học, hoặc chọn một bài giảng đã có
+    trong thư viện.
+  </p>
+  @if (!scormUpload.libraryOpen$()) {<input
+    type="hidden"
+    [formField]="lessonForm.scormPackageId"
+  />} @if (lessonForm.scormPackageId().touched()) { @for (error of
+  lessonForm.scormPackageId().errors(); track $index) {<ui-alert tone="danger"
+    >{{error.message}}</ui-alert
+  >} } @if (lessonForm.scormPackageId().value()) { @if (selectedScorm(); as
+  lecture) {
+  <ui-upload-item
+    [name]="lecture.originalName"
+    [size]="lecture.sizeBytes"
+    icon="file-text"
+  />
+  <p>Đã gắn: <strong>{{lecture.title}}</strong></p>
+  } @else {
+  <p>Đã gắn bài giảng SCORM #{{lessonForm.scormPackageId().value()}}</p>
+  } } @else {
+  <label uiDropzone accept=".zip,application/zip" (files)="importScorm($event)">
+    <ui-icon name="upload" />
+    <span>Kéo thả hoặc chọn tệp ZIP SCORM</span>
+    <span>Tối đa 100 MB · SCORM 1.2</span>
+    <input type="file" hidden [disabled]="scormUpload.pending$()" />
+  </label>
+  }
+  <div class="lesson-form__row-actions">
+    @if (lessonForm.scormPackageId().value()) {
+    <button
+      uiButton
+      type="button"
+      size="sm"
+      [disabled]="scormUpload.pending$()"
+      (click)="scormFile.click()"
+    >
+      Thay tệp ZIP
+    </button>
+    }
+    <button
+      uiButton
+      type="button"
+      size="sm"
+      [disabled]="scormUpload.pending$()"
+      (click)="openScormLibrary()"
+    >
+      Chọn từ thư viện bài giảng
+    </button>
+    <input
+      #scormFile
+      type="file"
+      accept=".zip,application/zip"
+      hidden
+      (change)="pickedScorm($event)"
+    />
+  </div>
+  @if (scormUpload.pending$()) {
+  <p role="status">Đang tải và kiểm tra bài giảng…</p>
+  } @if (scormUpload.error$(); as error) {<ui-alert tone="danger"
+    >{{error}}</ui-alert
+  >}
+  <p>
+    Bài giảng mới được lưu vào thư viện và xuất bản cùng khóa học. Học viên hoàn
+    thành bài khi SCORM báo đã hoàn thành hoặc đạt.
+  </p>
+  @if (scormUpload.libraryOpen$()) {
+  <ui-field label="Bài giảng trong thư viện" required>
+    <ui-search-select
+      label="Bài giảng trong thư viện"
+      placeholder="Chọn bài giảng SCORM"
+      [formField]="lessonForm.scormPackageId"
+      [options]="scormOptions()"
+      [loading]="store.scormLoading$()"
+    />
   </ui-field>
-  @if (!store.scormLoading$() && !store.scormPackages$().length &&
+  @if (store.scormLoading$()) {
+  <p role="status">Đang tải thư viện…</p>
+  } @if (store.scormError$(); as error) {<ui-alert tone="danger"
+    >{{error.message}}</ui-alert
+  >} @if (!store.scormLoading$() && !store.scormPackages$().length &&
   !store.scormError$()) {
   <p>
-    Chưa có gói SCORM phù hợp trong trang này. Nhập gói mới hoặc thay đổi từ
-    khóa tìm kiếm.
+    Chưa có bài giảng trong phạm vi này. Bạn có thể tải tệp ZIP trực tiếp ở
+    trên.
   </p>
-  }
-  <ui-field label="Tìm gói SCORM"
-    ><input
-      uiInput
-      #scormSearch
-      [value]="store.scormQuery$()"
-      (change)="store.searchScorm(scormSearch.value)"
-  /></ui-field>
-  <p>
-    <a uiButton href="/admin/lessons" target="_blank" rel="noopener"
-      >Nhập hoặc xuất bản gói SCORM</a
-    >
-    <button uiButton type="button" (click)="store.reloadScorm()">
-      Tải lại danh sách
-    </button>
-  </p>
-  @if (store.scormLoading$()) {
-  <p>Đang tải gói SCORM…</p>
-  } @if (store.scormError$(); as error) {
-  <ui-alert tone="danger">{{ error.message }}</ui-alert> }
-  <p>
-    <button
-      uiButton
-      type="button"
-      [disabled]="store.scormPage$() === 0"
-      (click)="store.setScormPage(store.scormPage$() - 1)"
-    >
-      Trang trước
-    </button>
-    <button
-      uiButton
-      type="button"
-      [disabled]="!store.scormHasNext$()"
-      (click)="store.setScormPage(store.scormPage$() + 1)"
-    >
-      Trang sau
-    </button>
-  </p>
-  } @else {
+  } } } @else {
   <section class="lesson-form__blocks" aria-label="Khối nội dung">
     <h3 class="lesson-form__heading">
       Khối nội dung ({{ lessonForm.blocks().value().length }})
     </h3>
-    @for (block of lessonForm.blocks; track block().value().key; let i = $index;
-    let last = $last) {
+    @for (value of lessonForm.blocks().value(); track value.key; let i = $index;
+    let last = $last) { @let block = lessonForm.blocks[i];
     <div class="lesson-form__block">
       <div class="lesson-form__block-head">
         <span class="lesson-form__block-type">
@@ -184,7 +203,7 @@
           size="sm"
           variant="danger"
           [label]="'Xóa khối ' + block().value().title"
-          (click)="removeBlock(i)"
+          (click)="removeBlock(value.key)"
         >
           <ui-icon name="trash-2" size="sm" />
         </button>
@@ -269,8 +288,7 @@
             Hủy
           </button>
         </div>
-        } } @if (!files()[block().value().key]?.length ||
-        block().value().blockType === 'attachment') {
+        } } @if (!files()[block().value().key]?.length) {
         <label
           uiDropzone
           [accept]="acceptOf(block().value().blockType)"
@@ -285,16 +303,19 @@
         </label>
         }
         <div class="lesson-form__row-actions">
-          @if (files()[block().value().key]?.length && block().value().blockType
-          !== 'attachment') {
+          @if (files()[block().value().key]?.length) {
           <button
             uiIconButton
             size="sm"
             type="button"
-            label="Thay tệp"
+            [label]="block().value().blockType === 'attachment' ? 'Thêm tệp đính kèm' : 'Thay tệp'"
+            [disabled]="block().value().blockType === 'attachment' && isBusy(uploads()[block().value().key])"
             (click)="again.click()"
           >
-            <ui-icon name="refresh-cw" size="sm" />
+            <ui-icon
+              [name]="block().value().blockType === 'attachment' ? 'plus' : 'refresh-cw'"
+              size="sm"
+            />
           </button>
           }
           <button

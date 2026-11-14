@@ -254,20 +254,30 @@
   uiDrawerBusyLabel="Đang lưu…"
   (uiDrawerDismiss)="store.cancelEdit()"
 >
-  @if (store.editing$(); as editing) {
+  @if (store.editing$(); as editing) { @if (store.modulesLoading$()) {
+  <span uiSpinner></span>
+  <p>Đang tải phân hệ nghiệp vụ…</p>
+  } @else if (store.modulesError$(); as error) {
+  <ui-error-state
+    title="Không tải được phân hệ"
+    [message]="error.message"
+    (retry)="store.retryModules()"
+  />
+  } @else {
   <app-catalog-item-form
     [kind]="editing.kind"
     [item]="editing.item"
+    [modules]="store.editingModules$()"
     (submitted)="store.save($event)"
   />
-  }
+  } }
 </ng-template>
 <ng-template #footer let-close="close">
   <ui-form-actions
     formId="catalog-item-form"
     submitLabel="Lưu"
     cancelLabel="Hủy"
-    [saving]="store.isSaving$()"
+    [saving]="store.isSaving$() || store.modulesLoading$() || !!store.modulesError$()"
     (cancel)="close()"
   />
 </ng-template>

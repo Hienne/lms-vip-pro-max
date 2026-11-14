@@ -33,9 +33,10 @@ store.learnerNav$();
       [user]="user"
       [unread]="store.unread$()"
       [levelName]="level.name$()"
+      [guideAvailable]="guide.audiences$().length > 0"
       (menu)="store.openNav()"
       (searched)="store.search($event)"
-      (picked)="store.pick($event)"
+      (picked)="pick($event)"
     />
     }
     <app-net-banner />
@@ -81,6 +82,7 @@ store.learnerNav$();
 </ng-template>
 
 <app-source-viewer />
+<app-usage-guide />
 
 @if (devToolbar(); as toolbar) {
 <ng-container *ngComponentOutlet="toolbar" />

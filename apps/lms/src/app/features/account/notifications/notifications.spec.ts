@@ -66,6 +66,55 @@ describe('Notifications', () => {
         b.getAttribute('aria-label') === label,
     );
 
+  it('names the deadline course and links it directly, but hides the link for a revoked assignment', async () => {
+    const backend = TestBed.inject(MockBackend);
+    handle.mockImplementation((endpoint, request) =>
+      endpoint === learnerEndpoints.reminderInbox
+        ? {
+            status: 200,
+            body: envelopeOk([
+              {
+                id: 71,
+                recipientId: 81,
+                rowVersion: 0,
+                kind: 'DEADLINE',
+                scheduledAt: '2026-01-01T00:00:00Z',
+                dueAtSnapshot: '2026-01-02T00:00:00Z',
+                status: 'pending',
+                channel: 'in_app',
+                courseId: 42,
+                courseTitle: 'Tín dụng doanh nghiệp',
+                enrollmentId: 90,
+                courseAvailable: true,
+              },
+              {
+                id: 72,
+                recipientId: 82,
+                rowVersion: 0,
+                kind: 'DEADLINE',
+                scheduledAt: '2026-01-01T00:00:00Z',
+                dueAtSnapshot: '2026-01-03T00:00:00Z',
+                status: 'pending',
+                channel: 'in_app',
+                courseId: 43,
+                courseTitle: 'Khóa đã thu hồi',
+                enrollmentId: 91,
+                courseAvailable: false,
+              },
+            ]),
+          }
+        : MockBackend.prototype.handle.call(backend, endpoint, request),
+    );
+    await open();
+    expect(items()).toHaveLength(2);
+    expect(items()[0].textContent).toContain('Tín dụng doanh nghiệp');
+    expect(items()[0].querySelector('a')?.getAttribute('href')).toBe(
+      '/course/42',
+    );
+    expect(items()[1].textContent).toContain('thu hồi');
+    expect(items()[1].querySelector('a')).toBeNull();
+  });
+
   describe('a learner with a badge notice and a level notice', () => {
     beforeEach(() => open('hocvien.tichhop', '000007'));
 

@@ -40,6 +40,7 @@ import {
   IconButton,
   Input,
   Select,
+  SearchSelect,
   Textarea,
   UploadItem,
 } from '@lms/ui';
@@ -70,6 +71,7 @@ import {
 import { firstValueFrom } from 'rxjs';
 import { lessonImageIds } from '../../../../../shared/content/markdown/lesson-html';
 import { DOCUMENT } from '@angular/core';
+import { LessonScormUploadStore } from './lesson-scorm-upload.store';
 
 /** A block as the form edits it: process steps as one line each, "Tiêu đề | Mô tả". */
 type BlockFormValue = Omit<BlockValue, 'steps' | 'bodyFormat'> & {
@@ -148,10 +150,11 @@ const quizLabel = (quiz: QuizSummary): string =>
     Input,
     LessonTextEditor,
     Select,
+    SearchSelect,
     Textarea,
     UploadItem,
   ],
-  providers: [AssetLibraryStore],
+  providers: [AssetLibraryStore, LessonScormUploadStore],
   templateUrl: './lesson-form.html',
   styleUrl: './lesson-form.scss',
 })
@@ -160,17 +163,21 @@ export class LessonForm {
   readonly submitted = output<LessonValue>();
 
   protected readonly store = inject(CourseEditorStore);
+  protected readonly scormUpload = inject(LessonScormUploadStore);
   protected readonly library = inject(AssetLibraryStore);
   private readonly dialog = inject(Dialog);
   private readonly document = inject(DOCUMENT);
   private readonly inlineUploads = signal<ReadonlySet<string>>(new Set());
-  readonly inlineUploading$ = computed(() => this.inlineUploads().size > 0);
+  readonly inlineUploading$ = computed(
+    () => this.inlineUploads().size > 0 || this.scormUpload.pending$(),
+  );
   /** Files chosen in this editor, by block key. */
   protected readonly uploads = this.store.uploads$;
   /** Uploads a reload stopped, by the index of their block in this lesson. */
   protected readonly interrupted = this.store.interrupted$;
   protected readonly itemState = itemState;
   protected readonly isCancellable = isCancellable;
+  protected readonly isBusy = isBusy;
   protected readonly blockTypes = BLOCK_TYPES;
   protected readonly addable = BlockTypeSchema.options;
   protected readonly mediaBlocks = [
@@ -189,7 +196,10 @@ export class LessonForm {
     (path) => {
       validate(path.scormPackageId, ({ value }) =>
         this.model().lessonType === 'scorm' && !value()
-          ? { kind: 'required', message: 'Chọn gói SCORM cho bài học.' }
+          ? {
+              kind: 'required',
+              message: 'Tải tệp ZIP hoặc chọn bài giảng SCORM từ thư viện.',
+            }
           : undefined,
       );
       required(path.title, { message: 'Nhập tên bài học.' });
@@ -260,6 +270,50 @@ export class LessonForm {
       !this.store.scormPackages$().some((item) => String(item.id) === chosen)
     );
   });
+  protected readonly scormOptions = computed(() => {
+    const options = this.store
+      .scormPackages$()
+      .map((item) => ({
+        value: String(item.id),
+        label: item.title + (item.published ? '' : ' (Nháp)'),
+      }));
+    const selected = this.model().scormPackageId;
+    return this.missingScormOption()
+      ? [
+          ...options,
+          { value: selected, label: `Bài giảng #${selected} (đang gắn)` },
+        ]
+      : options;
+  });
+
+  protected readonly selectedScorm = computed(() => {
+    const id = Number(this.model().scormPackageId);
+    const uploaded = this.scormUpload.lecture$();
+    return uploaded?.id === id
+      ? uploaded
+      : this.store.scormPackages$().find((item) => item.id === id);
+  });
+
+  protected openScormLibrary(): void {
+    this.scormUpload.setLibraryOpen(true);
+    this.store.reloadScorm();
+  }
+
+  protected importScorm(files: readonly File[]): void {
+    this.scormUpload.import(files[0], this.store.ownerOrgId$(), (lecture) => {
+      this.model.update((value) => ({
+        ...value,
+        scormPackageId: String(lecture.id),
+        title: value.title.trim() ? value.title : lecture.title,
+      }));
+    });
+  }
+
+  protected pickedScorm(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.importScorm(Array.from(input.files ?? []));
+    input.value = '';
+  }
 
   protected readonly quizOptions = computed(() => {
     const options = this.store
@@ -295,6 +349,7 @@ export class LessonForm {
 
   /** The drawer's "Lưu" when it is not the footer button that was pressed; false while invalid. */
   save(): Promise<boolean> {
+    if (this.scormUpload.pending$()) return Promise.resolve(false);
     return submit(this.lessonForm);
   }
 
@@ -323,8 +378,7 @@ export class LessonForm {
   }
 
   /** Removes a block; one whose file is still uploading asks first, and its upload is stopped. */
-  protected async removeBlock(index: number): Promise<void> {
-    const key = this.model().blocks[index].key;
+  protected async removeBlock(key: string): Promise<void> {
     if (isBusy(this.uploads()[key])) {
       const confirmed = await firstValueFrom(
         confirm(this.dialog, {
@@ -339,7 +393,7 @@ export class LessonForm {
     }
     this.model.update((value) => ({
       ...value,
-      blocks: value.blocks.filter((_, i) => i !== index),
+      blocks: value.blocks.filter((block) => block.key !== key),
     }));
     this.inlineUploading(key, false);
   }
@@ -353,6 +407,7 @@ export class LessonForm {
   ): void {
     const file = files[0];
     if (!file) return;
+    this.retainAttachments(block.key);
     const request = {
       blockKey: block.key,
       blockType: block.blockType,
@@ -414,12 +469,27 @@ export class LessonForm {
   protected useLibraryAsset(asset: LibraryAsset): void {
     const target = this.library.target$();
     if (!target) return;
+    this.retainAttachments(target.blockKey);
     this.store.attach({ ...target, asset });
     this.library.close();
   }
 
+  /** Keep completed attachments before the next upload replaces the block's live upload entry. */
+  private retainAttachments(key: string): void {
+    const files = this.files()[key];
+    if (!files?.length) return;
+    this.model.update((value) => ({
+      ...value,
+      blocks: value.blocks.map((block) =>
+        block.key === key && block.blockType === 'attachment'
+          ? { ...block, assets: files }
+          : block,
+      ),
+    }));
+  }
+
   private apply(): void {
-    if (this.missingFiles().length) return;
+    if (this.missingFiles().length || this.scormUpload.pending$()) return;
     const value = this.model();
     const files = this.files();
     this.submitted.emit({

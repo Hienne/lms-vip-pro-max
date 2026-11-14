@@ -23,7 +23,7 @@
       <a
         slot="action"
         routerLink="/catalog"
-        [queryParams]="{ scope: 'assigned' }"
+        [queryParams]="store.allCoursesQuery$()"
         >Xem tất cả <ui-icon name="arrow-right" size="sm"
       /></a>
       <ui-tabs
@@ -166,6 +166,7 @@
               <app-reminder-item
                 [reminder]="item.reminder"
                 [overdue]="item.isOverdue"
+                [showCourseLink]="true"
               />
             </li>
             }
@@ -183,15 +184,6 @@
       class="learn__panel"
     >
       <ul uiList class="learn__tools">
-        <li>
-          <ui-list-row
-            link="/scorm"
-            icon="file-text"
-            title="Bài giảng SCORM"
-            subtitle="Học tương tác, làm bài kiểm tra và tiếp tục từ vị trí đã lưu"
-            chevron
-          />
-        </li>
         @if (store.canAssist$()) {
         <li>
           <ui-list-row

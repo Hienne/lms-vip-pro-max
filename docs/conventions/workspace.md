@@ -106,6 +106,29 @@ project run the Nx target directly (`npx nx test ui`).
 | `npm run ci:check`                              | CI only: `nx affected -t lint typecheck build check-bundle`, no unit tests   |
 | `npm run ci:build`                              | CI only: production + staging builds                                         |
 
+### Local FE with the shared SCORM player
+
+Run `npm run dev:scorm` and open **http://localhost:4200**. Restart any existing Angular dev server
+before using this command. It uses the shared API at `https://chanacademy.io.vn` and the existing player
+at `https://chanacademy.io.vn:8020`; Java, the server environment and Nginx remain unchanged.
+
+The Angular dev proxy routes only the authenticated SCORM launch endpoint through a loopback relay.
+The returned player URL uses `http://127.0.0.1:8020`, a different origin from Angular. The relay forwards
+SCORM files and runtime requests to the shared player, adapting the embedding policy and bootstrap
+parent origin to the local FE. Runtime scores, bookmarks, enrollment/lesson IDs and sequence numbers
+remain server-owned and unchanged. The player relay never forwards LMS bearer tokens or cookies to
+package content/runtime. Only the launch API receives the existing Authorization header.
+
+For another Angular port, use `npm run dev:scorm -- --port 4311` and open **http://localhost:4311**.
+If the local player port is occupied, set `$env:LMS_SCORM_DEV_PORT="8021"` in PowerShell before starting.
+Optional `LMS_API_TARGET` and `LMS_SCORM_TARGET` select API/player upstream origins. `LMS_DEV_ORIGIN`
+must match the exact local FE address when using `127.0.0.1` instead of `localhost`.
+
+The relay binds only to `127.0.0.1`, allows only the SCORM launch/player routes, and validates the
+local request origin. It is loaded only by the opt-in development proxy configuration and never
+included in app builds. Normal `npm start` and production still use the server's original launch URLs.
+Run `npm run test:scorm-proxy` for the local relay integration checks.
+
 ### Run against a local backend
 
 To work with no network at all, run the backend from `~/my-projects/corebanking-academy` on this machine, with its

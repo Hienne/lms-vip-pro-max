@@ -11,14 +11,27 @@
         label="Bài kiểm tra dùng để xét hoàn thành"
         hint="Học viên phải đạt điểm yêu cầu của bài đã chọn."
       >
-        <select uiSelect [formField]="draft().finalQuizId">
-          <option value="" [selected]="!hasExam()">
+        <select
+          uiSelect
+          [value]="selectedExam()"
+          [disabled]="exam.isSaving$()"
+          (change)="chooseExam($event)"
+        >
+          <option value="" [selected]="selectedExam() === ''">
             Không yêu cầu bài thi cuối khóa
           </option>
-          @for (option of examOptions(); track option.value) {
+          @if (store.canCreateQuiz$()) {
+          <option
+            [value]="createOption"
+            [selected]="selectedExam() === createOption"
+            [disabled]="!canAuthor() || store.pendingUploads$() > 0"
+          >
+            Tạo mới bài thi cuối khóa
+          </option>
+          } @for (option of examOptions(); track option.value) {
           <option
             [value]="option.value"
-            [selected]="draft().finalQuizId().value() === option.value"
+            [selected]="selectedExam() === option.value"
           >
             {{ option.label }}
           </option>
@@ -27,24 +40,88 @@
       </ui-field>
       @if (exam.quizzesError$(); as error) {
       <ui-alert tone="danger"
-        >Không tải được danh sách bài kiểm tra: {{ error.message }}<button
+        >Không tải được danh sách bài kiểm tra: {{ error.message }}
+        <button uiButton size="sm" type="button" (click)="exam.retryQuizzes()">
+          Thử lại
+        </button>
+      </ui-alert>
+      } @if (exam.formOpen$()) { @if (exam.creating$()) {
+      <p class="course-rules__note">
+        @if (exam.programName$(); as name) {Ngân hàng chương trình
+        <strong>{{ name }}</strong> có {{ exam.activeBank$() ?? '—' }} câu đang
+        dùng.}
+      </p>
+      }
+      <div class="course-rules__form-head">
+        <p class="course-rules__note">
+          Chọn câu hỏi và cấu hình bên dưới, rồi bấm Tiếp theo để lưu bài thi và
+          liên kết khóa học.
+        </p>
+        <button
+          uiButton
+          variant="secondary"
+          type="button"
+          [disabled]="exam.isSaving$()"
+          (click)="exam.closeForm()"
+        >
+          <ui-icon name="x" size="sm" />Hủy cấu hình bài thi
+        </button>
+      </div>
+      @if (exam.creating$()) {
+      <app-course-exam-form
+        [value]="newExam()"
+        [questions]="exam.questions$()"
+        [questionsLoading]="exam.questionsLoading$()"
+        [questionsError]="exam.questionsError$()"
+        [busy]="exam.isSaving$() || store.pendingUploads$() > 0"
+        [error]="exam.saveError$()"
+        (retryQuestions)="exam.retryBank()"
+        (saved)="exam.create($event)"
+      />
+      } @else if (exam.editValue$(); as stored) {
+      <app-course-exam-form
+        [value]="stored"
+        [questions]="exam.questions$()"
+        [questionsLoading]="exam.questionsLoading$()"
+        [questionsError]="exam.questionsError$()"
+        [busy]="exam.isSaving$() || store.pendingUploads$() > 0"
+        [error]="exam.saveError$()"
+        (retryQuestions)="exam.retryBank()"
+        (saved)="exam.update($event)"
+      />
+      } @else if (exam.editError$(); as failure) {
+      <ui-alert tone="danger"
+        >Không tải được bài thi: {{ failure.message }}<button
           uiButton
           size="sm"
           type="button"
-          (click)="exam.retryQuizzes()"
+          (click)="exam.retryEdit()"
         >
           Thử lại
         </button></ui-alert
       >
-      } @if (exam.exam$(); as quiz) { @if (!hasExam()) {
-      <p class="course-rules__note">
-        Khóa học không yêu cầu bài thi. Bài thi “{{ quiz.title }}” vẫn được giữ,
-        có thể gắn lại.
-      </p>
-      <button uiButton size="sm" type="button" (click)="attach(quiz.id)">
-        Gắn lại bài thi
+      } @if (exam.programId$() && exam.canOpenBank$()) {
+      <button uiButton size="sm" type="button" (click)="exam.openImport()">
+        <ui-icon name="file-spreadsheet" size="sm" />Nhập câu hỏi từ Excel
       </button>
-      } @else {
+      } @if (exam.bankError$(); as error) {
+      <ui-alert tone="danger"
+        >Không tải được ngân hàng câu hỏi: {{ error.message }}<button
+          uiButton
+          size="sm"
+          type="button"
+          (click)="exam.retryBank()"
+        >
+          Thử lại
+        </button></ui-alert
+      >
+      } @if (exam.isBankCapped$() && !exam.questionsLoading$()) {
+      <p class="course-rules__note">
+        Đã tải toàn bộ {{ exam.questions$().length }} câu đang dùng trong chương
+        trình. Mỗi bài thi được chọn tối đa {{ exam.poolLimit }} câu trong bộ
+        câu hỏi.
+      </p>
+      } } @else if (exam.exam$(); as quiz) {
       <dl class="course-rules__summary">
         <div>
           <dt>Tên bài thi</dt>
@@ -71,43 +148,20 @@
           <dd>{{ statusLabel[quiz.status] }}</dd>
         </div>
       </dl>
-      @if (exam.publishError$(); as failure) {
-      <ui-alert tone="danger"
+      @if (exam.publishError$(); as failure) {<ui-alert tone="danger"
         >Chưa xuất bản được bài thi, nên khóa học chưa được xuất bản: {{
         failure.message }}</ui-alert
-      >
-      } @if (exam.formOpen$()) { @if (exam.editValue$(); as stored) {
-      <app-course-exam-form
-        [submitLabel]="quiz.status === 'DRAFT' ? 'Lưu thay đổi' : 'Tạo đề mới và gắn vào bản nháp'"
-        [value]="stored"
-        [questions]="exam.questions$()"
-        [questionsLoading]="exam.questionsLoading$()"
-        [questionsError]="exam.questionsError$()"
-        [busy]="exam.isSaving$() || store.pendingUploads$() > 0"
-        [error]="exam.saveError$()"
-        (retryQuestions)="exam.retryBank()"
-        (saved)="exam.update($event)"
-        (cancelled)="exam.closeForm()"
-      />
-      } @else if (exam.editError$(); as failure) {
-      <ui-alert tone="danger"
-        >Không tải được bài thi: {{ failure.message }}<button
+      >}
+      <div class="row row--gap-2">
+        @if (store.canCreateQuiz$()) {<button
           uiButton
           size="sm"
           type="button"
-          (click)="exam.retryEdit()"
+          (click)="exam.openForm()"
         >
-          Thử lại
-        </button></ui-alert
-      >
-      } } @else {
-      <div class="row row--gap-2">
-        @if (store.canCreateQuiz$()) {
-        <button uiButton size="sm" type="button" (click)="exam.openForm()">
           {{ quiz.status === 'DRAFT' ? 'Sửa bài kiểm tra' : 'Tạo bản bài thi
-          mới' }}
-        </button>
-        }
+          mới' }}</button
+        >}
         <button
           uiButton
           size="sm"
@@ -118,66 +172,12 @@
           Gỡ khỏi khóa học
         </button>
       </div>
-      } } } @else {
-      <p class="course-rules__note">
-        Khóa học chưa có bài thi cuối khóa. @if (exam.programName$(); as name) {
-        Ngân hàng chương trình <strong>{{ name }}</strong> có {{
-        exam.activeBank$() ?? '—' }} câu đang dùng. }
-      </p>
-      @if (exam.formOpen$()) {
-      <app-course-exam-form
-        submitLabel="Tạo bài thi và liên kết khóa học"
-        [value]="newExam()"
-        [questions]="exam.questions$()"
-        [questionsLoading]="exam.questionsLoading$()"
-        [questionsError]="exam.questionsError$()"
-        [busy]="exam.isSaving$() || store.pendingUploads$() > 0"
-        [error]="exam.saveError$()"
-        (retryQuestions)="exam.retryBank()"
-        (saved)="exam.create($event)"
-        (cancelled)="exam.closeForm()"
-      />
-      } @else if (store.canCreateQuiz$()) {
-      <button
-        uiButton
-        size="sm"
-        type="button"
-        [disabled]="!canAuthor() || store.pendingUploads$() > 0"
-        (click)="exam.openForm()"
-      >
-        Tạo bài thi cuối khóa
-      </button>
-      @if (!canAuthor()) {
-      <p>
-        Hoàn thiện tên, mã, chương trình và mức độ ở bước Thông tin cơ bản để
-        tạo bài thi.
-      </p>
-      } } } @if (exam.bankError$(); as error) {
-      <ui-alert tone="danger"
-        >Không tải được ngân hàng câu hỏi: {{ error.message }}<button
-          uiButton
-          size="sm"
-          type="button"
-          (click)="exam.retryBank()"
-        >
-          Thử lại
-        </button></ui-alert
-      >
-      } @if (exam.bankShortfall$(); as shortfall) {
-      <ui-alert tone="warning" [announce]="false"
+      @if (exam.bankShortfall$(); as shortfall) {<ui-alert
+        tone="warning"
+        [announce]="false"
         >Ngân hàng có {{ shortfall.active }} câu đang dùng, bài thi cần {{
         shortfall.needed }} câu.</ui-alert
-      >
-      } @if (exam.programId$() && exam.canOpenBank$()) {
-      <button uiButton size="sm" type="button" (click)="exam.openImport()">
-        Nhập câu hỏi từ Excel
-      </button>
-      } @if (exam.isBankCapped$()) {
-      <p class="course-rules__note">
-        Hiển thị tối đa {{ exam.poolLimit }} câu mới nhất trong ngân hàng để
-        chọn.
-      </p>
-      }
+      >} }
     </div>
   </section>
   <section uiCard>

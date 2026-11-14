@@ -36,7 +36,6 @@ export interface ExamFormValue {
 /** A quiz pool takes at most this many questions (backend `MAX_POOL_SIZE`). */
 export const POOL_LIMIT = 2000;
 const POOL_PAGE_SIZE = 100;
-export const POOL_PAGES = POOL_LIMIT / POOL_PAGE_SIZE;
 export { POOL_PAGE_SIZE };
 
 export const EXAM_LIMITS = {
@@ -61,6 +60,7 @@ export function newExamValue(
     maxAttempts: 3,
     retakeWaitHours: 0,
     allowRetakeAfterPass: false,
+    requireLessonsCompleted: true,
   };
 }
 
@@ -89,7 +89,7 @@ export function toNewQuizRequest(
     maxAttempts: value.maxAttempts,
     retakeWaitHours: value.retakeWaitHours,
     allowRetakeAfterPass: value.allowRetakeAfterPass,
-    requireLessonsCompleted: value.requireLessonsCompleted ?? false,
+    requireLessonsCompleted: value.requireLessonsCompleted ?? true,
   };
 }
 

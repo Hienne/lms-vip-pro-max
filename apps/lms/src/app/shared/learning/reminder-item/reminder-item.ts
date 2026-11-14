@@ -1,4 +1,5 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import type { LearningReminder } from '@lms/contracts';
 import { FmtDatePipe, FmtRelativePipe } from '@lms/ui';
 import { noticeCopy } from '../notice-copy';
@@ -20,13 +21,15 @@ export function isReminderOverdue(
  */
 @Component({
   selector: 'app-reminder-item',
-  imports: [FmtDatePipe, FmtRelativePipe],
+  imports: [FmtDatePipe, FmtRelativePipe, RouterLink],
   templateUrl: './reminder-item.html',
   styleUrl: './reminder-item.scss',
 })
 export class ReminderItem {
   readonly reminder = input.required<LearningReminder>();
   readonly overdue = input.required<boolean>();
+  readonly showCourseLink = input(false);
+  readonly navigated = output<void>();
   /** The copy of a badge or level notice; null for a deadline reminder. */
   protected readonly notice = computed(() => noticeCopy(this.reminder()));
 }

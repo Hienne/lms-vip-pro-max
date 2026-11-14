@@ -749,6 +749,42 @@ describe('AppShell', () => {
       expect(document.querySelector('.bell__list')).not.toBeNull();
     });
 
+    it('closes the bell when opening the course named by a deadline reminder', async () => {
+      signInAs('learner');
+      const el = await open('/learn');
+      el.querySelector<HTMLButtonElement>(
+        'app-notification-bell button',
+      )!.click();
+      TestBed.tick();
+      TestBed.inject(HttpTestingController)
+        .expectOne('/api/v1/me/learning/reminders/inbox')
+        .flush(
+          envelopeOk([
+            {
+              id: 71,
+              rowVersion: 0,
+              recipientId: 81,
+              kind: 'DEADLINE',
+              status: 'pending',
+              courseId: 42,
+              courseTitle: 'Tín dụng doanh nghiệp',
+              enrollmentId: 90,
+              courseAvailable: true,
+            },
+          ]),
+        );
+      TestBed.tick();
+      const link = document.querySelector<HTMLAnchorElement>(
+        '.bell__list a[href="/course/42"]',
+      );
+      expect(link?.closest('li')?.textContent).toContain(
+        'Tín dụng doanh nghiệp',
+      );
+      link!.click();
+      await vi.waitFor(() => expect(router.url).toBe('/course/42'));
+      expect(document.querySelector('.bell__list')).toBeNull();
+    });
+
     it('reloads the counts after a navigation', async () => {
       signInAs('learner');
       await open('/learn', { notifications: 2, inbox: 0 });
@@ -795,6 +831,7 @@ describe('AppShell', () => {
         expect(menu()?.textContent).toContain('Vai trò: Học viên');
         expect(items().map((item) => item.textContent?.trim())).toEqual([
           'Hồ sơ cá nhân',
+          'Hướng dẫn sử dụng',
           'Thông báo',
           'Đăng xuất',
         ]);
@@ -817,7 +854,9 @@ describe('AppShell', () => {
         signInAs('learner');
         const el = await open('/learn');
         await openMenu(el);
-        items()[2].click();
+        items()
+          .find((item) => item.textContent?.trim() === 'Đăng xuất')!
+          .click();
         await vi.waitFor(() =>
           expect(
             document.querySelector('[role="alertdialog"]')?.textContent,
@@ -842,7 +881,9 @@ describe('AppShell', () => {
         signInAs('learner');
         const el = await open('/learn');
         await openMenu(el);
-        items()[2].click();
+        items()
+          .find((item) => item.textContent?.trim() === 'Đăng xuất')!
+          .click();
         await vi.waitFor(() =>
           expect(document.querySelector('[role="alertdialog"]')).not.toBeNull(),
         );

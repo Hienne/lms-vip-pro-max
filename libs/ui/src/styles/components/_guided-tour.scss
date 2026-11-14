@@ -1,0 +1,95 @@
+@use 'ui';
+@layer components {
+  .guided-tour {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100dvh;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: ui.color(text);
+    overflow: hidden;
+    &::backdrop {
+      background: transparent;
+    }
+    &__shade {
+      position: absolute;
+      inset: 0;
+      background: ui.color(overlay);
+    }
+    &__spotlight {
+      --tour-target-padding: #{ui.space(3)};
+      position: absolute;
+      top: max(
+        #{ui.space(1)},
+        calc(var(--tour-target-top) - var(--tour-target-padding))
+      );
+      left: max(
+        #{ui.space(1)},
+        calc(var(--tour-target-left) - var(--tour-target-padding))
+      );
+      right: max(
+        #{ui.space(1)},
+        calc(100% - var(--tour-target-right) - var(--tour-target-padding))
+      );
+      bottom: max(
+        #{ui.space(1)},
+        calc(100% - var(--tour-target-bottom) - var(--tour-target-padding))
+      );
+      border: 2px solid ui.color(primary);
+      border-radius: ui.radius(card);
+      box-shadow: 0 0 0 100vmax ui.color(overlay);
+      pointer-events: none;
+      @include ui.bp(md) {
+        --tour-target-padding: #{ui.space(4)};
+      }
+    }
+    &__panel {
+      position: absolute;
+      inset-inline-end: ui.space(4);
+      bottom: ui.space(4);
+      width: min(30rem, calc(100vw - var(--spacing-8)));
+      max-height: calc(100dvh - var(--spacing-8));
+      border-radius: ui.radius(card);
+      overflow-y: auto;
+      box-shadow: ui.shadow(lg);
+      &--welcome {
+        inset: 0;
+        margin: auto;
+        height: fit-content;
+      }
+    }
+    &__body {
+      @include ui.stack(4);
+      padding: ui.space(6);
+      @include ui.bp(md) {
+        padding: ui.space(8);
+      }
+    }
+    #guided-tour-description {
+      line-height: ui.leading(relaxed);
+    }
+    &__heading {
+      @include ui.row(4);
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: nowrap;
+      h2 {
+        min-width: 0;
+      }
+    }
+    &__actions {
+      @include ui.row(2);
+      padding-top: ui.space(2);
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      @include ui.bp(md) {
+        gap: ui.space(3);
+      }
+    }
+  }
+}

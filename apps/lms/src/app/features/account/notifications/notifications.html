@@ -62,14 +62,19 @@
     <div class="notifications__actions">
       @if (item.isNotice) {
       <a uiButton variant="ghost" size="sm" routerLink="/profile">Xem hồ sơ</a>
-      } @else {
+      } @else if (item.reminder.courseAvailable !== false &&
+      item.reminder.courseId; as courseId) {
+      <a uiButton variant="ghost" size="sm" [routerLink]="['/course', courseId]"
+        >Xem khóa học</a
+      >
+      } @else if (item.reminder.courseAvailable !== false) {
       <a
         uiButton
         variant="ghost"
         size="sm"
         routerLink="/progress"
         [queryParams]="item.isOverdue ? { sort: 'dueAt,asc', overdue: true } : { sort: 'dueAt,asc' }"
-        >Xem khóa học của tôi</a
+        >Xem danh sách khóa học</a
       >
       } @if (item.unread) {
       <button

@@ -92,6 +92,7 @@ export const scormEndpoints = {
     params,
     body: z.object({
       preview: z.boolean(),
+      restart: z.boolean().optional(),
       enrollmentId: z.number().int().positive().optional(),
       lessonId: z.number().int().positive().optional(),
     }),

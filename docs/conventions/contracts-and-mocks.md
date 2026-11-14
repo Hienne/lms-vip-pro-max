@@ -1,9 +1,38 @@
 # Contracts, zod and the in-app mock API
 
+The learner catalogue has three explicit scopes: all (catalog endpoint), mine (myCourses endpoint,
+including self-enrolment) and assigned (myCourses with assigned=true). Dashboard “Xem tất cả” keeps
+the selected status or mandatory requirement. Both catalogue queries support withoutModule=true.
+Deploy the matching backend for myCourses withoutModule and lastAccessAt NULLS LAST before pagination.
+Reminder responses add nullable courseId/courseTitle/enrollmentId/courseAvailable. Never infer these IDs
+from the current course list. An unavailable reminder has no course link; an older backend without
+context falls back to the progress list. These changes need no SQL migration.
+Results-report KPI/charts use the shared scope; userId/status/passed apply only to table and CSV.
+The UI identifies both scopes; it must not calculate a global total by filtering a single page.
+The course-editor SCORM library fetches every backend page (size 100) before exposing its searchable
+dropdown. It preserves existing manage/owner scope, does not add query calls while typing, and exposes
+retry only after a loading error. UI pagination is intentionally absent.
+
+The training catalogue field form manages business modules inline. Field POST/PUT optionally sends
+`modules[]` as explicit operations (`id` + `expectedVersion` for existing rows, `deleted:true` to delete).
+The matching backend saves field and modules atomically; omission never implicitly deletes modules.
+Used modules cannot be deleted. Deploy the matching backend before using the aggregate field save;
+older backends can ignore an unknown `modules` property. No SQL migration is required.
+The tree is ordered by creation time ascending at the backend. Learner catalogue lists, and mandatory/
+assigned my-course lists, prioritize unfinished courses in SQL before pagination, using completion status
+rather than the content percentage. Assessment previous/next buttons select adjacent dropdown courses;
+the dropdown loads every filtered course page and keeps program/search filters stable.
+
 SCORM lecture endpoints live in `lib/scorm/scorm.endpoints.ts` and are real backend contracts.
+Learners with `lessonStatus: "failed"` can confirm **Học lại**. Launch sends `restart:true` with
+the same enrollment/lesson context. The backend atomically clears the failed attempt's score, answers,
+bookmark and time, audits its previous result, and replaces its capability; retakes have no quota.
+Normal launch/resume omits restart or sends false. Preview and nonfailed reset requests are rejected.
+Deploy the matching backend before enabling this flow; no new database migration is required.
 `/admin/lessons` imports a ZIP to a draft package and previews it; `/scorm` lists published lectures
-available to the learner; `/scorm/:id` launches and renders server progress. These can be independent
-lectures or course lessons. Course SCORM launches carry enrollmentId and lessonId; standalone and preview results never complete course lessons. `lessonLocation` is an opaque
+available to the learner; `/scorm/:id` remains for standalone launches and library previews. Course
+lessons embed the player inside `/lesson/:courseId/:lessonId`, preserving the course tree and navigation.
+Course SCORM launches carry enrollmentId and lessonId; standalone and preview results never complete course lessons. `lessonLocation` is an opaque
 SCO bookmark, never a locally calculated page or percentage. Score/status come from the authenticated
 progress endpoint; iframe messages only trigger a refresh after checking exact source and origin.
 Executable packages must use the backend's separate SCORM player origin; embedding on the LMS origin
@@ -718,6 +747,6 @@ Deploy the matching `corebanking-academy` module and configure WebSocket upgrade
 Apply the backend's `2026-11-09-chat-room-games.sql` upgrade first. Presence and invitations belong to one
 backend instance. Wallets and game data persist in PostgreSQL.
 
-Course lesson authoring also accepts `lessonType: "scorm"` and nullable `scormPackageId`. Manual content and quiz authoring stay available, including mixed courses. SCORM lessons send no manual blocks. The lesson player opens `/scorm/:id` with enrollmentId, lessonId, and courseId; package metadata, progress, and launch use the exact enrollment context. Completion is server-owned: completed/passed satisfies the SCORM lesson, and a configured final exam remains required. Apply backend `2026-11-13-course-scorm.sql` before deploying both applications.
+Course lesson authoring accepts `lessonType: "scorm"` and nullable `scormPackageId` on a draft (required for publication). The lesson form uploads a ZIP directly, or opens the optional lesson-library picker; uploaded draft packages publish with the course. Manual content and quiz authoring stay available, including mixed courses. SCORM lessons send no manual blocks. The embedded lesson player uses the exact enrollmentId and lessonId for progress and launch. A save receipt triggers authenticated progress reads without relaunching the iframe. Completion is server-owned: completed/passed satisfies the SCORM lesson, and a configured final exam remains required. Each lesson/enrollment has its own score and bookmark, even when sharing a package. Apply backend `2026-11-13-scorm-course-lessons.sql` after the SCORM 1.2 base upgrade before deploying both applications.
 
 Course republishing leaves existing learning cycles unchanged. Assignment details use the real backend GET/POST recipient revision-change endpoints to preview and explicitly transfer untouched learning or create a relearning assignment. Eligibility, affected obligation snapshots, version conflicts and history preservation are server-owned. The seeded assignment mock has no real enrollment history and does not implement these transitions; component specs stub the endpoint contract, and backend integration tests cover the state changes. Published exam edits in the course editor create a new draft quiz, retaining the old quiz for previous enrollments. Deploy with backend upgrade 2026-11-13-course-revision-learning.sql.

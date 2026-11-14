@@ -14,9 +14,11 @@ import {
   type CatalogTreeField,
   type CatalogTreeProgram,
   type SaveCatalogItemCommand,
+  type SaveTrainingFieldCommand,
+  type BusinessModule,
 } from '@lms/contracts';
 import { confirm, type IconName, type TreeNode } from '@lms/ui';
-import { filter, type Observable } from 'rxjs';
+import { EMPTY, expand, filter, reduce, type Observable } from 'rxjs';
 import { invalidation } from '../../../../core/data-access/invalidation';
 import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
@@ -48,7 +50,7 @@ export type CatalogEditing =
     };
 
 /** What the drawer form hands back: everything but the owner org, which the store adds. */
-export type SaveCatalogItem = Omit<SaveCatalogItemCommand, 'ownerOrgId'>;
+export type SaveCatalogItem = Omit<SaveTrainingFieldCommand, 'ownerOrgId'>;
 
 /** A field or a program, which share the shape of what a PUT needs. */
 type Editable = CatalogTreeField | CatalogTreeProgram;
@@ -125,6 +127,35 @@ export class TrainingCatalogStore {
     },
   );
 
+  private readonly modulesData = serverData(
+    (id: number) =>
+      this.client
+        .call(trainingCatalogEndpoints.listModules, {
+          query: { fieldId: id, page: 0, size: 100 },
+        })
+        .pipe(
+          expand((page, index) => {
+            if (page.page !== index)
+              throw new Error('Không thể tải đủ phân hệ. Vui lòng tải lại.');
+            return page.page + 1 < page.totalPages
+              ? this.client.call(trainingCatalogEndpoints.listModules, {
+                  query: { fieldId: id, page: page.page + 1, size: 100 },
+                })
+              : EMPTY;
+          }),
+          reduce(
+            (all, page) => [...all, ...page.items],
+            [] as BusinessModule[],
+          ),
+        ),
+    {
+      params: () => {
+        const editing = this.state.editing();
+        return editing?.kind === 'field' ? editing.item?.id : undefined;
+      },
+    },
+  );
+
   private readonly statusMutation = serverMutation(
     (input: { node: CatalogNode; status: CatalogStatus }) =>
       this.putStatus(input.node, input.status),
@@ -176,6 +207,9 @@ export class TrainingCatalogStore {
       this.deleteMutation.isPending(),
   );
   readonly isSaving$ = this.saveMutation.isPending;
+  readonly editingModules$ = computed(() => this.modulesData.value() ?? []);
+  readonly modulesLoading$ = this.modulesData.isLoading;
+  readonly modulesError$ = this.modulesData.error;
 
   /** Every node by id, to find the selected one and the ancestors of a match. */
   private readonly index = computed(() => {
@@ -320,7 +354,13 @@ export class TrainingCatalogStore {
 
   save(command: SaveCatalogItem): void {
     const editing = this.state.editing();
-    if (!editing) return;
+    if (
+      !editing ||
+      this.modulesLoading$() ||
+      this.modulesError$() ||
+      this.isSaving$()
+    )
+      return;
     this.saveMutation.run({ editing, command });
   }
 
@@ -360,24 +400,35 @@ export class TrainingCatalogStore {
     this.treeData.reload();
   }
 
+  retryModules(): void {
+    this.modulesData.reload();
+  }
+
   private send(
     editing: CatalogEditing,
     command: SaveCatalogItem,
   ): Observable<{ readonly id: number }> {
+    const { modules: moduleChanges, ...catalog } = command;
     const body: SaveCatalogItemCommand = {
-      ...command,
+      ...catalog,
       ownerOrgId: this.orgId() ?? 0,
       ...(editing.kind === 'program' ? { fieldId: editing.fieldId } : {}),
       ...(editing.item?.sortNo != null ? { sortNo: editing.item.sortNo } : {}),
     };
     if (editing.kind === 'field') {
+      const fieldBody = {
+        ...body,
+        ...(moduleChanges ? { modules: moduleChanges } : {}),
+      };
       return editing.item
         ? this.client.call(trainingCatalogEndpoints.updateField, {
             params: { id: editing.item.id },
             query: { expectedVersion: editing.item.rowVersion },
-            body,
+            body: fieldBody,
           })
-        : this.client.call(trainingCatalogEndpoints.createField, { body });
+        : this.client.call(trainingCatalogEndpoints.createField, {
+            body: fieldBody,
+          });
     }
     return editing.item
       ? this.client.call(trainingCatalogEndpoints.updateProgram, {

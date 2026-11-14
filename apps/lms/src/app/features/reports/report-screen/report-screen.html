@@ -63,7 +63,7 @@
       <ui-icon name="funnel" size="sm" />Bộ lọc@if (store.activeFilterCount$())
       { ({{store.activeFilterCount$()}})}
     </button>
-    <span class="report-screen__muted">Tất cả đơn vị bạn có quyền xem</span>
+    <span class="report-screen__muted">{{store.commonScopeLabel$()}}</span>
   </div>
   <div class="row row--gap-3">
     <label class="row row--gap-2"
@@ -129,73 +129,80 @@
         ><ui-date-input kind="datetime" [formField]="filterForm.to"
       /></ui-field>
       }
-      <div class="row row--gap-2 report-screen__filter-actions">
-        <button uiButton variant="primary" type="submit">Áp dụng bộ lọc</button
-        ><button
-          uiButton
-          variant="ghost"
-          type="button"
-          (click)="resetFilters()"
-        >
-          Đặt lại
-        </button>
-      </div>
     </div>
     @if (hasExtraFilters()) {
-    <div class="grid-4 report-screen__filter-grid">
-      @if (store.dimension$() === 'learners') {
-      <ui-field label="Tình trạng học viên"
-        ><select uiSelect [formField]="filterForm.learnerStatus">
-          <option value="">Tất cả tình trạng</option>
-          <option value="NOT_STARTED">Chưa thi</option>
-          <option value="IN_PROGRESS">Đang làm</option>
-          <option value="FAILED">Chưa đạt</option>
-          <option value="PASSED">Đạt</option>
-        </select></ui-field
-      >
-      } @if (store.dimension$() === 'results') {
-      <ui-field label="Mã cán bộ"
-        ><input uiInput [formField]="filterForm.userId"
-      /></ui-field>
-      <ui-field label="Trạng thái lượt thi"
-        ><select uiSelect [formField]="filterForm.status">
-          <option value="">Tất cả</option>
-          <option value="IN_PROGRESS">Đang làm</option>
-          <option value="SUBMITTED">Đã nộp</option>
-          <option value="AUTO_SUBMITTED">Tự nộp</option>
-          <option value="VOIDED">Đã hủy</option>
-        </select></ui-field
-      >
-      <ui-field label="Kết quả"
-        ><select uiSelect [formField]="filterForm.passed">
-          <option value="">Tất cả</option>
-          <option value="true">Đạt</option>
-          <option value="false">Chưa đạt</option>
-        </select></ui-field
-      >
-      } @if (store.progress$()) {
-      <ui-field label="Trạng thái"
-        ><select uiSelect [formField]="filterForm.learningStatus">
-          <option value="">Tất cả</option>
-          <option value="not_started">Chưa bắt đầu</option>
-          <option value="in_progress">Đang học</option>
-          <option value="completed">Hoàn thành</option>
-        </select></ui-field
-      >
-      <label class="row row--gap-2 report-screen__check"
-        ><input type="checkbox" uiCheckbox [formField]="filterForm.overdue" />
-        Chỉ quá hạn</label
-      >
-      } @if (store.dimension$() === 'competency') {
-      <ui-field label="Gộp năng lực theo"
-        ><select uiSelect [formField]="filterForm.groupBy">
-          <option value="user">Học viên</option>
-          <option value="org">Đơn vị</option>
-        </select></ui-field
-      >
+    <fieldset class="stack">
+      <legend>
+        {{store.dimension$() === 'results' ? 'Bộ lọc riêng cho bảng và CSV' :
+        'Điều kiện chi tiết'}}
+      </legend>
+      @if (store.dimension$() === 'results') {
+      <p>
+        Mã cán bộ, trạng thái lượt thi và kết quả chỉ lọc bảng chi tiết cùng tệp
+        CSV. Biểu đồ và số liệu tổng hợp giữ phạm vi chung ở trên.
+      </p>
       }
-    </div>
+      <div class="grid-4 report-screen__filter-grid">
+        @if (store.dimension$() === 'learners') {
+        <ui-field label="Tình trạng học viên"
+          ><select uiSelect [formField]="filterForm.learnerStatus">
+            <option value="">Tất cả tình trạng</option>
+            <option value="NOT_STARTED">Chưa thi</option>
+            <option value="IN_PROGRESS">Đang làm</option>
+            <option value="FAILED">Chưa đạt</option>
+            <option value="PASSED">Đạt</option>
+          </select></ui-field
+        >
+        } @if (store.dimension$() === 'results') {
+        <ui-field label="Mã cán bộ"
+          ><input uiInput [formField]="filterForm.userId"
+        /></ui-field>
+        <ui-field label="Trạng thái lượt thi"
+          ><select uiSelect [formField]="filterForm.status">
+            <option value="">Tất cả</option>
+            <option value="IN_PROGRESS">Đang làm</option>
+            <option value="SUBMITTED">Đã nộp</option>
+            <option value="AUTO_SUBMITTED">Tự nộp</option>
+            <option value="VOIDED">Đã hủy</option>
+          </select></ui-field
+        >
+        <ui-field label="Kết quả"
+          ><select uiSelect [formField]="filterForm.passed">
+            <option value="">Tất cả</option>
+            <option value="true">Đạt</option>
+            <option value="false">Chưa đạt</option>
+          </select></ui-field
+        >
+        } @if (store.progress$()) {
+        <ui-field label="Trạng thái"
+          ><select uiSelect [formField]="filterForm.learningStatus">
+            <option value="">Tất cả</option>
+            <option value="not_started">Chưa bắt đầu</option>
+            <option value="in_progress">Đang học</option>
+            <option value="completed">Hoàn thành</option>
+          </select></ui-field
+        >
+        <label class="row row--gap-2 report-screen__check"
+          ><input type="checkbox" uiCheckbox [formField]="filterForm.overdue" />
+          Chỉ quá hạn</label
+        >
+        } @if (store.dimension$() === 'competency') {
+        <ui-field label="Gộp năng lực theo"
+          ><select uiSelect [formField]="filterForm.groupBy">
+            <option value="user">Học viên</option>
+            <option value="org">Đơn vị</option>
+          </select></ui-field
+        >
+        }
+      </div>
+    </fieldset>
     }
+    <div class="row row--gap-2 report-screen__filter-actions">
+      <button uiButton variant="primary" type="submit">Áp dụng bộ lọc</button>
+      <button uiButton variant="ghost" type="button" (click)="resetFilters()">
+        Đặt lại
+      </button>
+    </div>
   </form>
 </section>
 @if (store.unsupported$()) {
@@ -415,50 +422,67 @@
 />} @else if (store.examLoading$()) {
 <p role="status">Đang tải tổng hợp kết quả thi…</p>
 } @if (store.overview$(); as summary) {
-<ui-stat-strip aria-label="Kết quả thi trong phạm vi đã chọn"
-  ><ui-stat
-    label="Lượt đã chấm"
-    [value]="summary.gradedAttempts | fmtNum" /><ui-stat
-    label="Học viên đã thi"
-    [value]="summary.learners | fmtNum" /><ui-stat
-    label="Học viên đạt"
-    [value]="summary.passRate === null ? '—' : (summary.passRate | fmtPct:1)" /><ui-stat
-    label="Điểm trung bình"
-    [value]="summary.averageScore === null ? '—' : (summary.averageScore | fmtPct:1)"
-/></ui-stat-strip>
-<div class="report-screen__analytics">
-  <ui-section-card title="Điểm theo bài kiểm tra"
-    >@if (store.scoreBars$().length) {<ui-horizontal-bar-chart
-      label="Điểm theo bài kiểm tra trong phạm vi"
-      [data]="store.scoreBars$()"
-      [max]="100"
-      unit="%"
-    />} @else {<ui-empty
-      variant="inline"
-      title="Chưa có điểm đã chấm"
-    />}</ui-section-card
-  ><ui-section-card title="Kết quả học viên"
-    >@if (summary.learners) {<ui-donut-chart
-      label="Kết quả học viên trong phạm vi"
-      [centerValue]="summary.passRate === null ? '—' : (summary.passRate | fmtPct:1)"
-      centerLabel="học viên đạt"
-      [data]="store.resultChart$()"
-    />} @else {<ui-empty
-      variant="inline"
-      title="Chưa có học viên tham gia"
-    />}</ui-section-card
-  >
-</div>
-<p class="report-screen__muted">
-  Biểu đồ tổng hợp theo đơn vị, khóa học, bài kiểm tra và thời gian; bộ lọc mã
-  cán bộ và trạng thái áp dụng cho bảng.
-</p>
+<section class="stack" aria-label="Số liệu tổng hợp theo bộ lọc chung">
+  <h2>Số liệu tổng hợp</h2>
+  <p>
+    Phạm vi chung: {{store.commonScopeLabel$()}}. Không áp dụng bộ lọc riêng của
+    bảng bên dưới.
+  </p>
+  <ui-stat-strip aria-label="Kết quả thi trong phạm vi đã chọn"
+    ><ui-stat
+      label="Lượt đã chấm"
+      [value]="summary.gradedAttempts | fmtNum" /><ui-stat
+      label="Học viên đã thi"
+      [value]="summary.learners | fmtNum" /><ui-stat
+      label="Học viên đạt"
+      [value]="summary.passRate === null ? '—' : (summary.passRate | fmtPct:1)" /><ui-stat
+      label="Điểm trung bình"
+      [value]="summary.averageScore === null ? '—' : (summary.averageScore | fmtPct:1)"
+  /></ui-stat-strip>
+  <div class="report-screen__analytics">
+    <ui-section-card title="Điểm theo bài kiểm tra"
+      >@if (store.scoreBars$().length) {<ui-horizontal-bar-chart
+        label="Điểm theo bài kiểm tra trong phạm vi"
+        [data]="store.scoreBars$()"
+        [max]="100"
+        unit="%"
+      />} @else {<ui-empty
+        variant="inline"
+        title="Chưa có điểm đã chấm"
+      />}</ui-section-card
+    ><ui-section-card title="Kết quả học viên"
+      >@if (summary.learners) {<ui-donut-chart
+        label="Kết quả học viên trong phạm vi"
+        [centerValue]="summary.passRate === null ? '—' : (summary.passRate | fmtPct:1)"
+        centerLabel="học viên đạt"
+        [data]="store.resultChart$()"
+      />} @else {<ui-empty
+        variant="inline"
+        title="Chưa có học viên tham gia"
+      />}</ui-section-card
+    >
+  </div>
+  <p class="report-screen__muted">
+    Biểu đồ sử dụng phạm vi chung. Mã cán bộ, trạng thái lượt thi và kết quả chỉ
+    áp dụng cho bảng chi tiết và CSV.
+  </p>
+</section>
 } }
 <ui-section-card
   [title]="store.title$()"
   [flush]="true"
   class="report-screen__detail"
 >
+  @if (store.dimension$() === 'results') {
+  <div class="stack">
+    <p>Phạm vi chung: {{store.commonScopeLabel$()}}</p>
+    <p>Bộ lọc bảng và CSV: {{store.tableScopeLabel$()}}</p>
+    <p>
+      {{store.total$()}} lượt thi phù hợp. Xuất CSV sử dụng cùng bộ lọc của
+      bảng, gồm tất cả các trang.
+    </p>
+  </div>
+  }
   <ui-data-table
     [caption]="store.title$()"
     [columns]="store.columns$()"

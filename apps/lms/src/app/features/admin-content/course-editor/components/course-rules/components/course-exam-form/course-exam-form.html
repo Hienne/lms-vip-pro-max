@@ -5,40 +5,21 @@
 >
   <legend class="sr-only">Thiết lập bài kiểm tra cuối khóa</legend>
   <ui-field label="Tên bài thi" required>
-    <input
-      uiInput
-      [formField]="examForm.title"
-      (keydown.enter)="save($event)"
-    />
+    <input uiInput [formField]="examForm.title" />
   </ui-field>
   <div class="course-exam-form__numbers">
     <ui-field label="Thời gian (phút)" required>
-      <input
-        uiInput
-        type="number"
-        [formField]="examForm.timeLimitMinutes"
-        (keydown.enter)="save($event)"
-      />
+      <input uiInput type="number" [formField]="examForm.timeLimitMinutes" />
     </ui-field>
     <ui-field label="Số câu mỗi lượt" required>
       @if (fixed()) {
       <input uiInput type="number" [value]="selectedIds().length" readonly />
       } @else {
-      <input
-        uiInput
-        type="number"
-        [formField]="examForm.questionCount"
-        (keydown.enter)="save($event)"
-      />
+      <input uiInput type="number" [formField]="examForm.questionCount" />
       }
     </ui-field>
     <ui-field label="Điểm đạt (%)" required>
-      <input
-        uiInput
-        type="number"
-        [formField]="examForm.passPercent"
-        (keydown.enter)="save($event)"
-      />
+      <input uiInput type="number" [formField]="examForm.passPercent" />
     </ui-field>
   </div>
   <section class="stack" aria-label="Chọn câu hỏi">
@@ -64,10 +45,10 @@
         uiButton
         type="button"
         size="sm"
-        (click)="selectPage()"
+        (click)="selectFiltered()"
         [disabled]="busy() || questionsLoading()"
       >
-        Chọn trang này
+        Chọn theo bộ lọc
       </button>
       <button
         uiButton
@@ -80,15 +61,17 @@
       </button>
     </div>
     <p>
-      Đã chọn {{ selectedIds().length }} câu. {{ fixed() ? 'Đề sử dụng toàn bộ
-      các câu đã chọn.' : 'Mỗi lượt lấy ngẫu nhiên số câu đã cấu hình từ bộ
-      này.' }}
+      Đã tải {{ questions().length }} câu · Đang hiển thị {{ filtered().length
+      }} câu · Đã chọn {{ selectedIds().length }} câu. {{ fixed() ? 'Đề sử dụng
+      toàn bộ các câu đã chọn.' : 'Mỗi lượt lấy ngẫu nhiên số câu đã cấu hình từ
+      bộ này.' }}
     </p>
     @if (questionsLoading()) {
     <p role="status">Đang tải ngân hàng câu hỏi…</p>
     } @else if (questionsError(); as failure) {
     <ui-alert tone="danger"
-      >{{ failure.message }}<button
+      >Chưa tải đủ danh sách câu hỏi của chương trình. {{ failure.message
+      }}<button
         uiButton
         type="button"
         size="sm"
@@ -100,12 +83,13 @@
     } @else {
     <fieldset class="course-exam-form__pool" [disabled]="busy()">
       <legend class="sr-only">Các câu hỏi của bài kiểm tra</legend>
-      @for (question of rows(); track question.id) {
+      @for (question of filtered(); track question.id) {
       <label class="course-exam-form__question">
         <input
           uiCheckbox
           type="checkbox"
           [checked]="selected().has(question.id)"
+          [disabled]="selectedIds().length >= poolLimit && !selected().has(question.id)"
           (change)="selectQuestion(question.id, $event)"
         />
         <span
@@ -117,29 +101,7 @@
       <p>Không có câu hỏi phù hợp trong chương trình.</p>
       }
     </fieldset>
-    @if (pages() > 1) {
-    <div class="row row--gap-2">
-      <button
-        uiButton
-        type="button"
-        size="sm"
-        [disabled]="currentPage() === 0"
-        (click)="page.set(currentPage() - 1)"
-      >
-        Trang câu hỏi trước
-      </button>
-      <span>Trang {{ currentPage() + 1 }}/{{ pages() }}</span>
-      <button
-        uiButton
-        type="button"
-        size="sm"
-        [disabled]="currentPage() + 1 >= pages()"
-        (click)="page.set(currentPage() + 1)"
-      >
-        Trang câu hỏi sau
-      </button>
-    </div>
-    } } @if (examForm.questionIds().touched()) { @for (failure of
+    } @if (examForm.questionIds().touched()) { @for (failure of
     examForm.questionIds().errors(); track $index) {
     <ui-alert tone="danger">{{ failure.message }}</ui-alert>
     } }
@@ -166,24 +128,14 @@
         hint="Tính cả lượt đầu tiên."
         required
       >
-        <input
-          uiInput
-          type="number"
-          [formField]="examForm.maxAttempts"
-          (keydown.enter)="save($event)"
-        />
+        <input uiInput type="number" [formField]="examForm.maxAttempts" />
       </ui-field>
       <ui-field
         label="Thời gian chờ thi lại (giờ)"
         hint="Nhập 0 nếu không cần chờ."
         required
       >
-        <input
-          uiInput
-          type="number"
-          [formField]="examForm.retakeWaitHours"
-          (keydown.enter)="save($event)"
-        />
+        <input uiInput type="number" [formField]="examForm.retakeWaitHours" />
       </ui-field>
     </div>
     <label class="row row--gap-2">
@@ -248,18 +200,4 @@
   @if (error(); as failure) {
   <ui-alert tone="danger">{{ failure.message }}</ui-alert>
   }
-  <div class="row row--gap-2">
-    <button
-      uiButton
-      type="button"
-      variant="primary"
-      [disabled]="busy()"
-      (click)="save()"
-    >
-      {{ submitLabel() }}
-    </button>
-    <button uiButton type="button" [disabled]="busy()" (click)="cancel()">
-      Hủy
-    </button>
-  </div>
 </fieldset>

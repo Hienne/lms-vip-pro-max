@@ -31,6 +31,7 @@ describe('training catalog endpoints', () => {
       ['copyProgram', 'post', '/api/v1/training-catalog/programs/{id}/copy'],
       ['deleteField', 'delete', '/api/v1/training-catalog/fields/{id}'],
       ['deleteProgram', 'delete', '/api/v1/training-catalog/programs/{id}'],
+      ['deleteModule', 'delete', '/api/v1/training-catalog/modules/{id}'],
     ]);
     expect(toUrl(trainingCatalogEndpoints.updateProgram, { id: 4 })).toBe(
       '/api/v1/training-catalog/programs/4',

@@ -197,6 +197,14 @@ export class LearnStore {
 
   // Selectors
   readonly tab$ = this.state.tab.asReadonly();
+  readonly allCoursesQuery$ = computed(() => {
+    const tab = this.state.tab();
+    return tab === 'assigned'
+      ? { scope: 'assigned' }
+      : tab === 'mandatory'
+        ? { scope: 'mine', requirement: 'mandatory' }
+        : { scope: 'mine', status: tab };
+  });
 
   readonly summary$ = this.summaryData.value;
   readonly summaryError$ = this.summaryData.error;

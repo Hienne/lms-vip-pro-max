@@ -8,11 +8,12 @@ import { formatDateInput, parseDateInput } from './date-format';
 @Component({
   imports: [DateInput, FormField, Field],
   template: `<ui-field label="Từ ngày"
-    ><ui-date-input [kind]="kind()" [formField]="f.when"
+    ><ui-date-input [kind]="kind()" [picker]="picker()" [formField]="f.when"
   /></ui-field>`,
 })
 class Host {
   readonly kind = signal<'date' | 'datetime'>('date');
+  readonly picker = signal(false);
   readonly model = signal({ when: '2026-03-05' });
   readonly f = form(this.model);
 }
@@ -55,6 +56,17 @@ describe('date text', () => {
 });
 
 describe('DateInput', () => {
+  it('offers a native date-time picker while retaining the API-compatible form value', () => {
+    const { fixture, host, input, type } = render();
+    host.kind.set('datetime');
+    host.picker.set(true);
+    host.model.set({ when: '2026-11-14T09:30' });
+    fixture.detectChanges();
+    expect(input.type).toBe('datetime-local');
+    expect(input.value).toBe('2026-11-14T09:30');
+    type('2026-11-15T10:45');
+    expect(host.model().when).toBe('2026-11-15T10:45');
+  });
   it('shows the bound value as dd/mm/yyyy in a labelled text box', () => {
     const { input } = render();
     expect(input.type).toBe('text');

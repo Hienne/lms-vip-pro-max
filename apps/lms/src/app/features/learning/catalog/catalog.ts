@@ -59,6 +59,7 @@ export class Catalog {
 
   protected readonly scopes: readonly SegmentedOption<CatalogScope>[] = [
     { value: 'all', label: 'Tất cả' },
+    { value: 'mine', label: 'Đã tham gia' },
     { value: 'assigned', label: 'Được giao' },
   ];
   protected readonly levels = entries(LEVEL_LABEL);

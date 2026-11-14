@@ -1,5 +1,5 @@
 <ui-page-header
-  [title]="store.admin$ ? 'Quản lý bài giảng' : 'Bài giảng SCORM'"
+  [title]="store.admin$ ? 'Thư viện bài giảng' : 'Bài giảng SCORM'"
   description="Bài giảng tương tác SCORM 1.2, có lưu điểm, trạng thái và vị trí học tiếp."
 />
 @if(store.admin$){
@@ -42,7 +42,8 @@
   >}
   <p>
     Xuất bản sẽ mở bài giảng cho học viên thuộc đơn vị sở hữu và các đơn vị con.
-    Đây là thư viện bài giảng độc lập; kết quả được theo dõi riêng với khóa học.
+    Khi soạn khóa học, giảng viên có thể chọn bài giảng trong thư viện hoặc tải
+    tệp ZIP trực tiếp vào bài học.
   </p>
 </ui-section-card>
 }

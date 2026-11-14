@@ -45,8 +45,10 @@ export class CourseExamStore {
   private readonly session = inject(SessionStore);
   private readonly state = {
     formOpen: signal(false),
+    creating: signal(false),
     importOpen: signal(false),
     draft: signal<Signal<CourseDraftValue> | null>(null),
+    afterSaveStep: signal<number | undefined>(undefined),
   };
   private readonly bankChanges = invalidation();
   private readonly draft = computed(() => this.state.draft()?.());
@@ -81,17 +83,20 @@ export class CourseExamStore {
       reloadOn: this.bankChanges,
     },
   );
-  readonly exam$ = computed(
-    (): QuizSummary | undefined =>
-      this.editor
-        .quizzes$()
-        .find((q) => q.id === Number(this.draft()?.finalQuizId)) ??
-      this.editor.quizzes$().find((q) => q.quizType === 'FINAL_EXAM'),
+  readonly exam$ = computed((): QuizSummary | undefined =>
+    this.editor
+      .quizzes$()
+      .find((q) => q.id === Number(this.draft()?.finalQuizId)),
   );
   private readonly detailData = serverData(
     (id: number) =>
       this.client.call(assessmentV1Endpoints.quiz, { params: { id } }),
-    { params: () => (this.state.formOpen() ? this.exam$()?.id : undefined) },
+    {
+      params: () =>
+        this.state.formOpen() && !this.state.creating()
+          ? this.exam$()?.id
+          : undefined,
+    },
   );
   private readonly saveMutation = serverMutation(
     (input: { value: ExamFormValue; detail?: QuizDetailV1 }) => {
@@ -105,13 +110,17 @@ export class CourseExamStore {
       errors: 'alert',
       success: () => 'Đã lưu khóa học và bài kiểm tra',
       onSuccess: (saved) => {
+        this.editor.setExamSaving(false);
         this.editor.setExamEditing(false);
-        this.editor.acceptExamCourse(saved);
         this.state.formOpen.set(false);
+        this.state.creating.set(false);
+        this.editor.acceptExamCourse(saved, this.state.afterSaveStep());
+        this.state.afterSaveStep.set(undefined);
       },
     },
   );
   readonly formOpen$ = this.state.formOpen.asReadonly();
+  readonly creating$ = this.state.creating.asReadonly();
   readonly importOpen$ = this.state.importOpen.asReadonly();
   readonly activeBank$ = computed(() => this.bankData.value()?.totalElements);
   readonly isBankLoading$ = this.bankData.isLoading;
@@ -161,8 +170,19 @@ export class CourseExamStore {
   registerDraft(draft: Signal<CourseDraftValue>): void {
     this.state.draft.set(draft);
   }
+  prepareSubmit(nextStep?: number): void {
+    this.state.afterSaveStep.set(nextStep);
+  }
   openForm(): void {
     this.saveMutation.reset();
+    this.state.creating.set(false);
+    this.editor.setExamEditing(true);
+    this.state.formOpen.set(true);
+  }
+  openNewForm(): void {
+    if (this.isSaving$()) return;
+    this.saveMutation.reset();
+    this.state.creating.set(true);
     this.editor.setExamEditing(true);
     this.state.formOpen.set(true);
   }
@@ -170,6 +190,8 @@ export class CourseExamStore {
     if (!this.isSaving$()) {
       this.editor.setExamEditing(false);
       this.state.formOpen.set(false);
+      this.state.creating.set(false);
+      this.closeImport();
     }
   }
   openImport(): void {

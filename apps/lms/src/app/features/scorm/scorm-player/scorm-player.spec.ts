@@ -52,13 +52,21 @@ describe('SCORM player integration boundary', () => {
       )
         return reply(lecture);
       if (endpoint === scormEndpoints.progress) return reply(progress);
-      if (endpoint === scormEndpoints.launch)
+      if (endpoint === scormEndpoints.launch) {
+        if ((request.body as { restart?: boolean }).restart)
+          progress = {
+            ...empty,
+            lessonStatus: 'not attempted',
+            lessonLocation: '',
+            resumable: false,
+          };
         return reply({
           launchUrl: url,
           preview: true,
           expiresAt: new Date(Date.now() + 3600000).toISOString(),
           progress,
         });
+      }
       return delegate.call(backend, endpoint, request);
     });
   });
@@ -122,5 +130,39 @@ describe('SCORM player integration boundary', () => {
     await screen.open('/scorm/1?preview=true');
     expect(screen.el.querySelector('iframe')).toBeNull();
     expect(screen.callsTo(scormEndpoints.launch)).toBe(1);
+  });
+  it('confirms a failed retake, starts fresh in the same lesson and allows repeated retakes', async () => {
+    progress = { ...empty, lessonStatus: 'failed', scoreRaw: 73 };
+    await screen.open('/scorm/1?enrollmentId=120&lessonId=8&courseId=25');
+    screen.button('Học lại')!.click();
+    await screen.settle();
+    screen.button('Hủy', screen.alertDialog()!)!.click();
+    await screen.settle();
+    expect(screen.callsTo(scormEndpoints.launch)).toBe(1);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      screen.button('Học lại')!.click();
+      await screen.settle();
+      screen.button('Học lại', screen.alertDialog()!)!.click();
+      await screen.settle();
+      expect(screen.lastCall(scormEndpoints.launch)?.body).toMatchObject({
+        restart: true,
+        preview: false,
+        enrollmentId: 120,
+        lessonId: 8,
+      });
+      expect(screen.text()).toContain('Chưa học');
+      expect(screen.text()).not.toContain('73');
+      progress = { ...empty, lessonStatus: 'failed', scoreRaw: 73 };
+      const iframe = screen.el.querySelector('iframe')!;
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: 'https://scorm.example.test',
+          source: iframe.contentWindow,
+          data: { type: 'scorm:state', state: 'saved' },
+        }),
+      );
+      await screen.settle();
+    }
+    expect(screen.callsTo(scormEndpoints.launch)).toBe(4);
   });
 });

@@ -57,6 +57,11 @@ export default [
     },
   },
   {
+    // This Node-only dev-server config imports workspace tooling, never application/library code.
+    files: ['apps/lms/proxy.conf.mjs', 'proxy.conf.mjs'],
+    rules: { '@nx/enforce-module-boundaries': 'off' },
+  },
+  {
     // @lucide/angular is wrapped once, by ui-icon in libs/ui (docs/conventions/ui-library.md → Icons).
     files: ['apps/**/*.ts', 'libs/contracts/**/*.ts', 'libs/mocks/**/*.ts'],
     rules: {

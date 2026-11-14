@@ -10,11 +10,12 @@ describe('Header user menu', () => {
       .forEach((c) => (c.innerHTML = '')),
   );
 
-  async function open(levelName: string | null) {
+  async function open(levelName: string | null, guideAvailable = false) {
     TestBed.configureTestingModule({ providers: [provideRouter([])] });
     const fixture = TestBed.createComponent(Header);
     fixture.componentRef.setInput('user', seedProfile('000004'));
     fixture.componentRef.setInput('levelName', levelName);
+    fixture.componentRef.setInput('guideAvailable', guideAvailable);
     fixture.detectChanges();
     await fixture.whenStable();
     const trigger = fixture.nativeElement.querySelector(
@@ -36,5 +37,13 @@ describe('Header user menu', () => {
     const menu = await open(null);
     expect(menu).not.toContain('Cấp độ');
     expect(menu).toContain('Hồ sơ cá nhân');
+  });
+
+  it('shows the guide entry only when the shell offers a permitted guide', async () => {
+    expect(await open(null, true)).toContain('Hướng dẫn sử dụng');
+  });
+
+  it('omits the guide entry when no guide is available', async () => {
+    expect(await open(null)).not.toContain('Hướng dẫn sử dụng');
   });
 });

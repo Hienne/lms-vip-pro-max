@@ -243,7 +243,7 @@ export const SEED_FUNCTIONS: readonly FunctionInfo[] = [
   {
     id: 6,
     code: 'LESSON_MANAGEMENT',
-    name: 'Quản lý bài giảng',
+    name: 'Thư viện bài giảng',
     routePattern: '/admin/lessons',
     parentFunctionId: null,
     sortNo: 60,

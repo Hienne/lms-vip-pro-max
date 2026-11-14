@@ -25,6 +25,17 @@
     @include ui.text(lg);
   }
 
+  &__form-head {
+    @include ui.row-between(3);
+    align-items: center;
+    > p {
+      flex: 1 1 20rem;
+    }
+    > button {
+      flex: 0 0 auto;
+    }
+  }
+
   &__summary {
     display: grid;
     gap: ui.space(2) ui.space(6);

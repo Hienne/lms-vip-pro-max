@@ -8,8 +8,8 @@
 } @else {
 <div class="reminder-item">
   <div class="reminder-item__title">
-    {{ overdue() ? 'Khóa học được giao đã quá hạn' : 'Khóa học được giao sắp đến
-    hạn' }}
+    @if (reminder().courseTitle; as title) { {{ title }} · } {{ overdue() ?
+    'Khóa học được giao đã quá hạn' : 'Khóa học được giao sắp đến hạn' }}
   </div>
   <div class="reminder-item__meta">
     Hạn hoàn thành
@@ -18,5 +18,12 @@
     >
     · nhắc lúc {{ reminder().scheduledAt | fmtRelative }}
   </div>
+  @if (reminder().courseAvailable === false) {
+  <p>Khóa học đã ngừng hoạt động hoặc lượt giao đã được thu hồi.</p>
+  } @else if (showCourseLink() && reminder().courseId; as courseId) {
+  <a [routerLink]="['/course', courseId]" (click)="navigated.emit()"
+    >Xem khóa học</a
+  >
+  }
 </div>
 }
