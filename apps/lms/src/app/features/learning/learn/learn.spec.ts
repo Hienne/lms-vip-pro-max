@@ -115,6 +115,21 @@ describe('Learn', () => {
   describe('a learner with a course in progress', () => {
     beforeEach(() => open());
 
+    it('identifies content progress and the remaining final exam on home tiles', () => {
+      const tiles = Array.from(cards());
+      expect(
+        tiles.every((tile) =>
+          tile
+            .querySelector('.course-tile__pct')
+            ?.textContent?.includes('nội dung'),
+        ),
+      ).toBe(true);
+      const failed = tiles.find((tile) =>
+        tile.textContent?.includes('Chưa đạt'),
+      );
+      expect(failed?.textContent).toContain('Bài kiểm tra cuối khóa chưa đạt');
+    });
+
     it('opens with the page title, the first thing to attend to and the resume card', () => {
       const hero = el.querySelector('app-learn-hero')!;
       expect(el.querySelectorAll('h1')).toHaveLength(1);

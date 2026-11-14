@@ -56,7 +56,7 @@ describe('QuizIntro', () => {
     await open('/quiz/2');
     expect(el.querySelector('h1')?.textContent).toContain('Thi cuối khóa');
     expect(text()).toContain('3 câu · 15 phút · Điểm đạt ≥ 70%');
-    expect(text()).toContain('Quy chế bài thi');
+    expect(text()).toContain('Quy chế bài kiểm tra');
     expect(text()).toContain('Xem đáp án khi đã đạt');
     expect(el.querySelector('ui-kpi')).toBeNull();
   });

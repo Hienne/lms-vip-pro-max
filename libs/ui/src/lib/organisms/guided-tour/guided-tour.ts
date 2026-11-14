@@ -80,6 +80,7 @@ interface TargetBox {
           @if (error()) {
             <p role="alert">{{ error() }}</p>
           }
+          <ng-content />
           <div class="guided-tour__actions">
             <button
               uiButton

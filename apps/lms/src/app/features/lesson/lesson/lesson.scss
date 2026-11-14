@@ -66,30 +66,6 @@
     margin: 0;
   }
 
-  // On a phone the bar keeps room for the course title: a saved state is a check there, its words
-  // read only by assistive technology. A failure keeps its words and "Thử lại" at every width.
-  &__saved-icon {
-    color: ui.color(success);
-
-    @include ui.bp(md) {
-      display: none;
-    }
-  }
-
-  &__saved-text {
-    @include ui.sr-only;
-
-    @include ui.bp(md) {
-      position: static;
-      width: auto;
-      height: auto;
-      margin: 0;
-      overflow: visible;
-      clip-path: none;
-      white-space: normal;
-    }
-  }
-
   &__toc-toggle {
     flex: none;
 

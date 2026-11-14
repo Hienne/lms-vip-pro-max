@@ -7,6 +7,9 @@ import {
   signal,
 } from '@angular/core';
 import { ActivatedRoute, Router, type Params } from '@angular/router';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { map } from 'rxjs';
 import {
   CourseLevelSchema,
   learnerEndpoints,
@@ -22,6 +25,11 @@ import { EndpointClient } from '../../../../core/http/endpoint-client';
 import type { CourseCardView } from '../../../../shared/course/course-card';
 import { toCourseCardView } from '../../../../shared/course/course-card-view';
 import { coverPreviews } from '../../../../shared/course/cover-image';
+import {
+  COURSE_STATUS_LABEL,
+  LEVEL_LABEL,
+  REQUIREMENT_LABEL,
+} from '../../../../shared/course/course-labels';
 
 export const CATALOG_PAGE_SIZE = 12;
 
@@ -127,6 +135,10 @@ export class CatalogStore {
   private readonly initial = this.route.snapshot.queryParams;
 
   private readonly state = {
+    filtersOpen: linkedSignal<boolean, boolean>({
+      source: () => this.compact$(),
+      computation: () => false,
+    }),
     scope: signal<CatalogScope>(
       this.initial['scope'] === 'assigned'
         ? 'assigned'
@@ -192,6 +204,13 @@ export class CatalogStore {
 
   // Selectors
   readonly scope$ = this.state.scope.asReadonly();
+  readonly filtersOpen$ = this.state.filtersOpen.asReadonly();
+  readonly compact$ = toSignal(
+    inject(BreakpointObserver)
+      .observe('(max-width: 719px)')
+      .pipe(map((state) => state.matches)),
+    { initialValue: false },
+  );
   readonly filters$ = this.state.filters.asReadonly();
   readonly sort$ = this.state.sort.asReadonly();
   readonly page$ = this.state.page.asReadonly();
@@ -226,6 +245,49 @@ export class CatalogStore {
         (value) => value !== '' && value !== undefined,
       ).length,
   );
+  readonly filterItems$ = computed(() => {
+    const f = this.state.filters();
+    const name = (items: readonly { id: number; name: string }[], id: number) =>
+      items.find((item) => item.id === id)?.name ?? `#${id}`;
+    const items: { key: keyof CatalogFilters; label: string }[] = [];
+    if (f.q) items.push({ key: 'q', label: `Từ khóa: ${f.q}` });
+    if (f.fieldId)
+      items.push({
+        key: 'fieldId',
+        label: `Lĩnh vực: ${name(this.fields$(), f.fieldId)}`,
+      });
+    if (f.moduleId)
+      items.push({
+        key: 'moduleId',
+        label: `Phân hệ: ${f.moduleId === 'unclassified' ? 'Chưa phân loại' : name(this.modules$(), f.moduleId)}`,
+      });
+    if (f.programId)
+      items.push({
+        key: 'programId',
+        label: `Chương trình: ${name(this.programs$(), f.programId)}`,
+      });
+    if (f.level)
+      items.push({ key: 'level', label: `Mức độ: ${LEVEL_LABEL[f.level]}` });
+    if (f.requirement)
+      items.push({
+        key: 'requirement',
+        label: REQUIREMENT_LABEL[f.requirement],
+      });
+    if (f.status)
+      items.push({
+        key: 'status',
+        label:
+          f.status === 'assigned'
+            ? 'Được giao'
+            : f.status === 'overdue'
+              ? 'Quá hạn'
+              : COURSE_STATUS_LABEL[f.status],
+      });
+    return items;
+  });
+  readonly detailFilterCount$ = computed(
+    () => this.filterItems$().filter((item) => item.key !== 'q').length,
+  );
 
   /** The covers of the page's cards, read once each while the page lives. */
   private readonly covers = coverPreviews(this.client, this.injector, () =>
@@ -244,6 +306,10 @@ export class CatalogStore {
   );
 
   // Setters: the only writers of state
+  setFiltersOpen(open: boolean): void {
+    this.state.filtersOpen.set(open);
+  }
+
   private setScope(scope: CatalogScope): void {
     this.state.scope.set(scope);
   }
@@ -306,6 +372,11 @@ export class CatalogStore {
     this.setFilters(NO_FILTERS);
     this.setPage(1);
     this.syncUrl();
+  }
+
+  removeFilter(key: keyof CatalogFilters): void {
+    if (key === 'fieldId') this.filterField('');
+    else this.filter({ [key]: NO_FILTERS[key] });
   }
 
   sortBy(value: string): void {

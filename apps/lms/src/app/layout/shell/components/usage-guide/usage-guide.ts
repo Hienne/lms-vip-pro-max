@@ -1,17 +1,19 @@
 import { Component, computed, inject } from '@angular/core';
-import { GuidedTour } from '@lms/ui';
+import { Button, GuidedTour, Switch } from '@lms/ui';
 import { UsageGuideStore } from './usage-guide.store';
 
 @Component({
   selector: 'app-usage-guide',
-  imports: [GuidedTour],
+  imports: [Button, GuidedTour, Switch],
   template: `
     <ui-guided-tour
       [active]="store.shown$()"
       [welcome]="store.stage$() === 'welcome'"
       [title]="
         store.stage$() === 'welcome'
-          ? 'Làm quen với Core Banking Academy'
+          ? store.mode$() === 'intro'
+            ? 'Làm quen trong ' + store.total$() + ' bước'
+            : 'Hướng dẫn sử dụng'
           : (store.step$()?.title ?? '')
       "
       [description]="
@@ -27,13 +29,37 @@ import { UsageGuideStore } from './usage-guide.store';
       (next)="store.next()"
       (previous)="store.back()"
       (dismissed)="store.skip()"
-    />
+    >
+      @if (store.stage$() === 'welcome') {
+        <label class="row">
+          <input
+            uiSwitch
+            type="checkbox"
+            [checked]="store.autoEnabled$()"
+            (change)="store.setAutoEnabled(autoGuide.checked)"
+            #autoGuide
+          />
+          Tự giới thiệu khi dùng vai trò mới
+        </label>
+      }
+      @if (store.mode$() !== 'full') {
+        <button
+          uiButton
+          type="button"
+          size="sm"
+          variant="ghost"
+          (click)="store.open()"
+        >
+          Xem toàn bộ hướng dẫn
+        </button>
+      }
+    </ui-guided-tour>
   `,
 })
 export class UsageGuide {
   protected readonly store = inject(UsageGuideStore);
   protected readonly welcome =
-    'Chọn vai trò để xem cách học, soạn và giao khóa học, hoặc quản trị tổ chức, tài khoản và đào tạo. Mỗi bước đánh dấu vùng cần chú ý trên trang. Bạn có thể bỏ qua và mở lại từ menu tài khoản bất kỳ lúc nào.';
+    'Mỗi bước chỉ vùng cần chú ý. Có thể đóng bất kỳ lúc nào; bấm nút Hướng dẫn trên đầu trang để xem trợ giúp màn đang dùng, hoặc mở toàn bộ hướng dẫn từ menu tài khoản. Tùy chọn tự giới thiệu được lưu riêng cho tài khoản trên trình duyệt này.';
   protected readonly audiences = computed(() =>
     this.store.audiences$().map((value) => ({
       value,

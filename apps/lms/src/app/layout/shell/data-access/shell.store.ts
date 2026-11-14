@@ -23,8 +23,6 @@ import {
   feedbackEndpoints,
   learnerEndpoints,
   type LearningReminder,
-  type NavCounts,
-  shellEndpoints,
 } from '@lms/contracts';
 import { confirm, Toaster } from '@lms/ui';
 import { catchError, filter, map, of, switchMap, take, tap } from 'rxjs';
@@ -35,7 +33,6 @@ import { EndpointClient } from '../../../core/http/endpoint-client';
 import { InstructorFeedbackChanged } from '../../../core/learning/instructor-feedback-changed';
 import { RemindersChanged } from '../../../core/learning/reminders-changed';
 import { noticeCopy } from '../../../shared/learning/notice-copy';
-import { LearningChanges } from '../../../core/data-access/learning-changes';
 import {
   hasUnsavedChanges,
   LeavePrompt,
@@ -50,8 +47,6 @@ import {
 
 /** Which frame surrounds the page: sidebar and header, the plain focus frame, or nothing. */
 export type Chrome = 'app' | 'focus' | 'bare';
-
-const NO_COUNTS: NavCounts = { notifications: 0, inbox: 0 };
 
 /** Remembers per browser that the desktop sidebar is collapsed to its icon rail. */
 export const SIDEBAR_COLLAPSED_KEY = 'lms.sidebar-collapsed';
@@ -79,7 +74,6 @@ export class ShellStore {
   private readonly session = inject(SessionStore);
   private readonly dialog = inject(Dialog);
   private readonly client = inject(EndpointClient);
-  private readonly learningChanges = inject(LearningChanges);
   private readonly toaster = inject(Toaster);
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
@@ -156,43 +150,13 @@ export class ShellStore {
   );
 
   /**
-   * Reloaded after sign-in and on every navigation, as the mockup refreshes its badges. The
-   * backend has no such endpoint yet, so it is only asked while the endpoint is served.
-   */
-  private readonly countsResource = rxResource({
-    params: () => {
-      const user = this.session.user$();
-      return user && this.client.isServed(shellEndpoints.navCounts)
-        ? {
-            userId: user.userId,
-            path: this.path$(),
-            version: this.learningChanges.notifications.version(),
-          }
-        : undefined;
-    },
-    stream: () => this.client.call(shellEndpoints.navCounts),
-  });
-
-  /** Keeps the last counts while a reload runs, so badges do not blink on navigation. */
-  private readonly counts = linkedSignal<NavCounts | undefined, NavCounts>({
-    source: () => this.countsResource.value(),
-    computation: (value, previous) =>
-      value ??
-      (this.session.isSignedIn$() ? previous?.value : undefined) ??
-      NO_COUNTS,
-  });
-
-  /**
-   * Without `navCounts` (the real backend), the bell is the learner's due reminders, read on the
-   * same triggers and whenever one is read. A refusal or a failure is 0: the bell has no error
-   * state to show.
+   * The bell uses unread rows from the same backend as the inbox, including in development.
+   * Reload after navigation or read/delete actions; never substitute a fixed navigation fixture.
    */
   private readonly remindersResource = rxResource({
     params: () => {
       const user = this.session.user$();
-      return user &&
-        !this.client.isServed(shellEndpoints.navCounts) &&
-        this.session.menus$().includes('COURSE_LEARNING')
+      return user && this.session.menus$().includes('COURSE_LEARNING')
         ? {
             userId: user.userId,
             path: this.path$(),
@@ -203,7 +167,11 @@ export class ShellStore {
     stream: () =>
       this.client.call(learnerEndpoints.reminders).pipe(
         tap((reminders) => this.announceNotices(reminders)),
-        map((reminders) => reminders.length),
+        map(
+          (reminders) =>
+            reminders.filter((reminder) => reminder.status === 'pending')
+              .length,
+        ),
         catchError(() => of(0)),
       ),
   });
@@ -267,10 +235,7 @@ export class ShellStore {
   });
 
   readonly unread$ = computed(
-    () =>
-      (this.client.isServed(shellEndpoints.navCounts)
-        ? this.counts().notifications
-        : this.reminderCount()) + this.questionCount(),
+    () => this.reminderCount() + this.questionCount(),
   );
 
   /** The router outlet's `activate` and `deactivate` events keep track of the current page. */

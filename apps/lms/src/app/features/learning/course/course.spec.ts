@@ -7,6 +7,7 @@ import {
   learnerEndpoints,
   learnerQuizEndpoints,
   type Certificate,
+  type LearnerQuizCard,
 } from '@lms/contracts';
 import { backendRefusal, envelopeOk } from '@lms/mocks';
 import type { MockInstance } from 'vitest';
@@ -243,52 +244,116 @@ describe('Course', () => {
     expect(text()).toContain('62%');
   });
 
-  it('keeps full learning progress separate from an unpassed completion condition', async () => {
-    const backend = TestBed.inject(MockBackend);
-    handle.mockImplementation((endpoint, request) => {
-      const reply = MockBackend.prototype.handle.call(
-        backend,
-        endpoint,
-        request,
-      );
-      if (reply && 'body' in reply) {
-        if (endpoint === learnerEndpoints.course) {
-          const data = reply.body.data as {
-            card: { progressPercent: number; learningStatus: string };
-          };
-          data.card.progressPercent = 100;
-          data.card.learningStatus = 'in_progress';
+  it.each([
+    {
+      canStart: true,
+      reason: null,
+      used: 1,
+      running: null,
+      label: 'Làm bài kiểm tra cuối khóa',
+      note: null,
+    },
+    {
+      canStart: false,
+      reason: 'NO_ATTEMPTS',
+      used: 2,
+      running: null,
+      label: 'Xem kết quả và lịch sử thi',
+      note: 'hết lượt thi',
+    },
+    {
+      canStart: false,
+      reason: 'WAIT',
+      used: 1,
+      running: null,
+      label: 'Xem kết quả và lịch sử thi',
+      note: 'thi lại sau',
+    },
+    {
+      canStart: false,
+      reason: 'NOT_OPEN',
+      used: 0,
+      running: null,
+      label: 'Xem điều kiện dự thi',
+      note: 'mở lúc',
+    },
+    {
+      canStart: true,
+      reason: null,
+      used: 1,
+      running: 99,
+      label: 'Tiếp tục làm bài',
+      note: null,
+    },
+  ] as const)(
+    'separates content completion and uses the real exam eligibility: $label / $reason',
+    async ({ canStart, reason, used, running, label, note }) => {
+      const backend = TestBed.inject(MockBackend);
+      handle.mockImplementation((endpoint, request) => {
+        const reply = MockBackend.prototype.handle.call(
+          backend,
+          endpoint,
+          request,
+        );
+        if (reply && 'body' in reply) {
+          if (endpoint === learnerQuizEndpoints.courseQuizzes) {
+            reply.body.data = (reply.body.data as LearnerQuizCard[]).map(
+              (card) =>
+                card.quiz.id === 2
+                  ? {
+                      ...card,
+                      canStart,
+                      blockReason: reason,
+                      availableAt: '2026-12-01T09:00:00Z',
+                      summary: {
+                        ...card.summary,
+                        attemptsUsed: used,
+                        attemptsLeft: reason === 'NO_ATTEMPTS' ? 0 : 1,
+                        runningAttemptId: running,
+                      },
+                    }
+                  : card,
+            );
+          }
+          if (endpoint === learnerEndpoints.course) {
+            const data = reply.body.data as {
+              card: { progressPercent: number; learningStatus: string };
+            };
+            data.card.progressPercent = 100;
+            data.card.learningStatus = 'in_progress';
+          }
+          if (endpoint === learnerEndpoints.enrollment) {
+            const data = reply.body.data as { completion?: unknown };
+            data.completion = {
+              completedRequiredLessons: 2,
+              requiredLessons: 2,
+              lessonsSatisfied: true,
+              finalQuizId: 2,
+              finalExamStatus: 'NOT_PASSED',
+              allSatisfied: false,
+            };
+          }
         }
-        if (endpoint === learnerEndpoints.enrollment) {
-          const data = reply.body.data as { completion?: unknown };
-          data.completion = {
-            completedRequiredLessons: 2,
-            requiredLessons: 2,
-            lessonsSatisfied: true,
-            finalQuizId: 2,
-            finalExamStatus: 'NOT_PASSED',
-            allSatisfied: false,
-          };
-        }
-      }
-      return reply;
-    });
-    await open(1);
-    expect(stat('Tiến độ bài bắt buộc')).toContain('100%');
-    expect(stat('Tiến độ bài bắt buộc')).toContain('Chưa hoàn thành khóa');
-    expect(stat('Bài bắt buộc')).toContain('2/2');
-    expect(stat('Bài bắt buộc')).toContain('Đã đủ');
-    expect(stat('Bài thi cuối khóa')).toContain('Chưa đạt');
-    expect(
-      el.querySelector('ui-stat .stat__value--danger')?.textContent,
-    ).toContain('Chưa đạt');
-    expect(action('Đến bài thi cuối khóa')?.getAttribute('href')).toBe(
-      '/quiz/2',
-    );
-    expect(
-      el.querySelector('.course__actions .btn--primary')?.getAttribute('href'),
-    ).toBe('/quiz/2');
-  });
+        return reply;
+      });
+      await open(1);
+      expect(stat('Tiến độ bài bắt buộc')).toContain('100%');
+      expect(stat('Tiến độ bài bắt buộc')).toContain('Chưa hoàn thành khóa');
+      expect(stat('Bài bắt buộc')).toContain('2/2');
+      expect(stat('Bài bắt buộc')).toContain('Đã đủ');
+      expect(stat('Bài kiểm tra cuối khóa')).toContain('Chưa đạt');
+      expect(
+        el.querySelector('ui-stat .stat__value--danger')?.textContent,
+      ).toContain('Chưa đạt');
+      expect(action(label)?.getAttribute('href')).toBe('/quiz/2');
+      expect(
+        el
+          .querySelector('.course__actions .btn--primary')
+          ?.getAttribute('href'),
+      ).toBe('/quiz/2');
+      if (note) expect(text()).toContain(note);
+    },
+  );
 
   describe('the cover image', () => {
     const original = {

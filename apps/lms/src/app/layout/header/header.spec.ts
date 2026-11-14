@@ -1,4 +1,6 @@
 import { TestBed } from '@angular/core/testing';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { of } from 'rxjs';
 import { provideRouter } from '@angular/router';
 import { seedProfile } from '../../core/session/session.testing';
 import { Header } from './header';
@@ -21,6 +23,7 @@ describe('Header user menu', () => {
     const trigger = fixture.nativeElement.querySelector(
       'ui-menu button',
     ) as HTMLButtonElement;
+    trigger.focus();
     trigger.click();
     fixture.detectChanges();
     await fixture.whenStable();
@@ -45,5 +48,42 @@ describe('Header user menu', () => {
 
   it('omits the guide entry when no guide is available', async () => {
     expect(await open(null)).not.toContain('Hướng dẫn sử dụng');
+  });
+
+  it('opens a full search field on mobile, emits the query and closes the popover', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        {
+          provide: BreakpointObserver,
+          useValue: { observe: () => of({ matches: true, breakpoints: {} }) },
+        },
+      ],
+    });
+    const fixture = TestBed.createComponent(Header);
+    const searched = vi.fn();
+    fixture.componentInstance.searched.subscribe(searched);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('#gsearch')).toBeNull();
+    const trigger = fixture.nativeElement.querySelector(
+      'button[aria-label="Mở tìm kiếm"]',
+    ) as HTMLButtonElement;
+    trigger.focus();
+    trigger.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const field = document.querySelector<HTMLInputElement>('#mobile-gsearch')!;
+    expect(field).not.toBeNull();
+    field.value = 'CIF';
+    field.dispatchEvent(new Event('input'));
+    field
+      .closest('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(searched).toHaveBeenCalledWith('CIF');
+    expect(document.querySelector('#mobile-gsearch')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
   });
 });

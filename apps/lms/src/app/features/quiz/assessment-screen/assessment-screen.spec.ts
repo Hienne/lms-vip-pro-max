@@ -589,7 +589,7 @@ describe('AssessmentScreen (admin)', () => {
           r.query['programId'] === '2',
       ),
     ).toBe(true);
-    enterQuizTitle('Bài thi theo chương trình');
+    enterQuizTitle('Bài kiểm tra theo chương trình');
     chooseQuestion('CH-CIF-01');
     await settle();
     store().selectCourse('5');
@@ -599,7 +599,7 @@ describe('AssessmentScreen (admin)', () => {
       el.querySelector<HTMLInputElement>(
         'ui-field[label="Tên bài kiểm tra"] input',
       )?.value,
-    ).toBe('Bài thi theo chương trình');
+    ).toBe('Bài kiểm tra theo chương trình');
     expect(store().selectedProgramId$()).toBe(2);
     el.querySelector('form')?.dispatchEvent(
       new Event('submit', { bubbles: true, cancelable: true }),
@@ -609,7 +609,7 @@ describe('AssessmentScreen (admin)', () => {
       spy.mock.calls.find(([e]) => e === api.createQuiz)?.[1].body,
     ).toMatchObject({
       courseId: 5,
-      title: 'Bài thi theo chương trình',
+      title: 'Bài kiểm tra theo chương trình',
       requireLessonsCompleted: true,
     });
     expect(
@@ -643,7 +643,7 @@ describe('AssessmentScreen (admin)', () => {
   });
   it('keeps quiz settings but clears incompatible selected questions on a program change', async () => {
     await open('/admin/quizzes/new?programId=2');
-    enterQuizTitle('Giữ thông tin bài thi');
+    enterQuizTitle('Giữ thông tin bài kiểm tra');
     chooseQuestion('CH-CIF-01');
     await settle();
     store().selectProgram('3');
@@ -658,7 +658,7 @@ describe('AssessmentScreen (admin)', () => {
       el.querySelector<HTMLInputElement>(
         'ui-field[label="Tên bài kiểm tra"] input',
       )?.value,
-    ).toBe('Giữ thông tin bài thi');
+    ).toBe('Giữ thông tin bài kiểm tra');
     expect(el.querySelectorAll('.assessment__pool input:checked')).toHaveLength(
       0,
     );

@@ -15,7 +15,7 @@
       <thead>
         <tr>
           <th scope="col">Kết quả</th>
-          <th scope="col">Nhóm kiến thức</th>
+          <th scope="col">Nhóm năng lực</th>
           <th scope="col">Câu đúng</th>
           <th scope="col">Tỷ lệ điểm</th>
         </tr>
@@ -44,17 +44,14 @@
       </tbody>
     </table>
     <p class="competency-view__meta">
-      Đã có kết quả ở {{ rowsWithData().length }} nhóm kiến thức.
+      Đã có kết quả ở {{ rowsWithData().length }} nhóm năng lực.
     </p>
   </details>
   }
 </section>
 } @if (rowsWithData().length > 0 && (size() === 'large' || !showRadar())) {
-<section
-  class="competency-view__panel"
-  aria-label="Kết quả theo nhóm kiến thức"
->
-  <h3 class="competency-view__heading">Kết quả theo nhóm kiến thức</h3>
+<section class="competency-view__panel" aria-label="Kết quả theo nhóm năng lực">
+  <h3 class="competency-view__heading">Kết quả theo nhóm năng lực</h3>
   <p class="competency-view__explanation">
     Tỷ lệ điểm = tổng điểm đạt / tổng điểm tối đa của các lượt thi đã chấm. Số
     câu đúng có thể khác tỷ lệ điểm.
@@ -62,7 +59,7 @@
   <table class="competency-view__list competency-view__list--results">
     <thead>
       <tr>
-        <th scope="col">Nhóm kiến thức</th>
+        <th scope="col">Nhóm năng lực</th>
         <th scope="col">Câu đúng</th>
         <th scope="col">Tỷ lệ điểm</th>
       </tr>

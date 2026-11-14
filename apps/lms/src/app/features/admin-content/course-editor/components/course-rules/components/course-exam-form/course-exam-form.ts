@@ -92,9 +92,9 @@ export class CourseExamForm {
   protected readonly examForm = form(
     this.model,
     (path) => {
-      required(path.title, { message: 'Nhập tên bài thi.' });
+      required(path.title, { message: 'Nhập tên bài kiểm tra.' });
       maxLength(path.title, EXAM_LIMITS.title, {
-        message: 'Tên bài thi tối đa 255 ký tự.',
+        message: 'Tên bài kiểm tra tối đa 255 ký tự.',
       });
       maxLength(path.description, 10000, {
         message: 'Mô tả tối đa 10000 ký tự.',
@@ -149,7 +149,7 @@ export class CourseExamForm {
             kind: 'pool',
             message:
               count > POOL_LIMIT
-                ? `Mỗi bài thi được chọn tối đa ${POOL_LIMIT} câu.`
+                ? `Mỗi bài kiểm tra được chọn tối đa ${POOL_LIMIT} câu.`
                 : this.fixed()
                   ? 'Chọn từ 1 đến 200 câu cho đề cố định.'
                   : 'Chọn đủ câu hỏi cho số câu mỗi lượt.',

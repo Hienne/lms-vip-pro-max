@@ -81,6 +81,7 @@ describe('UsageGuideStore', () => {
 
   it('keeps the current step when an unsaved-changes guard cancels navigation', async () => {
     const store = setup();
+    store.open('learner');
     await store.next();
     expect(store.stage$()).toBe('tour');
     await store.next();
@@ -91,6 +92,45 @@ describe('UsageGuideStore', () => {
     expect(store.error$()).toContain('lưu nháp');
     expect(store.busy$()).toBe(false);
     expect(store.shown$()).toBe(true);
+  });
+
+  it('opens contextual help without navigating away or marking the global tour as completed', async () => {
+    const store = setup();
+    router.url = '/catalog?field=1';
+    store.openPage(router.url);
+    expect(store.mode$()).toBe('page');
+    expect(store.stage$()).toBe('tour');
+    expect(store.step$()?.title).toBe('Tìm thêm khóa học');
+    await store.next();
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
+    expect(store.stage$()).toBe('closed');
+    expect(
+      localStorage.getItem('lms.usage-guide.v1.000004.learner'),
+    ).toBeNull();
+  });
+
+  it('remembers disabling automatic introductions but still permits manual help', () => {
+    const store = setup();
+    store.setAutoEnabled(false);
+    store.offer(null);
+    store.offer(fakeSession().user$());
+    expect(store.stage$()).toBe('closed');
+    expect(localStorage.getItem('lms.usage-guide.auto.000004')).toBe('false');
+    store.open('learner');
+    expect(store.stage$()).toBe('welcome');
+    expect(store.autoEnabled$()).toBe(false);
+    expect(store.steps$().length).toBeGreaterThan(3);
+  });
+
+  it('keeps the automatic introduction short and explains a course on the current route', () => {
+    const store = setup();
+    expect(store.mode$()).toBe('intro');
+    expect(store.total$()).toBe(3);
+    store.openPage('/course/25');
+    expect(store.steps$()).toHaveLength(2);
+    expect(store.steps$().every((step) => step.path === '/course/25')).toBe(
+      true,
+    );
   });
 
   it.each(['000001', '000002', '000003'])(

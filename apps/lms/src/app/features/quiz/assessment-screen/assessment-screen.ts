@@ -273,7 +273,7 @@ export class AssessmentScreen {
     { key: 'contentPreview', label: 'Nội dung', sortable: false },
     { key: 'questionType', label: 'Loại', sortable: false },
     { key: 'difficulty', label: 'Độ khó', sortable: false },
-    { key: 'competencyName', label: 'Nhóm kiến thức', sortable: false },
+    { key: 'competencyName', label: 'Nhóm năng lực', sortable: false },
     { key: 'usedInQuizCount', label: 'Dùng trong', sortable: false },
     { key: 'status', label: 'Trạng thái', sortable: false },
     { key: 'actions', label: '', sortable: false, kind: 'actions' },

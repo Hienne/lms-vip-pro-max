@@ -79,7 +79,7 @@ describe('QuizResult', () => {
 
   it('breaks the score down by competency', async () => {
     await openResult(1);
-    expect(text()).toContain('Phân tích theo nhóm kiến thức');
+    expect(text()).toContain('Phân tích theo nhóm năng lực');
     expect(el.querySelectorAll('.result__competency').length).toBeGreaterThan(
       0,
     );

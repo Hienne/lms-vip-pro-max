@@ -161,7 +161,7 @@ describe('CourseEditor', () => {
         screen.el.querySelector('.course-outline__chapter-name')?.textContent,
       ).toBeTruthy();
 
-      await step('Bài thi & điều kiện');
+      await step('Bài kiểm tra & điều kiện');
       expect(controls().filter((name) => editControls.test(name))).toEqual([]);
     });
 
@@ -1312,7 +1312,7 @@ describe('CourseEditor', () => {
       expect(steps[0]).toContain('Thông tin cơ bản');
       expect(steps[0]).toContain('Tên, mã, chương trình');
       expect(steps[1]).toContain('Nội dung khóa học');
-      expect(steps[2]).toContain('Bài thi & điều kiện');
+      expect(steps[2]).toContain('Bài kiểm tra & điều kiện');
       expect(steps[2]).toContain('Điều kiện hoàn thành, điểm thưởng');
       expect(steps[3]).toContain('Đối tượng & xuất bản');
       expect(steps[3]).toContain('Kiểm tra trước khi xuất bản');
@@ -1320,7 +1320,7 @@ describe('CourseEditor', () => {
 
     it('puts the completion rules and the reward on step 3', async () => {
       await screen.open('/admin/courses/6/edit');
-      await step('Bài thi & điều kiện');
+      await step('Bài kiểm tra & điều kiện');
 
       expect(screen.text()).toContain('Điều kiện hoàn thành');
       expect(screen.field('Điểm thưởng khi hoàn thành')).toBeTruthy();
@@ -1346,7 +1346,7 @@ describe('CourseEditor', () => {
       expect(screen.text()).toContain('Sẵn sàng xuất bản.');
 
       await screen.click(screen.button('Bổ sung'));
-      expect(currentStep()).toContain('Bài thi & điều kiện');
+      expect(currentStep()).toContain('Bài kiểm tra & điều kiện');
     });
 
     describe('the final exam', () => {
@@ -1394,15 +1394,15 @@ describe('CourseEditor', () => {
       it('offers only the final exam of the course, besides "no exam"', async () => {
         listQuizzes();
         await screen.open('/admin/courses/6/edit');
-        await step('Bài thi & điều kiện');
+        await step('Bài kiểm tra & điều kiện');
 
         expect(screen.text()).toContain('Bài kiểm tra cuối khóa');
         expect(screen.text()).toContain(
           'Học viên phải đạt điểm yêu cầu của bài đã chọn.',
         );
         expect(labels()).toEqual([
-          'Không yêu cầu bài thi cuối khóa',
-          'Tạo mới bài thi cuối khóa',
+          'Không yêu cầu bài kiểm tra cuối khóa',
+          'Tạo mới bài kiểm tra cuối khóa',
           'Thi cuối khóa: Tổng quan hệ thống Core Banking',
         ]);
         expect(screen.text()).toContain(
@@ -1413,14 +1413,14 @@ describe('CourseEditor', () => {
       it('says when a final exam is a draft or closed', async () => {
         listQuizzes('DRAFT');
         await screen.open('/admin/courses/6/edit');
-        await step('Bài thi & điều kiện');
+        await step('Bài kiểm tra & điều kiện');
         expect(labels()[2]).toMatch(/ · Nháp$/);
       });
 
       it('saves the choice, shows it again, and lists it as a completion rule', async () => {
         listQuizzes();
         await screen.open('/admin/courses/6/edit');
-        await step('Bài thi & điều kiện');
+        await step('Bài kiểm tra & điều kiện');
         await screen.choose(exam(), '2');
         expect(screen.text()).not.toContain('(chưa chọn)');
         await screen.click(screen.button('Lưu nháp'));
@@ -1428,14 +1428,14 @@ describe('CourseEditor', () => {
         expect(screen.lastCall(courseEndpoints.saveDraft)?.body).toMatchObject({
           finalQuizId: 2,
         });
-        await step('Bài thi & điều kiện');
+        await step('Bài kiểm tra & điều kiện');
         expect(exam().value).toBe('2');
       });
 
       it('sends no final quiz once "no exam" is chosen again', async () => {
         listQuizzes();
         await screen.open('/admin/courses/6/edit');
-        await step('Bài thi & điều kiện');
+        await step('Bài kiểm tra & điều kiện');
         await screen.choose(exam(), '2');
         await screen.choose(exam(), '');
         await screen.click(screen.button('Lưu nháp'));
@@ -1451,18 +1451,18 @@ describe('CourseEditor', () => {
         const program = () => screen.field('Chương trình') as HTMLSelectElement;
         expect(program().disabled).toBe(false);
         expect(screen.text()).not.toContain(
-          'Gỡ bài thi cuối khóa ở bước 3 để đổi chương trình.',
+          'Gỡ bài kiểm tra cuối khóa ở bước 3 để đổi chương trình.',
         );
 
-        await step('Bài thi & điều kiện');
+        await step('Bài kiểm tra & điều kiện');
         await screen.choose(exam(), '2');
         await step('Thông tin cơ bản');
         expect(program().disabled).toBe(true);
         expect(screen.text()).toContain(
-          'Gỡ bài thi cuối khóa ở bước 3 để đổi chương trình.',
+          'Gỡ bài kiểm tra cuối khóa ở bước 3 để đổi chương trình.',
         );
 
-        await step('Bài thi & điều kiện');
+        await step('Bài kiểm tra & điều kiện');
         await screen.choose(exam(), '');
         await step('Thông tin cơ bản');
         expect(program().disabled).toBe(false);
@@ -1470,14 +1470,14 @@ describe('CourseEditor', () => {
 
       it('says to create one when the course has no final exam', async () => {
         await screen.open('/admin/courses/6/edit');
-        await step('Bài thi & điều kiện');
+        await step('Bài kiểm tra & điều kiện');
 
         expect(labels()).toEqual([
-          'Không yêu cầu bài thi cuối khóa',
-          'Tạo mới bài thi cuối khóa',
+          'Không yêu cầu bài kiểm tra cuối khóa',
+          'Tạo mới bài kiểm tra cuối khóa',
         ]);
         expect(screen.text()).not.toContain(
-          'Khóa học chưa có bài thi cuối khóa.',
+          'Khóa học chưa có bài kiểm tra cuối khóa.',
         );
       });
 
@@ -1497,18 +1497,18 @@ describe('CourseEditor', () => {
       it('says how many questions the bank holds and offers to create the exam when there is none', async () => {
         bankOf(24);
         await screen.open('/admin/courses/6/edit');
-        await step('Bài thi & điều kiện');
+        await step('Bài kiểm tra & điều kiện');
 
         expect(screen.text()).not.toContain(
-          'Khóa học chưa có bài thi cuối khóa.',
+          'Khóa học chưa có bài kiểm tra cuối khóa.',
         );
         expect(button('Nhập câu hỏi từ Excel')).toBeUndefined();
         await screen.choose(exam(), 'create');
         expect(screen.text()).toMatch(
           /Ngân hàng chương trình .+ có 24 câu đang dùng\./,
         );
-        expect(button('Tạo bài thi cuối khóa')).toBeUndefined();
-        expect(button('Hủy cấu hình bài thi')).toBeTruthy();
+        expect(button('Tạo bài kiểm tra cuối khóa')).toBeUndefined();
+        expect(button('Hủy cấu hình bài kiểm tra')).toBeTruthy();
         expect(button('Nhập câu hỏi từ Excel')).toBeTruthy();
         expect(exam().value).toBe('create');
         expect(
@@ -1523,7 +1523,7 @@ describe('CourseEditor', () => {
       it('summarises a published exam and offers a separate new version', async () => {
         listQuizzes('PUBLISHED', 'RANDOM_POOL');
         await screen.open('/admin/courses/6/edit');
-        await step('Bài thi & điều kiện');
+        await step('Bài kiểm tra & điều kiện');
         await screen.choose(exam(), '2');
 
         const card = screen.text(screen.el.querySelector('app-course-rules')!);
@@ -1534,7 +1534,7 @@ describe('CourseEditor', () => {
         expect(card).toContain('2 câu');
         expect(card).toContain('80%');
         expect(card).toContain('Đã xuất bản');
-        expect(button('Tạo bản bài thi mới')).toBeTruthy();
+        expect(button('Tạo bản bài kiểm tra mới')).toBeTruthy();
         const advanced = Array.from(screen.el.querySelectorAll('a')).find((a) =>
           a.textContent?.includes('Cấu hình nâng cao'),
         );
@@ -1544,23 +1544,23 @@ describe('CourseEditor', () => {
       it('allows editing fixed exams in the course instead of requiring another screen', async () => {
         listQuizzes('PUBLISHED', 'FIXED');
         await screen.open('/admin/courses/6/edit');
-        await step('Bài thi & điều kiện');
+        await step('Bài kiểm tra & điều kiện');
         await screen.choose(exam(), '2');
 
-        expect(button('Tạo bản bài thi mới')).toBeTruthy();
+        expect(button('Tạo bản bài kiểm tra mới')).toBeTruthy();
         expect(screen.text()).not.toContain('chỉnh được ở màn Bài kiểm tra');
       });
 
       it('removes the exam from the course, keeps it to attach again, and saves without it', async () => {
         listQuizzes('PUBLISHED', 'RANDOM_POOL');
         await screen.open('/admin/courses/6/edit');
-        await step('Bài thi & điều kiện');
+        await step('Bài kiểm tra & điều kiện');
         await screen.choose(exam(), '2');
-        expect(button('Tạo bản bài thi mới')).toBeTruthy();
+        expect(button('Tạo bản bài kiểm tra mới')).toBeTruthy();
 
         await screen.click(button('Gỡ khỏi khóa học'));
         expect(exam().value).toBe('');
-        expect(button('Tạo bản bài thi mới')).toBeUndefined();
+        expect(button('Tạo bản bài kiểm tra mới')).toBeUndefined();
         expect(screen.text()).toContain(
           'Thi cuối khóa: Tổng quan hệ thống Core Banking',
         );
@@ -1572,13 +1572,13 @@ describe('CourseEditor', () => {
           (screen.field('Chương trình') as HTMLSelectElement).disabled,
         ).toBe(false);
 
-        await step('Bài thi & điều kiện');
+        await step('Bài kiểm tra & điều kiện');
         await screen.click(screen.button('Lưu nháp'));
         expect(
           screen.lastCall(courseEndpoints.saveDraft)?.body,
         ).not.toHaveProperty('finalQuizId');
 
-        await step('Bài thi & điều kiện');
+        await step('Bài kiểm tra & điều kiện');
         await screen.choose(exam(), '2');
         expect(exam().value).toBe('2');
         expect(button('Gỡ khỏi khóa học')).toBeTruthy();
@@ -1591,15 +1591,15 @@ describe('CourseEditor', () => {
             : original(endpoint, request),
         );
         await screen.open('/admin/courses/6/edit');
-        await step('Bài thi & điều kiện');
+        await step('Bài kiểm tra & điều kiện');
 
         expect(screen.text()).toContain(
           'Không tải được danh sách bài kiểm tra',
         );
         expect(button('Thử lại')).toBeTruthy();
         expect(labels()).toEqual([
-          'Không yêu cầu bài thi cuối khóa',
-          'Tạo mới bài thi cuối khóa',
+          'Không yêu cầu bài kiểm tra cuối khóa',
+          'Tạo mới bài kiểm tra cuối khóa',
         ]);
       });
 
@@ -1611,7 +1611,7 @@ describe('CourseEditor', () => {
             '2',
           );
           await screen.click(screen.button('Lưu nháp'));
-          await step('Bài thi & điều kiện');
+          await step('Bài kiểm tra & điều kiện');
           await screen.choose(exam(), 'create');
         }
         const quizFields = () =>
@@ -1648,8 +1648,10 @@ describe('CourseEditor', () => {
             screen.el.querySelector('a[href*="/admin/quizzes/new"]'),
           ).toBeNull();
           expect(screen.button('Lưu nháp')?.disabled).toBe(false);
-          expect(button('Tạo bài thi và liên kết khóa học')).toBeUndefined();
-          await screen.click(button('Hủy cấu hình bài thi'));
+          expect(
+            button('Tạo bài kiểm tra và liên kết khóa học'),
+          ).toBeUndefined();
+          await screen.click(button('Hủy cấu hình bài kiểm tra'));
           expect(screen.button('Lưu nháp')?.disabled).toBe(false);
         });
 
@@ -1706,10 +1708,10 @@ describe('CourseEditor', () => {
             screen.field('Mức độ') as HTMLSelectElement,
             'basic',
           );
-          await step('Bài thi & điều kiện');
+          await step('Bài kiểm tra & điều kiện');
           expect(screen.callsTo(courseEndpoints.createCourse)).toBe(1);
           await addTextLesson();
-          await step('Bài thi & điều kiện');
+          await step('Bài kiểm tra & điều kiện');
           await screen.choose(exam(), 'create');
           await chooseFixedTwo();
           await saveExam();
@@ -1727,9 +1729,9 @@ describe('CourseEditor', () => {
         it('creates a separate quiz when changing a published exam', async () => {
           listQuizzes('PUBLISHED', 'FIXED');
           await screen.open('/admin/courses/6/edit');
-          await step('Bài thi & điều kiện');
+          await step('Bài kiểm tra & điều kiện');
           await screen.choose(exam(), '2');
-          await screen.click(button('Tạo bản bài thi mới'));
+          await screen.click(button('Tạo bản bài kiểm tra mới'));
           await screen.click(screen.button('Tiếp theo'));
           const command = screen.lastCall(
             assessmentV1Endpoints.saveCourseExam,
@@ -1746,13 +1748,13 @@ describe('CourseEditor', () => {
         it('creates a new draft from the dropdown even when another draft exam is selected, and cancel restores that choice', async () => {
           listQuizzes('DRAFT', 'FIXED');
           await openForm();
-          await screen.click(button('Hủy cấu hình bài thi'));
+          await screen.click(button('Hủy cấu hình bài kiểm tra'));
           await screen.choose(exam(), '2');
           await screen.choose(exam(), 'create');
           expect(
-            (screen.field('Tên bài thi') as HTMLInputElement).value,
+            (screen.field('Tên bài kiểm tra') as HTMLInputElement).value,
           ).not.toBe('Thi cuối khóa: Tổng quan hệ thống Core Banking');
-          await screen.click(button('Hủy cấu hình bài thi'));
+          await screen.click(button('Hủy cấu hình bài kiểm tra'));
           expect(exam().value).toBe('2');
           expect(screen.callsTo(assessmentV1Endpoints.saveCourseExam)).toBe(0);
           await screen.choose(exam(), 'create');
@@ -1773,7 +1775,7 @@ describe('CourseEditor', () => {
           await openForm();
           await chooseFixedTwo();
           await screen.type(
-            screen.field('Tên bài thi') as HTMLInputElement,
+            screen.field('Tên bài kiểm tra') as HTMLInputElement,
             'Giữ cấu hình khi quay lại',
           );
           await screen.click(screen.button('Quay lại'));
@@ -1781,10 +1783,10 @@ describe('CourseEditor', () => {
             screen.el.querySelector('app-course-rules')?.hasAttribute('hidden'),
           ).toBe(true);
           expect(screen.callsTo(assessmentV1Endpoints.saveCourseExam)).toBe(0);
-          await step('Bài thi & điều kiện');
-          expect((screen.field('Tên bài thi') as HTMLInputElement).value).toBe(
-            'Giữ cấu hình khi quay lại',
-          );
+          await step('Bài kiểm tra & điều kiện');
+          expect(
+            (screen.field('Tên bài kiểm tra') as HTMLInputElement).value,
+          ).toBe('Giữ cấu hình khi quay lại');
           expect(questionBoxes().filter((box) => box.checked)).toHaveLength(2);
           await saveExam();
           expect(screen.callsTo(assessmentV1Endpoints.saveCourseExam)).toBe(1);
@@ -1797,7 +1799,7 @@ describe('CourseEditor', () => {
           await openForm();
           await chooseFixedTwo();
           await screen.type(
-            screen.field('Tên bài thi') as HTMLInputElement,
+            screen.field('Tên bài kiểm tra') as HTMLInputElement,
             'Giữ nguyên dữ liệu khi lỗi',
           );
           screen.calls.mockImplementation((endpoint, request) =>
@@ -1806,9 +1808,9 @@ describe('CourseEditor', () => {
               : original(endpoint, request),
           );
           await screen.click(screen.button('Tiếp theo'));
-          expect((screen.field('Tên bài thi') as HTMLInputElement).value).toBe(
-            'Giữ nguyên dữ liệu khi lỗi',
-          );
+          expect(
+            (screen.field('Tên bài kiểm tra') as HTMLInputElement).value,
+          ).toBe('Giữ nguyên dữ liệu khi lỗi');
           expect(
             quizFields().querySelector('ui-alert[tone="danger"]'),
           ).toBeTruthy();
@@ -1861,7 +1863,7 @@ describe('CourseEditor', () => {
 
       it('no longer asks to save the draft first in create mode', async () => {
         await screen.open('/admin/courses/new');
-        await step('Bài thi & điều kiện');
+        await step('Bài kiểm tra & điều kiện');
 
         expect(screen.text()).not.toContain(
           'Lưu nháp trước để chọn bài kiểm tra',
@@ -2222,7 +2224,7 @@ describe('CourseEditor', () => {
 
       await step('Thông tin cơ bản');
       await screen.type(screen.field('Tên khóa học') as HTMLInputElement, '');
-      await step('Bài thi & điều kiện');
+      await step('Bài kiểm tra & điều kiện');
       expect(doneSteps()).not.toContain('Thông tin cơ bản');
     });
 
@@ -2680,7 +2682,7 @@ describe('CourseEditor', () => {
       it('opens the lesson’s drawer on its step when the shell asks', async () => {
         const drawer = await startPdfUpload();
         await tap(screen.button('Lưu', drawer));
-        await chooseStep('Bài thi & điều kiện');
+        await chooseStep('Bài kiểm tra & điều kiện');
         expect(currentStep()).toContain('Nội dung khóa học');
 
         registry().open(registry().items$()[0].id);

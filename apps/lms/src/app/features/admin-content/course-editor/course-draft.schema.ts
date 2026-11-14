@@ -14,7 +14,7 @@ import type { CourseDraftValue } from './course-draft';
 
 /** Why step 1's program is locked while a final exam is attached. */
 export const PROGRAM_LOCKED_HINT =
-  'Gỡ bài thi cuối khóa ở bước 3 để đổi chương trình.';
+  'Gỡ bài kiểm tra cuối khóa ở bước 3 để đổi chương trình.';
 
 function requiredText(path: SchemaPath<string>, message: string): void {
   required(path, { message });

@@ -259,7 +259,7 @@ export const SEED_FUNCTIONS: readonly FunctionInfo[] = [
   {
     id: 8,
     code: 'QUIZ_MANAGEMENT',
-    name: 'Quản lý bài thi',
+    name: 'Quản lý bài kiểm tra',
     routePattern: '/admin/quizzes',
     parentFunctionId: null,
     sortNo: 80,

@@ -54,6 +54,15 @@ const PROGRESS_TONE: Partial<Record<CourseStatus, ProgressTone>> = {
   failed: 'danger',
 };
 
+/** Display the server's incomplete state without inferring which unseen requirement remains. */
+export function courseCompletionNote(course: CourseCardView): string | null {
+  if (course.status === 'completed' || course.enrolled === false) return null;
+  if (course.failed) return 'Bài kiểm tra cuối khóa chưa đạt';
+  return course.pct >= 100
+    ? 'Chưa đủ điều kiện hoàn thành · Xem chi tiết'
+    : null;
+}
+
 /** The mockup's `UI.Minutes`: "45 phút", "1g 8p" or "2 giờ". */
 function formatMinutes(total: number): string {
   const minutes = Math.round(total);
@@ -102,5 +111,8 @@ export class CourseCard {
   );
   protected readonly showsProgress = computed(
     () => this.course().enrolled !== false,
+  );
+  protected readonly completionNote = computed(() =>
+    courseCompletionNote(this.course()),
   );
 }

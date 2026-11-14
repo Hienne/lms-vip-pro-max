@@ -15,14 +15,39 @@
     flex-wrap: wrap;
   }
 
+  &__details {
+    @include ui.stack(3);
+
+    @include ui.bp(md) {
+      @include ui.row(3);
+      flex-direction: row;
+      flex-wrap: wrap;
+    }
+  }
+
+  &__filter-chip {
+    max-width: 100%;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
   &__search {
-    flex: 1 1 18rem;
+    flex: 1 1 100%;
+
+    @include ui.bp(md) {
+      flex-basis: 18rem;
+    }
   }
 
   &__select {
-    flex: 1 1 10rem;
-    width: auto;
-    max-width: 16rem;
+    width: 100%;
+
+    @include ui.bp(md) {
+      flex: 1 1 10rem;
+      width: auto;
+      max-width: 16rem;
+    }
   }
 
   &__bar {

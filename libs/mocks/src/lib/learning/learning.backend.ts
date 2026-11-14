@@ -893,6 +893,7 @@ export class LearningBackend {
         title: l.lesson.title,
         lessonType: l.lesson.lessonType,
         scormPackageId: l.lesson.scormPackageId ?? null,
+        scormCompletionRule: l.lesson.scormCompletionRule ?? null,
         ...(l.lesson.quizId ? { quizId: l.lesson.quizId } : {}),
         estimatedDurationSeconds: l.lesson.estimatedDurationSeconds ?? 0,
         isRequired: l.lesson.isRequired ?? true,
@@ -955,6 +956,10 @@ export class LearningBackend {
                 lessonType: lesson.lessonType,
                 quizId: lesson.quizId ?? null,
                 scormPackageId: lesson.scormPackageId ?? null,
+                scormCompletionRule:
+                  lesson.lessonType === 'scorm'
+                    ? (lesson.scormCompletionRule ?? 'completed_or_passed')
+                    : null,
                 estimatedDurationSeconds: lesson.estimatedDurationSeconds,
                 isRequired: lesson.isRequired ?? true,
                 sortNo: li + 1,

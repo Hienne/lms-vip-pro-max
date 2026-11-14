@@ -1,5 +1,7 @@
 import type { MockInstance } from 'vitest';
 import { TestBed } from '@angular/core/testing';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { BehaviorSubject, of } from 'rxjs';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import {
@@ -158,6 +160,67 @@ describe('Catalog', () => {
         callsOf(trainingCatalogEndpoints.listPrograms).length +
         callsOf(trainingCatalogEndpoints.listModules).length,
     ).toBe(0);
+  });
+
+  it('keeps mobile filters in a drawer and preserves the URL and clearable selection', async () => {
+    vi.spyOn(TestBed.inject(BreakpointObserver), 'observe').mockReturnValue(
+      of({ matches: true, breakpoints: {} }),
+    );
+    await open();
+    expect(el.querySelector('select[aria-label="Mức độ"]')).toBeNull();
+    const trigger = Array.from(el.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Bộ lọc'),
+    )!;
+    trigger.focus();
+    trigger.click();
+    await settle();
+    const field = document.querySelector<HTMLSelectElement>(
+      'select[aria-label="Mức độ"]',
+    )!;
+    expect(field).not.toBeNull();
+    field.value = 'advanced';
+    field.dispatchEvent(new Event('change'));
+    await settle();
+    expect(TestBed.inject(Router).url).toBe('/catalog?level=advanced');
+    const close = Array.from(document.querySelectorAll('button')).find(
+      (button) => button.textContent?.includes('Xem kết quả'),
+    )!;
+    close.click();
+    await settle();
+    expect(document.querySelector('select[aria-label="Mức độ"]')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+    expect(trigger.textContent).toContain('(1)');
+    el.querySelector<HTMLButtonElement>(
+      'button[aria-label="Bỏ lọc Mức độ: Nâng cao"]',
+    )!.click();
+    await settle();
+    expect(TestBed.inject(Router).url).toBe('/catalog');
+    expect(titles()).toHaveLength(6);
+  });
+
+  it('closes the filter drawer on desktop resize and does not reopen it on returning to mobile', async () => {
+    const viewport = new BehaviorSubject({ matches: true, breakpoints: {} });
+    vi.spyOn(TestBed.inject(BreakpointObserver), 'observe').mockReturnValue(
+      viewport,
+    );
+    await open();
+    const trigger = Array.from(el.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Bộ lọc'),
+    )!;
+    trigger.focus();
+    trigger.click();
+    await settle();
+    expect(document.querySelector('.drawer__title')?.textContent).toBe(
+      'Lọc khóa học',
+    );
+    viewport.next({ matches: false, breakpoints: {} });
+    await settle();
+    expect(document.querySelector('.drawer__title')).toBeNull();
+    expect(select('Mức độ')).not.toBeNull();
+    viewport.next({ matches: true, breakpoints: {} });
+    await settle();
+    expect(document.querySelector('.drawer__title')).toBeNull();
+    expect(el.querySelector('select[aria-label="Mức độ"]')).toBeNull();
   });
 
   it('shows the programme name of the card from the server', async () => {

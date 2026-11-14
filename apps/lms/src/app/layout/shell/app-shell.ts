@@ -99,6 +99,7 @@ export class AppShell {
 
   protected pick(choice: UserMenuValue): void {
     if (choice === 'guide') this.guide.open();
+    else if (choice === 'page-guide') this.guide.openPage(this.store.path$());
     else this.store.pick(choice);
   }
 

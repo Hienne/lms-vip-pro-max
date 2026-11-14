@@ -119,7 +119,7 @@ export const EDITOR_STEPS: readonly StepperItem[] = [
   { label: 'Thông tin cơ bản', subtitle: 'Tên, mã, chương trình' },
   { label: 'Nội dung khóa học', subtitle: 'Chương, bài, khối nội dung' },
   {
-    label: 'Bài thi & điều kiện',
+    label: 'Bài kiểm tra & điều kiện',
     subtitle: 'Điều kiện hoàn thành, điểm thưởng',
   },
   { label: 'Đối tượng & xuất bản', subtitle: 'Kiểm tra trước khi xuất bản' },
@@ -1783,7 +1783,7 @@ export class CourseEditorStore {
         ? `Chia sẻ cho ${targets.shareOrgIds.length} đơn vị.`
         : '',
       examTitle
-        ? `Bài thi cuối khóa “${examTitle}” cũng sẽ được xuất bản.`
+        ? `Bài kiểm tra cuối khóa “${examTitle}” cũng sẽ được xuất bản.`
         : '',
     ]
       .filter(Boolean)
@@ -1897,7 +1897,7 @@ export class CourseEditorStore {
             this.changes.bump();
             if (input.exam && input.exam.id === this.state.publishedExamId()) {
               this.toaster.error(
-                'Bài thi đã xuất bản, khóa học chưa xuất bản',
+                'Bài kiểm tra đã xuất bản, khóa học chưa xuất bản',
                 this.refusalText(error, input.targets),
               );
               this.setFailureShown(true);

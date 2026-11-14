@@ -23,17 +23,14 @@
       <span class="lesson__where-chapter">· {{ store.chapterTitle$() }}</span>
       } }
     </p>
-    <p class="lesson__save" aria-live="polite">
-      @if (store.save$() === 'failed') { Chưa lưu được tiến độ
+    @if (store.save$() === 'failed') {
+    <p class="lesson__save" role="alert">
+      Chưa lưu được tiến độ
       <button uiButton variant="ghost" size="sm" (click)="store.retry()">
         Thử lại
       </button>
-      } @else if (store.save$() === 'saved') {
-      <ui-icon class="lesson__saved-icon" name="check" size="sm" />
-      <span class="lesson__saved-text">Đã lưu tiến độ</span>
-      }
     </p>
-    @if (canAsk()) {
+    } @if (canAsk()) {
     <ui-menu
       class="lesson__assist lesson__assist--compact"
       label="Trợ lý về bài này"

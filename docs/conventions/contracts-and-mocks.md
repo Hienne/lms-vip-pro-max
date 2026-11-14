@@ -1,5 +1,23 @@
 # Contracts, zod and the in-app mock API
 
+Course SCORM lessons optionally send `scormCompletionRule: "completed_or_passed" | "passed"` in the
+existing course/draft tree payload. The response preserves it per lesson/revision. Omission retains the
+legacy completed-or-passed policy. The backend alone applies this status requirement; raw score is never
+used by the FE to award completion. A passed-only lesson whose SCO ended as completed/browsed may restart,
+as may a failed registration; preview and passed registrations cannot reset. Deploy backend upgrade
+`2026-11-14-scorm-completion-rule.sql` before enabling the matching FE. Existing completions are preserved.
+
+The shell bell counts pending reminders from the actual learner feed plus new instructor feedback,
+including in development. It no longer uses the mock `navCounts.notifications`. Read/delete actions
+invalidate both the list and count; read/cancelled rows do not light the bell. The inbox still shows up to
+20 recent items, unread first, and keeps read rows visible.
+
+Usage help is local to each account/browser. The first-use introduction is at most three steps; the
+visible header help opens a short guide for the current screen without leaving it. The account menu
+opens the complete role guide and its automatic-introduction switch. Viewing page help does not mark
+the complete guide finished or change permissions. Catalogue filters use a drawer below 720px and retain
+their server query/URL; removing a field also clears its dependent programme/module choices.
+
 The learner catalogue has three explicit scopes: all (catalog endpoint), mine (myCourses endpoint,
 including self-enrolment) and assigned (myCourses with assigned=true). Dashboard “Xem tất cả” keeps
 the selected status or mandatory requirement. Both catalogue queries support withoutModule=true.
@@ -27,7 +45,8 @@ SCORM lecture endpoints live in `lib/scorm/scorm.endpoints.ts` and are real back
 Learners with `lessonStatus: "failed"` can confirm **Học lại**. Launch sends `restart:true` with
 the same enrollment/lesson context. The backend atomically clears the failed attempt's score, answers,
 bookmark and time, audits its previous result, and replaces its capability; retakes have no quota.
-Normal launch/resume omits restart or sends false. Preview and nonfailed reset requests are rejected.
+Normal launch/resume omits restart or sends false. Preview reset requests are rejected. Nonfailed
+registrations may reset only for a passed-only course lesson whose status is completed/browsed.
 Deploy the matching backend before enabling this flow; no new database migration is required.
 `/admin/lessons` imports a ZIP to a draft package and previews it; `/scorm` lists published lectures
 available to the learner; `/scorm/:id` remains for standalone launches and library previews. Course
@@ -747,6 +766,6 @@ Deploy the matching `corebanking-academy` module and configure WebSocket upgrade
 Apply the backend's `2026-11-09-chat-room-games.sql` upgrade first. Presence and invitations belong to one
 backend instance. Wallets and game data persist in PostgreSQL.
 
-Course lesson authoring accepts `lessonType: "scorm"` and nullable `scormPackageId` on a draft (required for publication). The lesson form uploads a ZIP directly, or opens the optional lesson-library picker; uploaded draft packages publish with the course. Manual content and quiz authoring stay available, including mixed courses. SCORM lessons send no manual blocks. The embedded lesson player uses the exact enrollmentId and lessonId for progress and launch. A save receipt triggers authenticated progress reads without relaunching the iframe. Completion is server-owned: completed/passed satisfies the SCORM lesson, and a configured final exam remains required. Each lesson/enrollment has its own score and bookmark, even when sharing a package. Apply backend `2026-11-13-scorm-course-lessons.sql` after the SCORM 1.2 base upgrade before deploying both applications.
+Course lesson authoring accepts `lessonType: "scorm"` and nullable `scormPackageId` on a draft (required for publication). The lesson form uploads a ZIP directly, or opens the optional lesson-library picker; uploaded draft packages publish with the course. Manual content and quiz authoring stay available, including mixed courses. SCORM lessons send no manual blocks. The embedded lesson player uses the exact enrollmentId and lessonId for progress and launch. A save receipt triggers authenticated progress reads without relaunching the iframe. Completion is server-owned and follows the lesson's `scormCompletionRule`; a configured final exam remains required. Each lesson/enrollment has its own score and bookmark, even when sharing a package. Apply backend `2026-11-13-scorm-course-lessons.sql` after the SCORM 1.2 base upgrade, then `2026-11-14-scorm-completion-rule.sql`, before deploying both applications.
 
 Course republishing leaves existing learning cycles unchanged. Assignment details use the real backend GET/POST recipient revision-change endpoints to preview and explicitly transfer untouched learning or create a relearning assignment. Eligibility, affected obligation snapshots, version conflicts and history preservation are server-owned. The seeded assignment mock has no real enrollment history and does not implement these transitions; component specs stub the endpoint contract, and backend integration tests cover the state changes. Published exam edits in the course editor create a new draft quiz, retaining the old quiz for previous enrollments. Deploy with backend upgrade 2026-11-13-course-revision-learning.sql.

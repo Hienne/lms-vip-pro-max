@@ -13,6 +13,7 @@ import type {
   QuizSummary,
   Requirement,
   SaveDraftCommand,
+  ScormCompletionRule,
   TranscriptLine,
   VideoChapter,
 } from '@lms/contracts';
@@ -64,6 +65,7 @@ export interface LessonValue {
   /** The quiz a quiz lesson holds; `null` until one is chosen, and always `null` for a content lesson. */
   readonly quizId: number | null;
   readonly scormPackageId?: number | null;
+  readonly scormCompletionRule?: ScormCompletionRule | null;
   readonly minutes: number;
   readonly isRequired: boolean;
   readonly blocks: readonly BlockValue[];
@@ -222,6 +224,7 @@ function toLessonValue({ lesson, blocks }: LessonDetail): LessonValue {
     title: lesson.title,
     lessonType: lesson.lessonType,
     scormPackageId: lesson.scormPackageId ?? null,
+    scormCompletionRule: lesson.scormCompletionRule ?? 'completed_or_passed',
     quizId: lesson.lessonType === 'quiz' ? (lesson.quizId ?? null) : null,
     minutes: Math.round((lesson.estimatedDurationSeconds ?? 0) / 60),
     isRequired: lesson.isRequired ?? true,
@@ -344,7 +347,11 @@ function toDraftContent(value: CourseDraftValue): DraftContent {
         title: lesson.title.trim(),
         lessonType: lesson.lessonType,
         ...(lesson.lessonType === 'scorm'
-          ? { scormPackageId: lesson.scormPackageId ?? null }
+          ? {
+              scormPackageId: lesson.scormPackageId ?? null,
+              scormCompletionRule:
+                lesson.scormCompletionRule ?? 'completed_or_passed',
+            }
           : {}),
         ...(lesson.lessonType === 'quiz' && lesson.quizId
           ? { quizId: lesson.quizId }

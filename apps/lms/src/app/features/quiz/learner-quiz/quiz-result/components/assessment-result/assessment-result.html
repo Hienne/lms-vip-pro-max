@@ -47,13 +47,13 @@
 
 @if (waitingUntil(); as next) {
 <p class="result__muted">
-  Có thể thử lại từ {{ next | fmtDatetime }} nếu bài thi vẫn mở.
+  Có thể thử lại từ {{ next | fmtDatetime }} nếu bài kiểm tra vẫn mở.
 </p>
 }
 
 <section uiCard class="result__section" aria-labelledby="result-competency">
   <header uiCardHeader>
-    <h2 id="result-competency">Phân tích theo nhóm kiến thức</h2>
+    <h2 id="result-competency">Phân tích theo nhóm năng lực</h2>
   </header>
   <div uiCardBody class="result__competencies">
     @if (suggestedReview(); as group) {
@@ -65,7 +65,7 @@
       <strong>{{ c.correctCount }}/{{ c.totalQuestions }}</strong>
     </div>
     } @empty {
-    <p class="result__muted">Bài kiểm tra này chưa gắn nhóm kiến thức.</p>
+    <p class="result__muted">Bài kiểm tra này chưa gắn nhóm năng lực.</p>
     }
   </div>
 </section>

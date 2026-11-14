@@ -9,6 +9,30 @@ export interface UsageGuideStep {
   readonly permission: FunctionCode;
 }
 
+export const PAGE_GUIDE_STEPS: readonly UsageGuideStep[] = [
+  {
+    path: '/course/',
+    permission: 'COURSE_LEARNING',
+    target: 'main ui-page-header',
+    title: 'Chọn việc cần làm tiếp theo',
+    text: 'Bấm Bắt đầu học hoặc Tiếp tục học để vào bài. Khi nội dung đã đủ, nút chính dẫn tới bài kiểm tra hoặc kết quả theo điều kiện dự thi thực tế. Hết lượt thì liên hệ giảng viên; 100% nội dung chưa đồng nghĩa hoàn thành khóa.',
+  },
+  {
+    path: '/course/',
+    permission: 'COURSE_LEARNING',
+    target: '.course__status, .course__outline',
+    title: 'Đối chiếu điều kiện hoàn thành',
+    text: 'Xem số bài bắt buộc đã hoàn thành, trạng thái bài kiểm tra cuối khóa và hạn. Chọn một bài trong Nội dung khóa học để mở bài; kết quả hoàn thành được hệ thống đánh giá.',
+  },
+  {
+    path: '/quiz/',
+    permission: 'QUIZ_TAKING',
+    target: 'main ui-page-header',
+    title: 'Làm bài và xem kết quả',
+    text: 'Đọc điểm đạt, thời gian, số lượt và điều kiện trước khi bắt đầu. Trong lượt thi, dùng Quay lại / Tiếp theo để chuyển câu và xác nhận khi nộp. Khi xem kết quả, mở giải thích được phép xem và kiểm tra thời điểm được thi lại.',
+  },
+];
+
 export const GUIDE_STEPS: Record<GuideAudience, readonly UsageGuideStep[]> = {
   admin: [
     {
@@ -137,14 +161,14 @@ export const GUIDE_STEPS: Record<GuideAudience, readonly UsageGuideStep[]> = {
       path: '/catalog',
       target: '.catalog__filters',
       permission: 'COURSE_LEARNING',
-      text: 'Nhập tên hoặc mã khóa, rồi chọn lĩnh vực, chương trình, phân hệ và trạng thái. Đã tham gia chứa cả khóa tự đăng ký; Được giao chỉ chứa khóa có lượt giao. Bấm một khóa để xem thông tin và bắt đầu học khi đủ điều kiện.',
+      text: 'Nhập tên hoặc mã khóa. Trên điện thoại, bấm Bộ lọc để chọn lĩnh vực, chương trình, phân hệ và trạng thái; bấm dấu × ở điều kiện để bỏ lọc. Đã tham gia gồm cả khóa tự đăng ký; Được giao chỉ gồm khóa được giao. Chọn thẻ khóa để xem điều kiện và học.',
     },
     {
       title: 'Xem tiến độ và năng lực',
       path: '/progress',
       target: 'main ui-tabs',
       permission: 'LEARNING_PROGRESS',
-      text: 'Tab Tiến độ khóa học cho biết nội dung đã học, kết quả thi và hạn. Chọn Năng lực để xem nhóm kiến thức và nhịp học; chọn Lịch sử thi để xem các lần thi. 100% nội dung chưa thay thế điều kiện đạt bài thi bắt buộc.',
+      text: 'Tab Tiến độ khóa học cho biết nội dung đã học, kết quả thi và hạn. Chọn Năng lực để xem nhóm năng lực và nhịp học; chọn Lịch sử thi để xem các lần thi. 100% nội dung chưa thay thế điều kiện đạt bài kiểm tra bắt buộc.',
     },
     {
       title: 'Chuẩn bị trước khi làm bài',
@@ -219,11 +243,11 @@ export const GUIDE_STEPS: Record<GuideAudience, readonly UsageGuideStep[]> = {
       text: 'Sau khi hoàn thành bước 1, chọn Nội dung khóa học để thêm chương và bài. Mỗi bài có thể là văn bản, video, PDF, tệp đính kèm hoặc SCORM. Với SCORM, chọn từ thư viện rồi tìm ngay bên trong dropdown, hoặc tải ZIP trực tiếp.',
     },
     {
-      title: 'Bước 3 và 4: bài thi, đối tượng, xuất bản',
+      title: 'Bước 3 và 4: bài kiểm tra, đối tượng, xuất bản',
       path: '/admin/courses/new',
       target: 'ui-stepper',
       permission: 'COURSE_MANAGEMENT',
-      text: 'Ở Bài thi & điều kiện, chọn không yêu cầu, bài thi hiện có hoặc tạo bài thi cuối khóa mới rồi chọn câu hỏi. Ở Đối tượng & xuất bản, chọn đơn vị/nhóm/người học, thời hạn và rà soát trước khi xuất bản. Khóa có bài thi bắt buộc chỉ hoàn thành khi học viên đạt điểm yêu cầu.',
+      text: 'Ở Bài kiểm tra & điều kiện, chọn không yêu cầu, bài kiểm tra hiện có hoặc tạo bài kiểm tra cuối khóa mới rồi chọn câu hỏi. Ở Đối tượng & xuất bản, chọn đơn vị/nhóm/người học, thời hạn và rà soát trước khi xuất bản. Khóa có bài kiểm tra bắt buộc chỉ hoàn thành khi học viên đạt điểm yêu cầu.',
     },
     {
       title: 'Cấu hình và theo dõi bài kiểm tra',

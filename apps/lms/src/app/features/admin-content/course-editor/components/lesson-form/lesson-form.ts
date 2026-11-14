@@ -80,17 +80,19 @@ type BlockFormValue = Omit<BlockValue, 'steps' | 'bodyFormat'> & {
 };
 type LessonFormValue = Omit<
   LessonValue,
-  'blocks' | 'quizId' | 'scormPackageId'
+  'blocks' | 'quizId' | 'scormPackageId' | 'scormCompletionRule'
 > & {
   /** The chosen quiz's id as the select holds it; empty when none. */
   quizId: string;
   scormPackageId: string;
+  scormCompletionRule: NonNullable<LessonValue['scormCompletionRule']>;
   blocks: BlockFormValue[];
 };
 
 const toFormValue = (lesson: LessonValue): LessonFormValue => ({
   ...lesson,
   scormPackageId: lesson.scormPackageId ? String(lesson.scormPackageId) : '',
+  scormCompletionRule: lesson.scormCompletionRule ?? 'completed_or_passed',
   quizId: lesson.quizId === null ? '' : String(lesson.quizId),
   blocks: lesson.blocks.map(({ steps, ...block }) => ({
     ...block,
@@ -271,12 +273,10 @@ export class LessonForm {
     );
   });
   protected readonly scormOptions = computed(() => {
-    const options = this.store
-      .scormPackages$()
-      .map((item) => ({
-        value: String(item.id),
-        label: item.title + (item.published ? '' : ' (Nháp)'),
-      }));
+    const options = this.store.scormPackages$().map((item) => ({
+      value: String(item.id),
+      label: item.title + (item.published ? '' : ' (Nháp)'),
+    }));
     const selected = this.model().scormPackageId;
     return this.missingScormOption()
       ? [
@@ -502,6 +502,8 @@ export class LessonForm {
         value.lessonType === 'scorm' && value.scormPackageId
           ? Number(value.scormPackageId)
           : null,
+      scormCompletionRule:
+        value.lessonType === 'scorm' ? value.scormCompletionRule : null,
       title: value.title.trim(),
       blocks: (value.lessonType === 'content' ? value.blocks : []).map(
         ({ stepsText, bodyFormat, ...block }) => ({
