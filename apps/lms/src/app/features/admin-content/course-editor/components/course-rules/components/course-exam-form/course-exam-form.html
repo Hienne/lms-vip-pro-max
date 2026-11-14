@@ -4,7 +4,7 @@
   (keydown.enter)="enter($event)"
 >
   <legend class="sr-only">Thiết lập bài kiểm tra cuối khóa</legend>
-  <ui-field label="Tên bài thi" required>
+  <ui-field label="Tên bài kiểm tra" required>
     <input uiInput [formField]="examForm.title" />
   </ui-field>
   <div class="course-exam-form__numbers">
@@ -36,7 +36,7 @@
       <input
         uiInput
         type="search"
-        aria-label="Tìm câu hỏi cho bài thi"
+        aria-label="Tìm câu hỏi cho bài kiểm tra"
         placeholder="Tìm mã hoặc nội dung câu hỏi"
         [value]="search()"
         (input)="setSearch($event)"

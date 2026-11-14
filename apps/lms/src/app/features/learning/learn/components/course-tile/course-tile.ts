@@ -9,7 +9,10 @@ import {
   Progress,
   type ProgressTone,
 } from '@lms/ui';
-import type { CourseCardView } from '../../../../../shared/course/course-card';
+import {
+  courseCompletionNote,
+  type CourseCardView,
+} from '../../../../../shared/course/course-card';
 import { DueDate } from '../../../../../shared/course/due-date';
 
 const PROGRESS_TONE: Partial<Record<CourseStatus, ProgressTone>> = {
@@ -58,5 +61,8 @@ export class CourseTile {
   );
   protected readonly showsProgress = computed(
     () => this.course().enrolled !== false,
+  );
+  protected readonly completionNote = computed(() =>
+    courseCompletionNote(this.course()),
   );
 }

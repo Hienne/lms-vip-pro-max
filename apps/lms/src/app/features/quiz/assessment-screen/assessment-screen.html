@@ -221,11 +221,11 @@
         uiSelect
         size="sm"
         class="assessment__filter"
-        aria-label="Lọc nhóm kiến thức"
+        aria-label="Lọc nhóm năng lực"
         [value]="store.questionFilters$().competencyId"
         (change)="store.setQuestionFilter('competencyId',$any($event.target).value)"
       >
-        <option value="">Nhóm kiến thức: Tất cả</option>
+        <option value="">Nhóm năng lực: Tất cả</option>
         @for(x of store.competencies$();track x.id){
         <option [value]="x.id">{{x.name}}</option>
         }
@@ -338,8 +338,8 @@
       uiDataTableCell="usedInQuizCount"
       [of]="store.questionRows$()"
       let-row
-      >@if (row.usedInQuizCount) { {{row.usedInQuizCount}} bài thi } @else {
-      <span class="assessment__muted">—</span> }</ng-template
+      >@if (row.usedInQuizCount) { {{row.usedInQuizCount}} bài kiểm tra } @else
+      { <span class="assessment__muted">—</span> }</ng-template
     >
     <ng-template uiDataTableCell="selected" [of]="store.questionRows$()" let-row
       ><input
@@ -580,7 +580,7 @@
   (submit)="quizSubmit($event, questionSettings, advancedSettings)"
 >
   <section uiCard padded class="stack">
-    <h2>Thông tin bài thi</h2>
+    <h2>Thông tin bài kiểm tra</h2>
     @if (!store.isNewQuiz$()) {
     <p class="assessment__muted">Khóa học · {{store.selectedCourseTitle$()}}</p>
     }
@@ -803,7 +803,7 @@
     </details>
   </section>
   <section uiCard padded class="stack">
-    <h2>Xuất bản bài thi</h2>
+    <h2>Xuất bản bài kiểm tra</h2>
     <p>
       {{store.config$()?.status === 'PUBLISHED' ? 'Đã xuất bản' :
       store.config$()?.status === 'CLOSED' ? 'Đã đóng' : 'Bản nháp'}}

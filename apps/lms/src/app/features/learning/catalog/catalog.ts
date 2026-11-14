@@ -1,7 +1,10 @@
 import { Component, inject } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import {
   Button,
   Card,
+  Chip,
+  DrawerOutlet,
   Empty,
   ErrorState,
   Icon,
@@ -37,6 +40,9 @@ const entries = <K extends string>(labels: Record<K, string>) =>
   imports: [
     Button,
     Card,
+    Chip,
+    DrawerOutlet,
+    NgTemplateOutlet,
     CourseCard,
     Empty,
     ErrorState,

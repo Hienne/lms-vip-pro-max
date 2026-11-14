@@ -85,7 +85,7 @@ export class AssessmentResult {
     if (summary.passed)
       return 'Bạn đã đạt bài kiểm tra này ở một lượt thi khác. Lượt này chỉ để xem lại.';
     return summary.attemptsLeft > 0
-      ? 'Xem lại nhóm kiến thức còn yếu bên dưới trước khi thi lại.'
+      ? 'Xem lại nhóm năng lực còn yếu bên dưới trước khi thi lại.'
       : 'Bạn đã dùng hết lượt thi. Giảng viên sẽ xem xét kết quả của bạn.';
   });
 

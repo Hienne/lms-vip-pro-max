@@ -27,6 +27,7 @@ describe('course draft', () => {
               ...newLesson(1),
               lessonType: 'scorm' as const,
               scormPackageId: 42,
+              scormCompletionRule: 'passed' as const,
               blocks: [newBlock('text')],
             },
             { ...newLesson(2), blocks: [newBlock('text')] },
@@ -38,6 +39,7 @@ describe('course draft', () => {
     expect(scorm).toMatchObject({
       lessonType: 'scorm',
       scormPackageId: 42,
+      scormCompletionRule: 'passed',
       blocks: [],
     });
     expect(manual.lessonType).toBe('content');

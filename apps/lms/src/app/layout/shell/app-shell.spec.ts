@@ -76,14 +76,26 @@ describe('AppShell', () => {
 
   type Counts = { notifications: number; inbox: number };
 
-  /** Answers the requests the shell makes once a user is signed in: nav counts and the owl's tracker. */
+  /** Answers the real reminder feed used by the bell; the other page requests are unrelated here. */
   function flushCounts(counts: Counts = { notifications: 0, inbox: 0 }) {
     TestBed.tick();
     const backend = TestBed.inject(HttpTestingController);
     backend
-      .match('/api/me/nav-counts')
+      .match('/api/v1/me/learning/reminders')
       .filter((r) => !r.cancelled)
-      .forEach((r) => r.flush(envelopeOk(counts)));
+      .forEach((r) =>
+        r.flush(
+          envelopeOk(
+            Array.from({ length: counts.notifications }, (_, index) => ({
+              id: index + 1,
+              recipientId: index + 1,
+              status: 'pending',
+              kind: 'DEADLINE',
+              rowVersion: 0,
+            })),
+          ),
+        ),
+      );
     // The learner home behind /learn reads the progress, the course lists and the competencies, the reports
     // page its overview, and /flashcards the learner's own decks; no test here is about them.
     backend
@@ -791,10 +803,10 @@ describe('AppShell', () => {
       await router.navigateByUrl('/catalog');
       TestBed.tick();
       const reload = backend
-        .match('/api/me/nav-counts')
+        .match('/api/v1/me/learning/reminders')
         .filter((r) => !r.cancelled);
       expect(reload).toHaveLength(1);
-      reload[0].flush(envelopeOk({ notifications: 0, inbox: 0 }));
+      reload[0].flush(envelopeOk([]));
     });
 
     describe('user menu', () => {
@@ -831,6 +843,7 @@ describe('AppShell', () => {
         expect(menu()?.textContent).toContain('Vai trò: Học viên');
         expect(items().map((item) => item.textContent?.trim())).toEqual([
           'Hồ sơ cá nhân',
+          'Hướng dẫn màn này',
           'Hướng dẫn sử dụng',
           'Thông báo',
           'Đăng xuất',

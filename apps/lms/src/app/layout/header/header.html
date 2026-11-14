@@ -63,7 +63,37 @@
   >
     <ui-icon name="menu" />
   </button>
-  }
+  } @if (compact()) {
+  <button
+    uiIconButton
+    class="header__search-toggle"
+    label="Mở tìm kiếm"
+    #searchPop="uiPopover"
+    [uiPopover]="mobileSearch"
+    popoverLabel="Tìm kiếm"
+  >
+    <ui-icon name="search" />
+  </button>
+  <ng-template #mobileSearch>
+    <form
+      class="header__mobile-search"
+      role="search"
+      (submit)="submitQuery($event, mobileQuery.value); searchPop.close()"
+    >
+      <label class="sr-only" for="mobile-gsearch">Tìm kiếm</label>
+      <input
+        #mobileQuery
+        uiInput
+        id="mobile-gsearch"
+        name="q"
+        type="search"
+        autocomplete="off"
+        [placeholder]="placeholder()"
+      />
+      <button uiButton type="submit" variant="primary">Tìm</button>
+    </form>
+  </ng-template>
+  } @else {
   <form class="header__search" role="search" (submit)="submit($event)">
     <ui-icon name="search" />
     <label class="sr-only" for="gsearch">Tìm kiếm</label>
@@ -77,7 +107,21 @@
       [placeholder]="placeholder()"
     />
   </form>
+  }
   <div class="header__actions">
+    @if (guideAvailable()) {
+    <button
+      uiButton
+      variant="ghost"
+      size="sm"
+      class="header__guide"
+      uiTooltip="Hướng dẫn màn này"
+      aria-label="Hướng dẫn màn này"
+      (click)="picked.emit('page-guide')"
+    >
+      <ui-icon name="circle-help" size="sm" /><span>Hướng dẫn</span>
+    </button>
+    }
     <app-theme-picker />
     <app-notification-bell [unread]="unread()" />
     @if (user(); as me) { @if (learner !== null) {

@@ -64,8 +64,8 @@
   </ui-alert>
   } @else if (!quizOptions().length) {
   <ui-alert tone="info" [announce]="false">
-    Khóa học chưa có bài kiểm tra. Soạn bài thi ở bước Bài thi & điều kiện, rồi
-    quay lại chọn cho bài học. @if (store.canCreateQuiz$()) {
+    Khóa học chưa có bài kiểm tra. Soạn bài kiểm tra ở bước Bài kiểm tra & điều
+    kiện, rồi quay lại chọn cho bài học. @if (store.canCreateQuiz$()) {
     <button uiButton size="sm" type="button" (click)="prepareExam()">
       <ui-icon name="plus" size="sm" />Soạn bài kiểm tra cùng khóa học
     </button>
@@ -137,9 +137,18 @@
   } @if (scormUpload.error$(); as error) {<ui-alert tone="danger"
     >{{error}}</ui-alert
   >}
+  <p>Bài giảng mới được lưu vào thư viện và xuất bản cùng khóa học.</p>
+  <ui-field label="Điều kiện hoàn thành bài SCORM" required>
+    <select uiSelect [formField]="lessonForm.scormCompletionRule">
+      <option value="completed_or_passed">
+        Hoàn thành nội dung hoặc đạt bài đánh giá
+      </option>
+      <option value="passed">Phải đạt bài đánh giá trong gói</option>
+    </select>
+  </ui-field>
   <p>
-    Bài giảng mới được lưu vào thư viện và xuất bản cùng khóa học. Học viên hoàn
-    thành bài khi SCORM báo đã hoàn thành hoặc đạt.
+    Trạng thái do gói SCORM cung cấp. Điểm số không tự thay thế trạng thái đạt;
+    hãy xem thử gói trước khi yêu cầu đạt bài đánh giá.
   </p>
   @if (scormUpload.libraryOpen$()) {
   <ui-field label="Bài giảng trong thư viện" required>

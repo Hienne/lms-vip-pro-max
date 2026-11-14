@@ -19,6 +19,8 @@ import {
   Input,
   Mai,
   Menu,
+  Popover,
+  Tooltip,
   type MenuEntry,
 } from '@lms/ui';
 import type { Profile } from '../../core/session/profile';
@@ -27,7 +29,12 @@ import type { LearnerNavGroup } from './learner-navigation';
 import { searchPlaceholder } from './search-target';
 import { ThemePicker } from './theme-picker/theme-picker';
 
-export type UserMenuValue = 'profile' | 'notifications' | 'sign-out' | 'guide';
+export type UserMenuValue =
+  | 'profile'
+  | 'notifications'
+  | 'sign-out'
+  | 'guide'
+  | 'page-guide';
 type PanelId = LearnerNavGroup['id'] | 'account';
 
 /**
@@ -44,6 +51,8 @@ type PanelId = LearnerNavGroup['id'] | 'account';
     Input,
     Mai,
     Menu,
+    Popover,
+    Tooltip,
     NotificationBell,
     RouterLink,
     ThemePicker,
@@ -127,6 +136,12 @@ export class Header {
         ? [
             {
               kind: 'item',
+              value: 'page-guide',
+              label: 'Hướng dẫn màn này',
+              icon: 'circle-help',
+            } as const,
+            {
+              kind: 'item',
               value: 'guide',
               label: 'Hướng dẫn sử dụng',
               icon: 'circle-help',
@@ -151,8 +166,12 @@ export class Header {
   });
 
   protected submit(event: Event): void {
+    this.submitQuery(event, this.field()?.nativeElement.value ?? '');
+  }
+
+  protected submitQuery(event: Event, query: string): void {
     event.preventDefault();
-    this.searched.emit(this.field()?.nativeElement.value ?? '');
+    this.searched.emit(query);
   }
 
   protected togglePanel(id: PanelId): void {

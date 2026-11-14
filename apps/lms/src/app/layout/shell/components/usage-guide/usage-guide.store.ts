@@ -1,10 +1,17 @@
 import { DOCUMENT } from '@angular/common';
-import { computed, inject, Injectable, signal } from '@angular/core';
+import {
+  computed,
+  inject,
+  Injectable,
+  linkedSignal,
+  signal,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import type { Profile } from '../../../../core/session/profile';
 import { SessionStore } from '../../../../core/session/session.store';
 import {
   GUIDE_STEPS,
+  PAGE_GUIDE_STEPS,
   type GuideAudience,
   type UsageGuideStep,
 } from './usage-guide.steps';
@@ -24,6 +31,16 @@ export class UsageGuideStore {
     busy: signal(false),
     error: signal(''),
     offeredKey: signal(''),
+    mode: signal<'intro' | 'full' | 'page'>('full'),
+    pageSteps: signal<readonly UsageGuideStep[]>([]),
+    autoEnabled: linkedSignal(() => {
+      const key = `lms.usage-guide.auto.${this.session.user$()?.userId ?? ''}`;
+      try {
+        return this.document.defaultView?.localStorage.getItem(key) !== 'false';
+      } catch {
+        return true;
+      }
+    }),
   };
   private readonly remembered = new Set<string>();
   private navigation = 0;
@@ -50,11 +67,16 @@ export class UsageGuideStore {
       ...(menus.includes('COURSE_MANAGEMENT') ? ['instructor' as const] : []),
     ];
   });
-  readonly steps$ = computed(() =>
-    GUIDE_STEPS[this.audience$()].filter((step) =>
-      this.session.menus$().includes(step.permission),
-    ),
-  );
+  readonly mode$ = this.state.mode.asReadonly();
+  readonly autoEnabled$ = this.state.autoEnabled.asReadonly();
+  readonly steps$ = computed(() => {
+    const steps = (
+      this.mode$() === 'page'
+        ? this.state.pageSteps()
+        : GUIDE_STEPS[this.audience$()]
+    ).filter((step) => this.session.menus$().includes(step.permission));
+    return this.mode$() === 'intro' ? steps.slice(0, 3) : steps;
+  });
   readonly step$ = computed<UsageGuideStep | undefined>(
     () => this.steps$()[this.index$()],
   );
@@ -77,6 +99,23 @@ export class UsageGuideStore {
   }
   private setOfferedKey(value: string): void {
     this.state.offeredKey.set(value);
+  }
+  private setMode(mode: 'intro' | 'full' | 'page'): void {
+    this.state.mode.set(mode);
+  }
+  private setPageSteps(steps: readonly UsageGuideStep[]): void {
+    this.state.pageSteps.set(steps);
+  }
+  setAutoEnabled(enabled: boolean): void {
+    this.state.autoEnabled.set(enabled);
+    try {
+      this.document.defaultView?.localStorage.setItem(
+        `lms.usage-guide.auto.${this.session.user$()?.userId ?? ''}`,
+        String(enabled),
+      );
+    } catch {
+      /* The choice still applies to this session when storage is blocked. */
+    }
   }
   private key(audience: GuideAudience): string {
     return `lms.usage-guide.v${VERSION}.${this.session.user$()?.userId ?? ''}.${audience}`;
@@ -124,7 +163,10 @@ export class UsageGuideStore {
     if (this.state.offeredKey() === key) return;
     this.setOfferedKey(key);
     this.setAudience(audience);
-    if (!this.seen(key)) this.open(audience);
+    if (!this.seen(key) && this.autoEnabled$()) {
+      this.open(audience);
+      this.setMode('intro');
+    }
   }
   open(
     audience = this.audiences$().includes(this.audience$())
@@ -134,9 +176,47 @@ export class UsageGuideStore {
     if (!audience || !this.audiences$().includes(audience) || this.busy$())
       return;
     this.setAudience(audience);
+    this.setMode('full');
     this.setIndex(0);
     this.setError('');
     this.setStage('welcome');
+  }
+  openPage(path: string): void {
+    if (this.busy$() || !this.session.isSignedIn$()) return;
+    const cleanPath = path.split(/[?#]/)[0];
+    const allowed = [
+      ...GUIDE_STEPS[this.audience$()],
+      ...PAGE_GUIDE_STEPS,
+    ].filter((step) => this.session.menus$().includes(step.permission));
+    const exact = allowed.filter((step) => step.path === cleanPath);
+    const parents = allowed.filter(
+      (step) =>
+        cleanPath.startsWith(step.path + '/') ||
+        (step.path.endsWith('/') && cleanPath.startsWith(step.path)),
+    );
+    const longest = Math.max(0, ...parents.map((step) => step.path.length));
+    const steps = exact.length
+      ? exact
+      : parents.filter((step) => step.path.length === longest);
+    const fallback = allowed[0];
+    if (!steps.length && !fallback) return;
+    this.setPageSteps(
+      (steps.length
+        ? steps
+        : [
+            {
+              ...fallback!,
+              title: 'Trợ giúp màn hình',
+              target: 'main ui-page-header',
+              text: 'Dùng tiêu đề và các bộ lọc để xác định phạm vi đang xem. Các thao tác được mở theo quyền của bạn. Mở toàn bộ hướng dẫn để xem quy trình theo vai trò; lưu nháp trước khi rời form đang soạn.',
+            },
+          ]
+      ).map((step) => ({ ...step, path: cleanPath })),
+    );
+    this.setMode('page');
+    this.setIndex(0);
+    this.setError('');
+    this.setStage('tour');
   }
   chooseAudience(value: GuideAudience): void {
     if (!this.audiences$().includes(value)) return;
@@ -146,7 +226,7 @@ export class UsageGuideStore {
   async next(): Promise<void> {
     if (this.busy$()) return;
     if (this.stage$() === 'tour' && this.index$() + 1 >= this.total$()) {
-      this.remember('complete');
+      if (this.mode$() !== 'page') this.remember('complete');
       this.setStage('closed');
       return;
     }
@@ -157,7 +237,7 @@ export class UsageGuideStore {
   }
   skip(): void {
     if (this.busy$()) return;
-    this.remember('skipped');
+    if (this.mode$() !== 'page') this.remember('skipped');
     this.setStage('closed');
   }
   private async go(index: number): Promise<void> {
@@ -180,7 +260,7 @@ export class UsageGuideStore {
       )
         return;
       const navigated =
-        this.router.url.split('?')[0] === step.path ||
+        this.router.url.split(/[?#]/)[0] === step.path ||
         (await this.router.navigateByUrl(step.path));
       if (
         navigation !== this.navigation ||

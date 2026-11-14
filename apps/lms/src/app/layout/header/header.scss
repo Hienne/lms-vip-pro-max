@@ -46,11 +46,35 @@
     }
   }
 
+  &__search-toggle {
+    grid-area: search;
+    justify-self: start;
+  }
+
+  &__mobile-search {
+    @include ui.row(2);
+    flex-wrap: nowrap;
+
+    input {
+      min-width: 0;
+      flex: 1;
+    }
+  }
+
   &__actions {
     display: flex;
     align-items: center;
     gap: ui.space(2);
     margin-left: auto;
+  }
+
+  &__guide {
+    white-space: nowrap;
+    @include ui.bp-below(md) {
+      span {
+        display: none;
+      }
+    }
   }
 
   &--learner {

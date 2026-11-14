@@ -95,6 +95,19 @@ export class ScormBlockStore {
   readonly url$ = this.state.url.asReadonly();
   readonly saveState$ = this.state.saveState.asReadonly();
   readonly progress$ = this.progressData.value;
+  readonly requiresPass$ = computed(
+    () => this.lesson.lesson$()?.lesson.scormCompletionRule === 'passed',
+  );
+  readonly requirement$ = computed(() =>
+    this.requiresPass$()
+      ? 'Điều kiện: gói SCORM phải báo Đạt bài đánh giá.'
+      : 'Điều kiện: gói SCORM báo Hoàn thành hoặc Đạt bài đánh giá.',
+  );
+  readonly incompleteAssessment$ = computed(
+    () =>
+      this.requiresPass$() &&
+      ['completed', 'browsed'].includes(this.progress$()?.lessonStatus ?? ''),
+  );
   readonly loading$ = this.launch.isPending;
   readonly error$ = computed(
     () =>
@@ -108,7 +121,8 @@ export class ScormBlockStore {
   );
   readonly canRestart$ = computed(
     () =>
-      this.progress$()?.lessonStatus === 'failed' &&
+      (this.progress$()?.lessonStatus === 'failed' ||
+        this.incompleteAssessment$()) &&
       !this.loading$() &&
       !this.unsaved$(),
   );

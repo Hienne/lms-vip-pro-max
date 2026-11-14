@@ -172,6 +172,12 @@ export const LessonAiStateSchema = z.enum([
 ]);
 export type LessonAiState = z.infer<typeof LessonAiStateSchema>;
 
+export const ScormCompletionRuleSchema = z.enum([
+  'completed_or_passed',
+  'passed',
+]);
+export type ScormCompletionRule = z.infer<typeof ScormCompletionRuleSchema>;
+
 export const CourseLessonSchema = z.object({
   id: z.number().int(),
   chapterId: z.number().int(),
@@ -184,6 +190,7 @@ export const CourseLessonSchema = z.object({
   /** The quiz a `quiz` lesson opens (a quiz of the same course); null for a content lesson. */
   quizId: z.number().int().nullish(),
   scormPackageId: z.number().int().positive().nullish(),
+  scormCompletionRule: ScormCompletionRuleSchema.nullish(),
   rowVersion: z.number().int(),
   createTime: BackendDateTimeSchema.nullish(),
   updateTime: BackendDateTimeSchema.nullish(),
@@ -487,6 +494,7 @@ export const LessonInputSchema = z.object({
   /** Only for a `quiz` lesson; a draft may leave it empty, publishing needs it. */
   quizId: z.number().int().positive().nullish(),
   scormPackageId: z.number().int().positive().nullish(),
+  scormCompletionRule: ScormCompletionRuleSchema.nullish(),
   blocks: z.array(BlockInputSchema).max(COURSE_LIMITS.items),
 });
 export type LessonInput = z.infer<typeof LessonInputSchema>;

@@ -19,9 +19,10 @@
   >}
 </ui-alert>
 } @if (store.progress$(); as progress) {
+<p>{{ store.requirement$() }}</p>
 <div class="row row--gap-3" aria-label="Kết quả bài giảng SCORM">
-  <span>{{status[progress.lessonStatus]}}</span>
-  @if (progress.lessonStatus === 'failed') {
+  <span>Trạng thái gói: {{status[progress.lessonStatus]}}</span>
+  @if (progress.lessonStatus === 'failed' || store.incompleteAssessment$()) {
   <button
     uiButton
     type="button"
@@ -36,7 +37,17 @@
     {{progress.scoreMax}}}</span
   >}
 </div>
-} @if (store.loading$()) {
+@if (store.incompleteAssessment$()) {
+<ui-alert tone="info" [announce]="false"
+  >Điều kiện bài học yêu cầu trạng thái Đạt bài đánh giá. Gói hiện chưa báo đạt;
+  bạn có thể học lại.</ui-alert
+>
+} @else if (progress.lessonStatus === 'failed') {
+<p>
+  Gói báo chưa đạt. Điểm số được giữ theo thang của gói; hãy học lại để đạt điều
+  kiện.
+</p>
+} } @if (store.loading$()) {
 <div uiSkeleton variant="block" aria-label="Đang mở bài giảng SCORM"></div>
 } @if (store.url$(); as url) {
 <iframe

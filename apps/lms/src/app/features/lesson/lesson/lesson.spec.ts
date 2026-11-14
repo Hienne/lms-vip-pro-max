@@ -148,124 +148,131 @@ describe('Lesson', () => {
   const calls = (endpoint: unknown) =>
     handle.mock.calls.filter(([e]) => e === endpoint);
 
-  it('embeds SCORM inside the lesson tree and refreshes progress without relaunching or trusting posted scores', async () => {
-    const lesson = lessons()[2];
-    lesson.lesson.lessonType = 'scorm';
-    lesson.lesson.scormPackageId = 42;
-    lesson.blocks = [];
-    let score: number | null = null;
-    let failed = false;
-    let restarted = false;
-    const progress = () => ({
-      lessonStatus: restarted
-        ? 'not attempted'
-        : failed
-          ? 'failed'
-          : score === null
-            ? 'incomplete'
-            : 'passed',
-      scoreRaw: score,
-      scoreMin: 0,
-      scoreMax: 100,
-      lessonLocation: 'page-4',
-      resumable: true,
-      updateTime: '2026-11-13T10:00:00Z',
-    });
-    const launchUrl =
-      'https://scorm.example.test/scorm-player/' + 'a'.repeat(43) + '/launch';
-    handle.mockImplementation((endpoint, request) => {
-      if (endpoint === learnerEndpoints.course) {
-        const reply = real()(endpoint, request);
-        const data = (reply?.body as { data: LearnerCourse }).data;
-        return {
-          status: 200,
-          body: envelopeOk({ ...data, content: detail.content }),
-        };
-      }
-      if (endpoint === learnerEndpoints.enrollment)
-        return { status: 200, body: envelopeOk(detail) };
-      if (endpoint === scormEndpoints.progress)
-        return { status: 200, body: envelopeOk(progress()) };
-      if (endpoint === scormEndpoints.launch) {
-        if ((request.body as { restart?: boolean }).restart) {
-          restarted = true;
-          failed = false;
-          score = null;
+  it.each([
+    { rule: 'completed_or_passed', restartStatus: 'failed' },
+    { rule: 'passed', restartStatus: 'completed' },
+  ] as const)(
+    'embeds SCORM with $rule, refreshes without relaunching and restarts $restartStatus',
+    async ({ rule, restartStatus }) => {
+      const lesson = lessons()[2];
+      lesson.lesson.lessonType = 'scorm';
+      lesson.lesson.scormPackageId = 42;
+      lesson.lesson.scormCompletionRule = rule;
+      lesson.blocks = [];
+      let score: number | null = null;
+      let failed = false;
+      let restarted = false;
+      const progress = () => ({
+        lessonStatus: restarted
+          ? 'not attempted'
+          : failed
+            ? restartStatus
+            : score === null
+              ? 'incomplete'
+              : 'passed',
+        scoreRaw: score,
+        scoreMin: 0,
+        scoreMax: 100,
+        lessonLocation: 'page-4',
+        resumable: true,
+        updateTime: '2026-11-13T10:00:00Z',
+      });
+      const launchUrl =
+        'https://scorm.example.test/scorm-player/' + 'a'.repeat(43) + '/launch';
+      handle.mockImplementation((endpoint, request) => {
+        if (endpoint === learnerEndpoints.course) {
+          const reply = real()(endpoint, request);
+          const data = (reply?.body as { data: LearnerCourse }).data;
+          return {
+            status: 200,
+            body: envelopeOk({ ...data, content: detail.content }),
+          };
         }
-        return {
-          status: 200,
-          body: envelopeOk({
-            launchUrl,
-            preview: false,
-            expiresAt: new Date(Date.now() + 3600000).toISOString(),
-            progress: progress(),
-          }),
-        };
-      }
-      return real()(endpoint, request);
-    });
-    await open(lessonUrl(2));
-    const iframe = el.querySelector<HTMLIFrameElement>(
-      'iframe[title="Nội dung bài giảng SCORM"]',
-    );
-    if (!iframe) throw new Error('Embedded SCORM iframe missing: ' + text());
-    expect(iframe.getAttribute('src')).toBe(launchUrl);
-    expect(el.querySelector('app-lesson-outline')).not.toBeNull();
-    expect(el.querySelector('a[href^="/scorm/"]')).toBeNull();
-    expect(calls(scormEndpoints.launch)).toHaveLength(1);
-    expect(calls(scormEndpoints.launch)[0][1].body).toMatchObject({
-      preview: false,
-      lessonId: lesson.lesson.id,
-      enrollmentId: detail.enrollment.id,
-    });
-    const before = calls(scormEndpoints.progress).length;
-    const notify = (origin: string) =>
-      window.dispatchEvent(
-        new MessageEvent('message', {
-          origin,
-          source: iframe.contentWindow,
-          data: {
-            type: 'scorm:state',
-            state: 'saved',
-            progress: { scoreRaw: 999 },
-          },
-        }),
+        if (endpoint === learnerEndpoints.enrollment)
+          return { status: 200, body: envelopeOk(detail) };
+        if (endpoint === scormEndpoints.progress)
+          return { status: 200, body: envelopeOk(progress()) };
+        if (endpoint === scormEndpoints.launch) {
+          if ((request.body as { restart?: boolean }).restart) {
+            restarted = true;
+            failed = false;
+            score = null;
+          }
+          return {
+            status: 200,
+            body: envelopeOk({
+              launchUrl,
+              preview: false,
+              expiresAt: new Date(Date.now() + 3600000).toISOString(),
+              progress: progress(),
+            }),
+          };
+        }
+        return real()(endpoint, request);
+      });
+      await open(lessonUrl(2));
+      const iframe = el.querySelector<HTMLIFrameElement>(
+        'iframe[title="Nội dung bài giảng SCORM"]',
       );
-    notify('https://untrusted.example.test');
-    await settle();
-    expect(calls(scormEndpoints.progress)).toHaveLength(before);
-    score = 85;
-    notify('https://scorm.example.test');
-    await settle();
-    expect(text()).toContain('Điểm 85');
-    expect(text()).not.toContain('999');
-    expect(calls(scormEndpoints.launch)).toHaveLength(1);
-    expect(el.querySelector('iframe[title="Nội dung bài giảng SCORM"]')).toBe(
-      iframe,
-    );
-    await settle();
-    expect(calls(scormEndpoints.launch)).toHaveLength(1);
-    failed = true;
-    score = 73;
-    notify('https://scorm.example.test');
-    await settle();
-    button('Học lại')!.click();
-    await settle();
-    const dialog = document.querySelector('[role="alertdialog"]')!;
-    Array.from(dialog.querySelectorAll('button'))
-      .find((node) => node.textContent?.includes('Học lại'))!
-      .click();
-    await settle();
-    expect(calls(scormEndpoints.launch)).toHaveLength(2);
-    expect(calls(scormEndpoints.launch)[1][1].body).toMatchObject({
-      restart: true,
-      preview: false,
-      enrollmentId: detail.enrollment.id,
-      lessonId: lesson.lesson.id,
-    });
-    expect(el.querySelector('app-lesson-outline')).not.toBeNull();
-    expect(text()).not.toContain('Điểm 73');
-  });
+      if (!iframe) throw new Error('Embedded SCORM iframe missing: ' + text());
+      expect(iframe.getAttribute('src')).toBe(launchUrl);
+      expect(el.querySelector('app-lesson-outline')).not.toBeNull();
+      expect(el.querySelector('a[href^="/scorm/"]')).toBeNull();
+      expect(calls(scormEndpoints.launch)).toHaveLength(1);
+      expect(calls(scormEndpoints.launch)[0][1].body).toMatchObject({
+        preview: false,
+        lessonId: lesson.lesson.id,
+        enrollmentId: detail.enrollment.id,
+      });
+      const before = calls(scormEndpoints.progress).length;
+      const notify = (origin: string) =>
+        window.dispatchEvent(
+          new MessageEvent('message', {
+            origin,
+            source: iframe.contentWindow,
+            data: {
+              type: 'scorm:state',
+              state: 'saved',
+              progress: { scoreRaw: 999 },
+            },
+          }),
+        );
+      notify('https://untrusted.example.test');
+      await settle();
+      expect(calls(scormEndpoints.progress)).toHaveLength(before);
+      score = 85;
+      notify('https://scorm.example.test');
+      await settle();
+      expect(text()).toContain('Điểm 85');
+      expect(text()).not.toContain('999');
+      expect(calls(scormEndpoints.launch)).toHaveLength(1);
+      expect(el.querySelector('iframe[title="Nội dung bài giảng SCORM"]')).toBe(
+        iframe,
+      );
+      await settle();
+      expect(calls(scormEndpoints.launch)).toHaveLength(1);
+      failed = true;
+      score = 73;
+      notify('https://scorm.example.test');
+      await settle();
+      button('Học lại')!.click();
+      await settle();
+      const dialog = document.querySelector('[role="alertdialog"]')!;
+      Array.from(dialog.querySelectorAll('button'))
+        .find((node) => node.textContent?.includes('Học lại'))!
+        .click();
+      await settle();
+      expect(calls(scormEndpoints.launch)).toHaveLength(2);
+      expect(calls(scormEndpoints.launch)[1][1].body).toMatchObject({
+        restart: true,
+        preview: false,
+        enrollmentId: detail.enrollment.id,
+        lessonId: lesson.lesson.id,
+      });
+      expect(el.querySelector('app-lesson-outline')).not.toBeNull();
+      expect(text()).not.toContain('Điểm 73');
+    },
+  );
 
   describe('a text lesson', () => {
     beforeEach(() => open(lessonUrl(2)));
@@ -360,11 +367,11 @@ describe('Lesson', () => {
       expect(el.querySelector('app-block-list')).toBeNull();
     });
 
-    it('saves the open, and says so once the server accepted it', () => {
+    it('saves the open silently once the server accepted it', () => {
       expect(calls(learnerEndpoints.saveProgress).length).toBe(1);
-      expect(el.querySelector('[aria-live="polite"]')?.textContent).toContain(
-        'Đã lưu tiến độ',
-      );
+      expect(text()).not.toContain('Đã lưu tiến độ');
+      expect(text()).not.toContain('Đang lưu tiến độ');
+      expect(el.querySelector('.lesson__save')).toBeNull();
     });
 
     it('completes the last text lesson when returning to the course', async () => {
@@ -913,7 +920,8 @@ describe('Lesson', () => {
       handle.mockImplementation(real());
       button('Thử lại')!.click();
       await settle();
-      expect(text()).toContain('Đã lưu tiến độ');
+      expect(text()).not.toContain('Đã lưu tiến độ');
+      expect(text()).not.toContain('Chưa lưu được tiến độ');
       expect(text()).toContain('Đã hoàn thành');
     });
   });

@@ -35,9 +35,9 @@
     >
       {{ store.isEnrolling$() ? 'Đang đăng ký…' : 'Đăng ký học' }}
     </button>
-    } @else if (store.nextExamId$(); as quizId) {
-    <a uiButton variant="primary" [routerLink]="['/quiz', quizId]"
-      >Đến bài thi cuối khóa</a
+    } @else if (store.nextExamAction$(); as exam) {
+    <a uiButton variant="primary" [routerLink]="['/quiz', exam.id]"
+      >{{ exam.label }}</a
     >
     } @else if (store.primaryAction$(); as label) {
     <a uiButton variant="primary" [routerLink]="store.resumeLink$()"
@@ -49,7 +49,9 @@
   </div>
 </ui-page-header>
 
-@if (store.needsAssignment$()) {
+@if (store.nextExamAction$()?.note; as note) {
+<ui-alert tone="info" [announce]="false">{{ note }}</ui-alert>
+} @if (store.needsAssignment$()) {
 <ui-alert tone="info" [announce]="false">
   Khóa học bắt buộc này cần được giao để học.
 </ui-alert>
@@ -99,7 +101,7 @@
     />
     } @if (finalExam(); as exam) {
     <ui-stat
-      label="Bài thi cuối khóa"
+      label="Bài kiểm tra cuối khóa"
       [value]="exam.label"
       [tone]="exam.failed ? 'danger' : 'default'"
       [note]="exam.note"
