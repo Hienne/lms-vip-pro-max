@@ -175,6 +175,139 @@ describe('TrainingCatalog', () => {
     expect(text(detail())).toContain('Chương trình (2)');
   });
 
+  it('adds multiple modules with the field in one save and removes unsaved rows immediately', async () => {
+    await open();
+    button('Thêm lĩnh vực')!.click();
+    await settle();
+    const dialog = drawer()!;
+    button('Thêm phân hệ', dialog)!.click();
+    await settle();
+    button('Thêm phân hệ', dialog)!.click();
+    await settle();
+    const controls = Array.from(
+      dialog.querySelectorAll<HTMLInputElement>('input'),
+    );
+    for (const [index, value] of [
+      'NEW',
+      'Lĩnh vực mới',
+      'M1',
+      'Thanh toán',
+      'M2',
+      'Tiền gửi',
+    ].entries()) {
+      controls[index].value = value;
+      controls[index].dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    await settle();
+    button('Thêm phân hệ', dialog)!.click();
+    await settle();
+    Array.from(dialog.querySelectorAll<HTMLButtonElement>('button'))
+      .filter((b) => b.textContent?.includes('Xóa phân hệ'))
+      .at(-1)!
+      .click();
+    await settle();
+    expect(dialog.querySelectorAll('fieldset')).toHaveLength(2);
+    (dialog.querySelector('button[type="submit"]') as HTMLElement).click();
+    await settle();
+    const request = backend.expectOne(`${BASE}/fields`);
+    expect(request.request.body).toMatchObject({
+      ownerOrgId: 1,
+      code: 'NEW',
+      modules: [
+        { code: 'M1', name: 'Thanh toán', deleted: false },
+        { code: 'M2', name: 'Tiền gửi', deleted: false },
+      ],
+    });
+    expect(request.request.body.modules[0]).not.toHaveProperty('key');
+    request.flush(
+      envelopeOk({
+        ...tree.fields[1],
+        id: 20,
+        code: 'NEW',
+        name: 'Lĩnh vực mới',
+      }),
+    );
+    await settle();
+    treeRequests().forEach((r) => r.flush(envelopeOk(tree)));
+  });
+
+  it('loads all module pages before editing and stages an explicit versioned delete until save', async () => {
+    await open();
+    button('Sửa', detail())!.click();
+    await settle();
+    expect(text(drawer()!)).toContain('Đang tải phân hệ');
+    const module = {
+      id: 31,
+      fieldId: 1,
+      code: 'M1',
+      name: 'Thanh toán',
+      status: 'published',
+      rowVersion: 4,
+    };
+    backend
+      .expectOne(
+        (r) => r.url === `${BASE}/modules` && r.params.get('page') === '0',
+      )
+      .flush(
+        envelopeOk({
+          items: [module],
+          page: 0,
+          size: 100,
+          totalPages: 2,
+          totalElements: 2,
+        }),
+      );
+    backend
+      .expectOne(
+        (r) => r.url === `${BASE}/modules` && r.params.get('page') === '1',
+      )
+      .flush(
+        envelopeOk({
+          items: [{ ...module, id: 32, code: 'M2', name: 'Tiền gửi' }],
+          page: 1,
+          size: 100,
+          totalPages: 2,
+          totalElements: 2,
+        }),
+      );
+    await settle();
+    const dialog = drawer()!;
+    const moduleCode = dialog.querySelectorAll<HTMLInputElement>('input')[2];
+    moduleCode.value = '';
+    moduleCode.dispatchEvent(new Event('input', { bubbles: true }));
+    await settle();
+    button('Xóa phân hệ', dialog)!.click();
+    await settle();
+    expect(text(dialog)).toContain('Sẽ xóa: Thanh toán');
+    expect(backend.match((r) => r.method === 'DELETE')).toHaveLength(0);
+    (dialog.querySelector('button[type="submit"]') as HTMLElement).click();
+    await settle();
+    const request = backend.expectOne(`${BASE}/fields/1?expectedVersion=3`);
+    expect(request.request.body.modules).toEqual([
+      {
+        id: 31,
+        expectedVersion: 4,
+        code: 'M1',
+        name: 'Thanh toán',
+        status: 'published',
+        sortNo: 0,
+        deleted: true,
+      },
+      {
+        id: 32,
+        expectedVersion: 4,
+        code: 'M2',
+        name: 'Tiền gửi',
+        status: 'published',
+        sortNo: 0,
+        deleted: false,
+      },
+    ]);
+    request.flush(envelopeOk(tree.fields[0]));
+    await settle();
+    treeRequests().forEach((r) => r.flush(envelopeOk(tree)));
+  });
+
   it('asks the server for the org of the signed-in user', async () => {
     fixture = TestBed.createComponent(TrainingCatalog);
     await settle();

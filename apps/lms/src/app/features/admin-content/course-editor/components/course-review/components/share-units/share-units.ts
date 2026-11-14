@@ -1,5 +1,5 @@
-import { Component, inject } from '@angular/core';
-import { Card, CardBody, Checkbox } from '@lms/ui';
+import { Component, computed, inject } from '@angular/core';
+import { Card, CardBody, MultiSelect } from '@lms/ui';
 import { CourseEditorStore } from '../../../../data-access/course-editor.store';
 
 /**
@@ -9,14 +9,36 @@ import { CourseEditorStore } from '../../../../data-access/course-editor.store';
  */
 @Component({
   selector: 'app-share-units',
-  imports: [Card, CardBody, Checkbox],
+  imports: [Card, CardBody, MultiSelect],
   templateUrl: './share-units.html',
   styleUrl: './share-units.scss',
 })
 export class ShareUnits {
   protected readonly store = inject(CourseEditorStore);
 
-  protected toggle(orgId: number, event: Event): void {
-    this.store.toggleShare(orgId, (event.target as HTMLInputElement).checked);
+  protected readonly options = computed(() =>
+    this.store.shareUnits$().map((unit) => ({
+      value: String(unit.orgId),
+      label:
+        unit.name +
+        (unit.locked === 'owner'
+          ? ' (đơn vị sở hữu)'
+          : unit.locked === 'shared'
+            ? ' (đã chia sẻ)'
+            : ''),
+      disabled: unit.locked !== null || unit.full,
+    })),
+  );
+  protected readonly selected = computed(() =>
+    this.store
+      .shareUnits$()
+      .filter((unit) => unit.checked)
+      .map((unit) => String(unit.orgId)),
+  );
+  protected select(values: readonly string[]): void {
+    for (const unit of this.store.shareUnits$()) {
+      const checked = values.includes(String(unit.orgId));
+      if (checked !== unit.checked) this.store.toggleShare(unit.orgId, checked);
+    }
   }
 }

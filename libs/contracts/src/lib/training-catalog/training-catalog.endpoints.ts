@@ -9,6 +9,7 @@ import {
   ListCatalogTreeQuerySchema,
   ListModulesQuerySchema,
   SaveCatalogItemCommandSchema,
+  SaveTrainingFieldCommandSchema,
   TrainingFieldSchema,
   TrainingProgramSchema,
 } from './training-catalog.schema';
@@ -30,7 +31,7 @@ export const trainingCatalogEndpoints = {
   createField: defineEndpoint({
     method: 'post',
     path: '/api/v1/training-catalog/fields',
-    body: SaveCatalogItemCommandSchema,
+    body: SaveTrainingFieldCommandSchema,
     response: TrainingFieldSchema,
   }),
   updateField: defineEndpoint({
@@ -38,7 +39,7 @@ export const trainingCatalogEndpoints = {
     path: '/api/v1/training-catalog/fields/{id}',
     params: idParams,
     query: ExpectedVersionQuerySchema,
-    body: SaveCatalogItemCommandSchema,
+    body: SaveTrainingFieldCommandSchema,
     response: TrainingFieldSchema,
   }),
   listPrograms: defineEndpoint({
@@ -107,6 +108,14 @@ export const trainingCatalogEndpoints = {
   deleteProgram: defineEndpoint({
     method: 'delete',
     path: '/api/v1/training-catalog/programs/{id}',
+    params: idParams,
+    query: ExpectedVersionQuerySchema,
+    response: z.null(),
+  }),
+  /** Only unused modules may be deleted; field saves can include the same operation atomically. */
+  deleteModule: defineEndpoint({
+    method: 'delete',
+    path: '/api/v1/training-catalog/modules/{id}',
     params: idParams,
     query: ExpectedVersionQuerySchema,
     response: z.null(),

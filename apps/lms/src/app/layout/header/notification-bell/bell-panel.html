@@ -20,6 +20,8 @@
           <app-reminder-item
             [reminder]="item.reminder"
             [overdue]="item.isOverdue"
+            [showCourseLink]="true"
+            (navigated)="navigated.emit()"
           />
         </div>
         @if (item.unread) {

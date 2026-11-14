@@ -113,7 +113,8 @@ export function navFor(
           code: fn.code,
           href: entryHref(fn.code),
           icon: nav.icon,
-          label: fn.name,
+          label:
+            fn.code === 'LESSON_MANAGEMENT' ? 'Thư viện bài giảng' : fn.name,
           section: nav.section,
           upcoming: isUpcoming(fn.code),
         },

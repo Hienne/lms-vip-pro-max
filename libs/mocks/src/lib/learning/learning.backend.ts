@@ -32,6 +32,7 @@ import {
   type PublishAssignment,
   type RevokeRecipientCommand,
   type SaveCatalogItemCommand,
+  type SaveTrainingFieldCommand,
   type SaveDraftCommand,
   PublishCourseCommandSchema,
   ShareCourseCommandSchema,
@@ -266,11 +267,11 @@ export class LearningBackend {
       ],
       [
         trainingCatalogEndpoints.createField,
-        (r) => this.createCatalog(r, this.fields),
+        (r) => this.saveFieldModules(r, false),
       ],
       [
         trainingCatalogEndpoints.updateField,
-        (r) => this.updateCatalog(r, this.fields),
+        (r) => this.saveFieldModules(r, true),
       ],
       [
         trainingCatalogEndpoints.listPrograms,
@@ -296,6 +297,7 @@ export class LearningBackend {
         trainingCatalogEndpoints.updateModule,
         (r) => this.updateCatalog(r, this.modules),
       ],
+      [trainingCatalogEndpoints.deleteModule, (r) => this.deleteModule(r)],
       [courseEndpoints.instructorCourses, (r) => this.instructorCourses(r)],
       [courseEndpoints.createCourse, (r) => this.createCourse(r)],
       [courseEndpoints.getCourse, (r) => this.getCourse(r)],
@@ -522,6 +524,62 @@ export class LearningBackend {
 
   // ---- training catalogue -------------------------------------------------------------------
 
+  private saveFieldModules(request: FakeRequest, update: boolean): FakeReply {
+    const fields = structuredClone(this.fields),
+      modules = structuredClone(this.modules),
+      nextId = this.nextId;
+    try {
+      const { modules: changes, ...body } =
+        request.body as SaveTrainingFieldCommand;
+      const reply = update
+        ? this.updateCatalog({ ...request, body }, this.fields)
+        : this.createCatalog({ ...request, body }, this.fields);
+      const field = reply.body.data as TrainingField;
+      const seen = new Set<number>();
+      for (const change of changes ?? []) {
+        if (change.id !== undefined) {
+          const existing = this.modules.find((m) => m.id === change.id);
+          if (!update || seen.has(change.id) || existing?.fieldId !== field.id)
+            refuse('stateConflict');
+          seen.add(change.id);
+        }
+        const rowRequest = {
+          ...request,
+          params: { id: String(change.id ?? '') },
+          query: { expectedVersion: String(change.expectedVersion ?? '') },
+          body: { ...change, ownerOrgId: field.ownerOrgId, fieldId: field.id },
+        };
+        if (change.deleted) this.deleteModule(rowRequest);
+        else if (change.id) this.updateCatalog(rowRequest, this.modules);
+        else this.createCatalog(rowRequest, this.modules);
+      }
+      return reply;
+    } catch (error) {
+      this.fields = fields;
+      this.modules = modules;
+      this.nextId = nextId;
+      throw error;
+    }
+  }
+
+  private deleteModule(request: FakeRequest): FakeReply {
+    const id = num(request.params['id']);
+    const row = this.modules.find((m) => m.id === id);
+    if (!row) return refuse('resourceNotFound');
+    if (row.rowVersion !== num(request.query['expectedVersion']))
+      refuse('stateConflict');
+    if (
+      this.courses.some((course) =>
+        [course.draft, course.published].some(
+          (revision) => revision?.revision.moduleId === id,
+        ),
+      )
+    )
+      refuse('stateConflict');
+    this.modules = this.modules.filter((m) => m.id !== id);
+    return ok(null);
+  }
+
   private listCatalog<T extends { sortNo?: number | null }>(
     request: FakeRequest,
     rows: readonly T[],
@@ -540,7 +598,12 @@ export class LearningBackend {
   ): FakeReply {
     const command = request.body as SaveCatalogItemCommand;
     if (
-      rows.some((row) => row.code.toLowerCase() === command.code.toLowerCase())
+      rows.some(
+        (row) =>
+          row.code.toLowerCase() === command.code.toLowerCase() &&
+          (!Object.is(rows, this.modules) ||
+            (row as unknown as BusinessModule).fieldId === command.fieldId),
+      )
     ) {
       refuse('stateConflict');
     }
@@ -569,6 +632,17 @@ export class LearningBackend {
       fieldId: _field,
       ...command
     } = request.body as SaveCatalogItemCommand;
+    if (
+      rows.some(
+        (other) =>
+          other.id !== row.id &&
+          other.code.toLowerCase() === command.code.toLowerCase() &&
+          (!Object.is(rows, this.modules) ||
+            (other as unknown as BusinessModule).fieldId ===
+              (row as unknown as BusinessModule).fieldId),
+      )
+    )
+      refuse('stateConflict');
     Object.assign(row, command, {
       rowVersion: row.rowVersion + 1,
       updateTime: now(),
@@ -1281,7 +1355,20 @@ export class LearningBackend {
   }
 
   private learnerList(request: FakeRequest, mineOnly: boolean): FakeReply {
-    return ok(paged(this.learnerCards(request, mineOnly), request.query));
+    const cards = this.learnerCards(request, mineOnly);
+    if (
+      !mineOnly ||
+      (!request.query['learningStatus'] &&
+        (request.query['requirement'] === 'mandatory' ||
+          request.query['assigned'] === 'true'))
+    ) {
+      cards.sort(
+        (a, b) =>
+          Number(a.learningStatus === 'completed') -
+          Number(b.learningStatus === 'completed'),
+      );
+    }
+    return ok(paged(cards, request.query));
   }
 
   /** One visible course with its card and content; not enrolled, the lessons keep no blocks. */

@@ -37,11 +37,13 @@ import { TextBlock } from './components/text-block/text-block';
 import { VideoBlock } from './components/video-block/video-block';
 import { AgentChatStore } from '../../../core/assistant/agent-chat.store';
 import { LessonStore } from './data-access/lesson.store';
+import { ScormBlock } from './components/scorm-block/scorm-block';
 
 /** The lesson player (the mockup's `lesson` page): one active block at a time, saved as it is studied. */
 @Component({
   selector: 'app-lesson',
   imports: [
+    ScormBlock,
     SectionCard,
     PageHeader,
     AttachmentBlock,
@@ -86,6 +88,17 @@ export class Lesson {
   protected readonly agent = inject(AgentChatStore);
 
   private readonly video = viewChild(VideoBlock);
+  private readonly scorm = viewChild(ScormBlock);
+
+  hasUnsavedChanges(): boolean {
+    return this.scorm()?.hasUnsavedChanges() ?? false;
+  }
+
+  leaveMessage(): string | undefined {
+    return this.hasUnsavedChanges()
+      ? 'Tiến độ SCORM chưa được lưu xong. Bạn có muốn rời bài học?'
+      : undefined;
+  }
 
   /** The lesson as the assistant is told about it; null until the lesson and its revision are read. */
   private readonly assistContext = computed(() => {

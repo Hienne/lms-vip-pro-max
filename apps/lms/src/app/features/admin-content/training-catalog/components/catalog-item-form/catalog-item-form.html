@@ -12,4 +12,65 @@
   <ui-field label="Mô tả">
     <textarea uiTextarea rows="3" [formField]="itemForm.description"></textarea>
   </ui-field>
+  @if (kind() === 'field') {
+  <section class="stack" aria-label="Phân hệ nghiệp vụ">
+    <h3>Phân hệ nghiệp vụ</h3>
+    <p>
+      Thêm các phân hệ thuộc lĩnh vực này. Thay đổi được áp dụng khi bấm Lưu.
+      Phân hệ đang dùng trong khóa học không thể xóa.
+    </p>
+    @for (value of itemForm.modules().value(); track value.key; let index =
+    $index) { @let module = itemForm.modules[index]; @if (value.deleted) {
+    <div class="cluster">
+      <span>Sẽ xóa: {{value.name}} ({{value.code}})</span>
+      <button
+        uiButton
+        size="sm"
+        type="button"
+        (click)="removeModule(value.key)"
+      >
+        Hoàn tác xóa
+      </button>
+    </div>
+    } @else {
+    <fieldset class="stack">
+      <legend>Phân hệ {{index + 1}}</legend>
+      <ui-field label="Mã phân hệ" required
+        ><input uiInput [formField]="module.code"
+      /></ui-field>
+      <ui-field label="Tên phân hệ" required
+        ><input uiInput [formField]="module.name"
+      /></ui-field>
+      <ui-field label="Trạng thái phân hệ">
+        <select uiSelect [formField]="module.status">
+          <option value="published">Đang sử dụng</option>
+          <option value="draft">Nháp</option>
+          <option value="paused">Tạm dừng</option>
+          <option value="archived">Lưu trữ</option>
+        </select>
+      </ui-field>
+      <div>
+        <button
+          uiButton
+          variant="danger-ghost"
+          size="sm"
+          type="button"
+          (click)="removeModule(value.key)"
+        >
+          <ui-icon name="trash-2" /> Xóa phân hệ
+        </button>
+      </div>
+    </fieldset>
+    } } @empty {
+    <p>
+      Chưa có phân hệ. Bạn có thể bổ sung ngay hoặc thêm sau khi tạo lĩnh vực.
+    </p>
+    }
+    <div>
+      <button uiButton type="button" (click)="addModule()">
+        <ui-icon name="plus" /> Thêm phân hệ
+      </button>
+    </div>
+  </section>
+  }
 </form>

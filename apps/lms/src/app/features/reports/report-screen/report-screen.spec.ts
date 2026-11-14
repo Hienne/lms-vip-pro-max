@@ -58,6 +58,30 @@ describe('ReportScreen', () => {
     return { root, store, labels, text };
   }
 
+  it('labels the aggregate scope separately from table-only filters even when no rows match', async () => {
+    const handle = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+    const { text, store } = await open(
+      '/reports/results?userId=NO-MATCH&status=SUBMITTED&passed=false',
+    );
+    expect(store.tableScopeLabel$()).toContain('NO-MATCH');
+    expect(store.tableScopeLabel$()).toContain('Chưa đạt');
+    expect(text()).toContain('Bộ lọc riêng cho bảng và CSV');
+    expect(text()).toContain('Số liệu tổng hợp');
+    const overview = handle.mock.calls
+      .filter(([e]) => e === api.overview)
+      .at(-1)?.[1].query;
+    expect(overview).not.toHaveProperty('userId');
+    expect(overview).not.toHaveProperty('status');
+    expect(overview).not.toHaveProperty('passed');
+    expect(
+      handle.mock.calls.filter(([e]) => e === api.results).at(-1)?.[1].query,
+    ).toMatchObject({
+      userId: 'NO-MATCH',
+      status: 'SUBMITTED',
+      passed: 'false',
+    });
+  });
+
   it('shows three report groups and opens filters with an icon before the label', async () => {
     const { root } = await open('/reports');
     const links = root.querySelectorAll('nav[aria-label="Nhóm báo cáo"] a');

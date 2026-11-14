@@ -6,12 +6,14 @@
       Đã giao trước đó: {{ count }} đợt — quản lý tại
       <a uiLinkButton routerLink="/admin/assignments">Giao học &amp; hạn</a>
     </p>
-    } @if (store.canAddRow$()) {
+    }
     <app-target-picker
-      addLabel="Thêm đối tượng"
-      (added)="store.addPublishRow($event)"
+      [multiple]="true"
+      [selected]="store.publishPicks$()"
+      [limit]="store.publishTargetLimit"
+      (selectionChange)="store.setPublishPicks($event)"
     />
-    } @else {
+    @if (!store.canAddRow$()) {
     <p class="assign-rows__previous">
       Đã đủ số đối tượng của một lần xuất bản. Giao thêm ở Giao học &amp; hạn
       sau khi xuất bản.

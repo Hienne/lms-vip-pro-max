@@ -8,6 +8,8 @@
   },
   "scripts": {
     "dev": "nx serve lms",
+    "dev:scorm": "node tools/dev-scorm.mjs",
+    "test:scorm-proxy": "node --test tools/scorm-dev-proxy.test.mjs",
     "start": "nx serve lms",
     "build": "nx build lms",
     "build:staging": "nx build lms -c staging",
@@ -20,7 +22,7 @@
     "typecheck": "nx run-many -t typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run format:check && nx run-many -t lint typecheck test build check-bundle",
+    "check": "npm run format:check && npm run test:scorm-proxy && nx run-many -t lint typecheck test build check-bundle",
     "ci:check": "nx affected -t lint typecheck build check-bundle",
     "guard:design": "node tools/guard-design.mjs",
     "guard:design:update": "node tools/guard-design.mjs --update",

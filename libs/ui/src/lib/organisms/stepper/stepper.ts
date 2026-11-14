@@ -1,5 +1,5 @@
 import { CdkStep, CdkStepHeader, CdkStepper } from '@angular/cdk/stepper';
-import { Component, computed, input, model } from '@angular/core';
+import { Component, computed, input, model, output } from '@angular/core';
 import { Icon } from '../../atoms/icon/icon';
 
 export interface StepperItem {
@@ -31,6 +31,9 @@ export class Stepper {
   readonly label = input.required<string>();
   /** Blocks moving past a step that is not completed. */
   readonly linear = input(false);
+  /** Let the host validate/save asynchronously before committing a requested step. */
+  readonly controlled = input(false);
+  readonly stepRequested = output<number>();
   readonly selectedIndex = model(0);
   readonly doneLabel = input('Đã hoàn thành');
 
@@ -43,6 +46,7 @@ export class Stepper {
   });
 
   protected go(cdk: CdkStepper, index: number): void {
-    cdk.selectedIndex = index;
+    if (this.controlled()) this.stepRequested.emit(index);
+    else cdk.selectedIndex = index;
   }
 }

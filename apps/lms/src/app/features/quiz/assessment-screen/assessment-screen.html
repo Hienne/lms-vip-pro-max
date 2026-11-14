@@ -133,7 +133,7 @@
         uiSelect
         aria-label="Khóa học quản lý"
         [value]="store.selectedCourseId$() ?? ''"
-        [disabled]="store.editorOpen$() || store.isSaving$() || store.partialSave$()"
+        [disabled]="store.editorOpen$() || store.isSaving$() || store.partialSave$() || store.coursesLoading$()"
         (change)="store.selectCourse($any($event.target).value)"
       >
         <option value="" disabled>— Chọn khóa học —</option>
@@ -159,22 +159,22 @@
       [value]="store.courseSearch$()"
       (searched)="store.searchCourses($event)"
     />
-    @if ((store.courses$()?.totalPages ?? 0) > 1) {
+    @if ((store.courses$()?.items?.length ?? 0) > 1) {
     <button
       uiButton
       size="sm"
-      [disabled]="!store.courses$()?.page"
-      (click)="store.nextCoursePage(-1)"
+      [disabled]="store.coursesLoading$() || !store.hasPreviousCourse$()"
+      (click)="store.nextCourse(-1)"
     >
-      Khóa học trước
+      Quay lại
     </button>
     <button
       uiButton
       size="sm"
-      [disabled]="(store.courses$()?.page ?? 0) + 1 >= (store.courses$()?.totalPages ?? 0)"
-      (click)="store.nextCoursePage(1)"
+      [disabled]="store.coursesLoading$() || !store.hasNextCourse$()"
+      (click)="store.nextCourse(1)"
     >
-      Khóa học sau
+      Tiếp theo
     </button>
     } }
   </div>
@@ -463,7 +463,7 @@
         (click)="addOption()"
       >
         Thêm phương án</button
-      >} @if(questionForm().touched()){@for(error of
+      >} @if(questionForm.correctOptionIds().touched()){@for(error of
       questionForm.correctOptionIds().errors();track $index){
       <p class="assessment__error">{{error.message}}</p>
       }}
@@ -622,10 +622,11 @@
         @if(store.canManageBank$() && store.selectedProgramId$()) {
         <a
           uiButton
-          variant="ghost"
+          variant="secondary"
           [routerLink]="['/admin/questions']"
           [queryParams]="{programId:store.selectedProgramId$()}"
-          >Quản lý câu hỏi của chương trình</a
+          ><ui-icon name="circle-help" size="sm" />Quản lý câu hỏi của chương
+          trình</a
         >
         }
         <p>
@@ -760,10 +761,12 @@
           <ui-field label="Mở đề" hint="Để trống nếu không giới hạn."
             ><ui-date-input
               kind="datetime"
+              picker
               [formField]="configForm.openAt" /></ui-field
           ><ui-field label="Đóng đề" hint="Để trống nếu không giới hạn."
             ><ui-date-input
               kind="datetime"
+              picker
               [formField]="configForm.closeAt" /></ui-field
           ><ui-field label="Quyền xem đáp án & giải thích"
             ><select uiSelect [formField]="configForm.reviewPolicy">

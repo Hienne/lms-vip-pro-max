@@ -30,6 +30,8 @@ import {
   trainingCatalogEndpoints,
   courseEndpoints,
   type ProgramQuestionRequest,
+  type CourseCard,
+  type Page,
 } from '@lms/contracts';
 import { envelopeError, envelopeOk } from '@lms/mocks';
 import {
@@ -89,6 +91,97 @@ describe('AssessmentScreen (admin)', () => {
     expect(el.querySelectorAll('tbody tr').length).toBeGreaterThan(0);
   });
 
+  it('loads every course page and moves exactly one dropdown option without changing filters', async () => {
+    const backend = TestBed.inject(MockBackend),
+      handle = backend.handle.bind(backend);
+    const calls = vi
+      .spyOn(backend, 'handle')
+      .mockImplementation((endpoint, request) => {
+        if (endpoint !== courseEndpoints.instructorCourses)
+          return handle(endpoint, request);
+        const reply = handle(endpoint, {
+          ...request,
+          query: { programId: '2', page: '0', size: '50' },
+        });
+        if (!reply) throw new Error('Course catalogue fixture is missing.');
+        const base = (reply.body.data as Page<CourseCard>).items[0];
+        const page = Number(request.query['page'] ?? 0);
+        return {
+          ...reply,
+          body: {
+            ...reply.body,
+            data: {
+              items: [
+                { ...base, courseId: 100 + page, title: 'Khóa ' + (page + 1) },
+              ],
+              page,
+              size: 50,
+              totalPages: 3,
+              totalElements: 3,
+            },
+          },
+        };
+      });
+    await open('/admin/quizzes?programId=2');
+    expect(
+      store()
+        .courses$()
+        ?.items.map((c) => c.courseId),
+    ).toEqual([100, 101, 102]);
+    expect(store().selectedCourseId$()).toBe(100);
+    expect(store().hasPreviousCourse$()).toBe(false);
+    store().nextCourse(1);
+    await settle();
+    expect(store().selectedCourseId$()).toBe(101);
+    store().nextCourse(1);
+    await settle();
+    expect(store().selectedCourseId$()).toBe(102);
+    expect(store().hasNextCourse$()).toBe(false);
+    store().nextCourse(1);
+    expect(store().selectedCourseId$()).toBe(102);
+    store().nextCourse(-1);
+    await settle();
+    expect(store().selectedCourseId$()).toBe(101);
+    expect(store().courseProgramFilter$()).toBe(2);
+    expect(
+      calls.mock.calls.filter(([e]) => e === courseEndpoints.instructorCourses),
+    ).toHaveLength(3);
+    expect(
+      calls.mock.calls.filter(([e]) => e === api.courseQuizList).at(-1)?.[1]
+        .query['courseId'],
+    ).toBe('101');
+    store().searchCourses('scope QA');
+    await settle();
+    expect(store().selectedCourseId$()).toBe(101);
+    expect(
+      calls.mock.calls
+        .filter(([e]) => e === courseEndpoints.instructorCourses)
+        .at(-1)?.[1].query,
+    ).toMatchObject({ programId: '2', q: 'scope QA', page: '2' });
+  });
+
+  it('defaults new quiz creation to requiring completed lessons', async () => {
+    await open('/admin/quizzes/new?programId=2');
+    const prerequisite = () =>
+      Array.from(el.querySelectorAll('label'))
+        .find((label) =>
+          label.textContent?.includes('Yêu cầu hoàn thành các bài học trước'),
+        )
+        ?.querySelector<HTMLInputElement>('input');
+    expect(prerequisite()?.checked).toBe(true);
+  });
+
+  it('preserves a stored lesson-prerequisite opt-out', async () => {
+    await open('/admin/quizzes/1');
+    const prerequisite = () =>
+      Array.from(el.querySelectorAll('label'))
+        .find((label) =>
+          label.textContent?.includes('Yêu cầu hoàn thành các bài học trước'),
+        )
+        ?.querySelector<HTMLInputElement>('input');
+    expect(prerequisite()?.checked).toBe(false);
+  });
+
   it('lists the quizzes with a link to their settings', async () => {
     await open('/admin/quizzes');
     expect(text()).toContain('Luyện tập: Tổng quan hệ thống Core Banking');
@@ -99,6 +192,48 @@ describe('AssessmentScreen (admin)', () => {
     await open('/admin/quizzes/1');
     expect(el.querySelector('form')).toBeTruthy();
     expect(text()).toContain('Lưu cấu hình');
+    expect(
+      el.querySelectorAll('ui-date-input input[type="datetime-local"]'),
+    ).toHaveLength(2);
+    expect(
+      el.querySelector('a[href*="/admin/questions"]')?.classList,
+    ).toContain('btn--secondary');
+  });
+
+  it('does not show an answer error on opening a new question, but validates on submit', async () => {
+    await open('/admin/questions?programId=2');
+    store().editQuestion(null);
+    await settle();
+    const question = document.querySelector<HTMLFormElement>('#question-form')!;
+    expect(question.textContent).not.toContain('Chọn đúng 1 đáp án.');
+    expect(question.textContent).not.toContain('Too small');
+    question.dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true }),
+    );
+    await settle();
+    expect(question.textContent).toContain('Chọn đúng 1 đáp án.');
+    expect(question.textContent).not.toContain('Too small');
+  });
+
+  it('shows the multiple-answer rule only after interacting with answers', async () => {
+    await open('/admin/questions?programId=2');
+    store().editQuestion(null);
+    await settle();
+    const question = document.querySelector<HTMLFormElement>('#question-form')!;
+    const type = question.querySelector('select')!;
+    type.value = 'multiple';
+    type.dispatchEvent(new Event('input', { bubbles: true }));
+    type.dispatchEvent(new Event('change', { bubbles: true }));
+    await settle();
+    expect(question.textContent).not.toContain('Chọn ít nhất 2 đáp án đúng.');
+    question.querySelector<HTMLInputElement>('input[name="qcorrect"]')!.click();
+    await settle();
+    expect(question.textContent).toContain('Chọn ít nhất 2 đáp án đúng.');
+    question
+      .querySelectorAll<HTMLInputElement>('input[name="qcorrect"]')[1]
+      .click();
+    await settle();
+    expect(question.textContent).not.toContain('Chọn ít nhất 2 đáp án đúng.');
   });
 
   it('grants extra attempts to the selected exhausted learner for this quiz', async () => {
@@ -472,7 +607,11 @@ describe('AssessmentScreen (admin)', () => {
     await settle();
     expect(
       spy.mock.calls.find(([e]) => e === api.createQuiz)?.[1].body,
-    ).toMatchObject({ courseId: 5, title: 'Bài thi theo chương trình' });
+    ).toMatchObject({
+      courseId: 5,
+      title: 'Bài thi theo chương trình',
+      requireLessonsCompleted: true,
+    });
     expect(
       spy.mock.calls.find(([e]) => e === api.replacePool)?.[1].body,
     ).toMatchObject({ items: [{ questionId: 1 }] });

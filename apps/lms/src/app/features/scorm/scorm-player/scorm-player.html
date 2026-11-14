@@ -36,7 +36,16 @@ warning){<ui-alert tone="warning">{{warning}}</ui-alert>}}
   >} </ui-alert
 >}
 <ui-section-card title="Kết quả trên LMS">
-  @if(store.progress$();as progress){
+  @if (!store.preview$() && store.progress$()?.lessonStatus === 'failed') {
+  <button
+    uiButton
+    type="button"
+    [disabled]="!store.canRestart$()"
+    (click)="store.restart()"
+  >
+    Học lại
+  </button>
+  } @if(store.progress$();as progress){
   <dl class="scorm-player__result">
     <div>
       <dt>Trạng thái</dt>
@@ -73,11 +82,6 @@ warning){<ui-alert tone="warning">{{warning}}</ui-alert>}}
       Tải lại kết quả
     </button></ui-alert
   >}
-  <p role="status">
-    {{store.saveState$()==='saving' ? 'Đang lưu tiến độ…' :
-    store.saveState$()==='saved' ? 'Tiến độ được lưu khi bài giảng gửi cập
-    nhật.' : 'Tiến độ chưa được lưu đầy đủ.'}}
-  </p>
 </ui-section-card>
 @if(store.launching$()){
 <div uiSkeleton variant="block" class="scorm-player__loading"></div>

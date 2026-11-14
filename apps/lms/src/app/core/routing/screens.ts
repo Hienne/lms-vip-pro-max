@@ -272,7 +272,7 @@ export const SCREEN_TABLE = {
       screens: [
         {
           path: 'admin/lessons',
-          title: 'Quản lý bài giảng',
+          title: 'Thư viện bài giảng',
           mockupPage: 'lessons',
           load: () =>
             import('../../features/scorm/scorm-library/scorm-library').then(

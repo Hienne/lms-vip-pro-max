@@ -122,6 +122,10 @@ export const ReminderKindSchema = z.enum([
 export type ReminderKind = z.infer<typeof ReminderKindSchema>;
 
 export const LearningReminderSchema = z.object({
+  courseId: z.number().int().positive().nullish(),
+  courseTitle: z.string().nullish(),
+  enrollmentId: z.number().int().positive().nullish(),
+  courseAvailable: z.boolean().nullish(),
   id: z.number().int(),
   recipientId: z.number().int().nullish(),
   scheduledAt: BackendDateTimeSchema.nullish(),
@@ -339,6 +343,7 @@ export type LearningStatus = z.infer<typeof LearningStatusSchema>;
  * typed status and the `overdue`, `assigned` and `failed` flags the server evaluates.
  */
 export const MyCoursesQuerySchema = CourseListQuerySchema.extend({
+  withoutModule: z.boolean().optional(),
   learningStatus: LearningStatusSchema.optional(),
   overdue: z.boolean().optional(),
   assigned: z.boolean().optional(),
@@ -346,15 +351,14 @@ export const MyCoursesQuerySchema = CourseListQuerySchema.extend({
 });
 export type MyCoursesQuery = z.infer<typeof MyCoursesQuerySchema>;
 
-export const LearnerCatalogQuerySchema = MyCoursesQuerySchema.extend({
-  withoutModule: z.boolean().optional(),
-});
+export const LearnerCatalogQuerySchema = MyCoursesQuerySchema;
 export type LearnerCatalogQuery = z.infer<typeof LearnerCatalogQuerySchema>;
 
 /** The same filters and sort as the table, no paging; at most 10,000 rows. */
 export const ProgressExportQuerySchema = MyCoursesQuerySchema.omit({
   page: true,
   size: true,
+  withoutModule: true,
 });
 export type ProgressExportQuery = z.infer<typeof ProgressExportQuerySchema>;
 

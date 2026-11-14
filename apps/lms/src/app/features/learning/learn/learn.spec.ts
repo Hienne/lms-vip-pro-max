@@ -293,11 +293,13 @@ describe('Learn', () => {
       expect(region?.querySelector('a[href="/course/51"]')).toBeTruthy();
     });
 
-    it('links "Xem tất cả" to the assigned catalogue', () => {
+    it('links "Xem tất cả" to every joined course in the current learning tab', () => {
       const link = Array.from(el.querySelectorAll('a')).find((a) =>
         a.textContent?.includes('Xem tất cả'),
       );
-      expect(link?.getAttribute('href')).toBe('/catalog?scope=assigned');
+      expect(link?.getAttribute('href')).toBe(
+        '/catalog?scope=mine&status=in_progress',
+      );
     });
 
     it('lists what falls due with a link to each course, and the first reminders', () => {

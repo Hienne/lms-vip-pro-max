@@ -8,6 +8,10 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
+import { Dialog } from '@angular/cdk/dialog';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { confirm } from '@lms/ui';
+import { filter, map } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
 import { scormEndpoints, type ScormLaunch } from '@lms/contracts';
 import { serverData } from '../../../../core/data-access/server-data';
@@ -17,6 +21,8 @@ import { EndpointClient } from '../../../../core/http/endpoint-client';
 @Injectable()
 export class ScormPlayerStore {
   private readonly client = inject(EndpointClient);
+  private readonly dialog = inject(Dialog);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly route = inject(ActivatedRoute);
   private readonly params = toSignal(this.route.paramMap, {
@@ -73,18 +79,33 @@ export class ScormPlayerStore {
     (input: {
       id: number;
       preview: boolean;
+      restart: boolean;
       enrollmentId?: number;
       lessonId?: number;
     }) =>
-      this.client.call(scormEndpoints.launch, {
-        params: { id: input.id },
-        body: {
-          preview: input.preview,
-          enrollmentId: input.enrollmentId,
-          lessonId: input.lessonId,
-        },
-      }),
-    { errors: 'alert', onSuccess: (result) => this.acceptLaunch(result) },
+      this.client
+        .call(scormEndpoints.launch, {
+          params: { id: input.id },
+          body: {
+            preview: input.preview,
+            restart: input.restart,
+            enrollmentId: input.enrollmentId,
+            lessonId: input.lessonId,
+          },
+        })
+        .pipe(map((result) => ({ result, restart: input.restart }))),
+    {
+      errors: 'alert',
+      onSuccess: ({ result, restart }) => {
+        if (restart && result.progress.lessonStatus !== 'not attempted') {
+          throw new Error(
+            'Máy chủ chưa hỗ trợ đặt lại lượt SCORM. Vui lòng cập nhật BE rồi thử lại.',
+          );
+        }
+        this.acceptLaunch(result);
+        if (restart) this.progressData.reload();
+      },
+    },
   );
   readonly package$ = this.packageData.value;
   readonly packageError$ = this.packageData.error;
@@ -95,6 +116,13 @@ export class ScormPlayerStore {
   readonly url$ = this.state.url.asReadonly();
   readonly expires$ = this.state.expires.asReadonly();
   readonly saveState$ = this.state.saveState.asReadonly();
+  readonly canRestart$ = computed(
+    () =>
+      !this.preview$() &&
+      this.progress$()?.lessonStatus === 'failed' &&
+      !this.launching$() &&
+      !['saving', 'error'].includes(this.saveState$()),
+  );
   readonly backLink$ = computed(() =>
     this.courseContext$() && Number(this.query().get('courseId')) > 0
       ? '/course/' + Number(this.query().get('courseId'))
@@ -116,10 +144,25 @@ export class ScormPlayerStore {
     id = this.id$(),
     preview = this.preview$(),
     context = this.courseContext$(),
+    restart = false,
   ): void {
     this.state.url.set(null);
     this.state.saveState.set('saved');
-    this.launchMutation.run({ id, preview, ...context });
+    this.launchMutation.run({ id, preview, restart, ...context });
+  }
+  restart(): void {
+    if (!this.canRestart$() || this.dialog.openDialogs.length) return;
+    confirm(this.dialog, {
+      title: 'Học lại SCORM?',
+      message:
+        'Bài giảng sẽ bắt đầu từ đầu. Điểm, đáp án và vị trí của lượt hiện tại được đặt lại. Bạn có thể thi lại không giới hạn số lần.',
+      confirmLabel: 'Học lại',
+    })
+      .pipe(filter(Boolean), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        if (this.canRestart$())
+          this.open(this.id$(), this.preview$(), this.courseContext$(), true);
+      });
   }
   receive(event: MessageEvent, frame: Window | null): void {
     if (

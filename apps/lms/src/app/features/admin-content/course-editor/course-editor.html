@@ -11,7 +11,7 @@
   [message]="error.message"
   (retry)="store.retryLoad()"
 />
-} @else if (store.isLoading$()) {
+} @else if (store.isLoading$() && !store.course$()) {
 <div class="course-editor__loading"><span uiSpinner></span></div>
 } @else if (ready()) { @let editing = store.course$();
 <ui-page-header
@@ -82,14 +82,15 @@
   label="Các bước soạn khóa học"
   [steps]="store.steps$()"
   [selectedIndex]="store.step$()"
-  (selectedIndexChange)="store.goToStep($event)"
+  [controlled]="true"
+  (stepRequested)="navigate($event)"
 />
 
 @if (store.invalidSteps$().length) {
 <ui-alert tone="danger" class="course-editor__notice">
   Còn thông tin chưa hợp lệ ở: @for (step of store.invalidSteps$(); track step;
   let last = $last) {
-  <button uiLinkButton type="button" (click)="store.goToStep(step)">
+  <button uiLinkButton type="button" (click)="navigate(step)">
     {{ steps[step].label }}</button
   >{{ last ? '.' : ',' }} }
 </ui-alert>
@@ -130,7 +131,15 @@
       (programPicked)="store.pickProgram($event)"
       (coverRemoved)="removeCover()"
     />
-    } @case (1) {
+    } @case (1) { @if (validationRequested()[1] && outlineProblems().length) {
+    <ui-alert tone="danger"
+      ><ul>
+        @for (problem of outlineProblems(); track problem) {
+        <li>{{ problem }}</li>
+        }
+      </ul></ui-alert
+    >
+    }
     <app-course-outline
       [draft]="courseForm"
       [editable]="store.isDraft$()"
@@ -138,20 +147,16 @@
       (uploadsDropped)="store.cancelUploads($event)"
       (editLesson)="store.editLesson($event)"
     />
-    } @case (2) {
-    <app-course-rules [draft]="courseForm" />
     } @case (3) {
-    <app-course-review
-      [draft]="courseForm"
-      (goToStep)="store.goToStep($event)"
-    />
+    <app-course-review [draft]="courseForm" (goToStep)="navigate($event)" />
     } }
+    <app-course-rules [hidden]="store.step$() !== 2" [draft]="courseForm" />
   </fieldset>
 </form>
 
 <footer class="course-editor__foot" appBottomBar>
   @if (store.step$() > 0) {
-  <button uiButton variant="ghost" (click)="store.goToStep(store.step$() - 1)">
+  <button uiButton variant="ghost" (click)="navigate(store.step$() - 1)">
     <ui-icon name="chevron-left" size="sm" />Quay lại
   </button>
   } @else {
@@ -165,7 +170,7 @@
     uiButton
     type="submit"
     form="course-editor-form"
-    [disabled]="store.examEditing$() || store.isSaving$() || store.pendingUploads$() > 0 || (store.isCreate$() && !store.ownerOrgId$())"
+    [disabled]="store.isSaving$() || store.pendingUploads$() > 0 || (store.isCreate$() && !store.ownerOrgId$())"
   >
     <ui-icon name="archive" size="sm" />Lưu nháp
   </button>
@@ -176,7 +181,7 @@
     [disabled]="continueBlocked() || store.isSaving$() || (store.isCreate$() && !store.ownerOrgId$())"
     (click)="continue()"
   >
-    Tiếp tục<ui-icon name="chevron-right" size="sm" />
+    Tiếp theo<ui-icon name="chevron-right" size="sm" />
   </button>
   } @else if (store.isDraft$()) {
   <button

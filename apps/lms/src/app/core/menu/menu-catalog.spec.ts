@@ -137,7 +137,7 @@ describe('menu catalog', () => {
   });
 
   describe('upcoming', () => {
-    const UPCOMING = ['LESSON_MANAGEMENT', 'KNOWLEDGE_HUB', 'ISSUE_HUB'];
+    const UPCOMING = ['KNOWLEDGE_HUB', 'ISSUE_HUB'];
 
     it('marks exactly the functions whose entry screen is not built', () => {
       const items = allSections().flatMap((s) => s.items);

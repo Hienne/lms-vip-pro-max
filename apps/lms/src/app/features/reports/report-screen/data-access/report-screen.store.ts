@@ -200,6 +200,29 @@ export class ReportScreenStore {
     pageSize: signal(20),
   };
   readonly filters$ = computed<ReportFilters>(() => this.urlQuery().filters);
+  readonly tableScopeLabel$ = computed(() => {
+    const f = this.filters$();
+    const status: Record<string, string> = {
+      IN_PROGRESS: 'Đang làm',
+      SUBMITTED: 'Đã nộp',
+      AUTO_SUBMITTED: 'Tự nộp',
+      VOIDED: 'Đã hủy',
+    };
+    return (
+      [
+        f.userId ? `Mã cán bộ: ${f.userId}` : '',
+        f.status ? `Trạng thái: ${status[f.status] ?? f.status}` : '',
+        f.passed === undefined
+          ? ''
+          : f.passed
+            ? 'Kết quả: Đạt'
+            : 'Kết quả: Chưa đạt',
+      ]
+        .filter(Boolean)
+        .join(' · ') ||
+      'Không giới hạn thêm theo mã cán bộ, trạng thái hay kết quả.'
+    );
+  });
   readonly page$ = computed(() => this.urlQuery().page);
   /** Rows per page of the open table; chosen in the page, not kept in the URL. */
   readonly pageSize$ = computed(() =>
@@ -207,6 +230,24 @@ export class ReportScreenStore {
   );
   /** The unit, team, course and quiz pickers, and whether the URL's ids are known to be in scope. */
   readonly pickers = reportPickers(this.filters$);
+  readonly commonScopeLabel$ = computed(() => {
+    const f = this.filters$();
+    const names = (['orgId', 'teamId', 'courseId', 'quizId'] as const)
+      .filter((key) => f[key] !== undefined)
+      .map(
+        (key) =>
+          this.pickers.options$[key]().find((o) => o.id === f[key])?.name ??
+          'Đang xác định phạm vi',
+      );
+    const dates = [
+      f.from ? `Từ ${new Date(f.from).toLocaleString('vi-VN')}` : '',
+      f.to ? `Đến trước ${new Date(f.to).toLocaleString('vi-VN')}` : '',
+    ].filter(Boolean);
+    return [
+      ...(names.length ? names : ['Tất cả đơn vị bạn có quyền xem']),
+      ...dates,
+    ].join(' · ');
+  });
   /** The groups and the learner list of "Tiến độ & hoàn thành". */
   readonly progress = progressReport({
     filters: this.filters$,

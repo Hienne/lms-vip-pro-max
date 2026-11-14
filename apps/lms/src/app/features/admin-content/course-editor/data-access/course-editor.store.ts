@@ -32,10 +32,14 @@ import {
   type CreateCourseCommand,
   type LibraryAsset,
   type SaveDraftCommand,
+  type ScormPackage,
 } from '@lms/contracts';
 import { choose, confirm, NOW, Toaster, type StepperItem } from '@lms/ui';
 import {
   catchError,
+  EMPTY,
+  expand,
+  reduce,
   filter,
   firstValueFrom,
   map,
@@ -275,11 +279,11 @@ export class CourseEditorStore {
 
   private readonly state = {
     scormPickerOpen: signal(false),
-    scormPage: signal(0),
-    scormQuery: signal(''),
     step: signal(this.initialStep()),
     /** The steps the author has opened, which may show ✓ once they are valid and left. */
-    visited: signal<readonly number[]>([this.initialStep()]),
+    visited: signal<readonly number[]>(
+      Array.from({ length: this.initialStep() + 1 }, (_, index) => index),
+    ),
     /** The checks of steps 1 to 3 over the form, handed over once by the page. */
     stepChecks: signal<readonly StepCheck[]>([]),
     /** The exam a publish already published: a retry of the course does not publish it again. */
@@ -344,46 +348,34 @@ export class CourseEditorStore {
   );
 
   private readonly scormData = serverData(
-    (query: { page: number; q: string }) =>
-      this.client.call(scormEndpoints.list, { query: { ...query, size: 100 } }),
+    (_: true) =>
+      this.client
+        .call(scormEndpoints.list, { query: { page: 0, size: 100 } })
+        .pipe(
+          expand((page, index) => {
+            if (page.page !== index)
+              throw new Error('Thư viện trả về sai trang. Vui lòng thử lại.');
+            return page.page + 1 < page.totalPages
+              ? this.client.call(scormEndpoints.list, {
+                  query: { page: page.page + 1, size: 100 },
+                })
+              : EMPTY;
+          }),
+          reduce((all, page) => [...all, ...page.items], [] as ScormPackage[]),
+        ),
     {
-      params: () =>
-        this.state.scormPickerOpen()
-          ? {
-              page: this.state.scormPage(),
-              q: this.state.scormQuery(),
-            }
-          : undefined,
+      params: () => (this.state.scormPickerOpen() ? true : undefined),
     },
   );
   readonly scormPackages$ = computed(() =>
-    (this.scormData.value()?.items ?? []).filter(
+    (this.scormData.value() ?? []).filter(
       (p) => p.canManage && p.ownerOrgId === this.ownerOrgId$(),
     ),
   );
   readonly scormError$ = this.scormData.error;
   readonly scormLoading$ = this.scormData.isLoading;
-  readonly scormPage$ = this.state.scormPage.asReadonly();
-  readonly scormQuery$ = this.state.scormQuery.asReadonly();
-  readonly scormHasNext$ = computed(
-    () =>
-      this.state.scormPage() + 1 < (this.scormData.value()?.totalPages ?? 0),
-  );
-  setScormPage(page: number): void {
-    this.state.scormPage.set(Math.max(0, page));
-  }
-  setScormQuery(q: string): void {
-    this.state.scormQuery.set(q);
-  }
-  searchScorm(q: string): void {
-    this.setScormQuery(q);
-    this.setScormPage(0);
-  }
   private setScormPickerOpen(open: boolean): void {
     this.state.scormPickerOpen.set(open);
-  }
-  loadScorm(kind: string): void {
-    if (kind === 'scorm') this.reloadScorm();
   }
   reloadScorm(): void {
     if (!this.state.scormPickerOpen()) {
@@ -502,7 +494,7 @@ export class CourseEditorStore {
     this.state.step(),
   );
 
-  /** "Tiếp tục" on step 1 of a new course: the edit URL opens on step 2. */
+  /** "Tiếp theo" on step 1 of a new course: the edit URL opens on step 2. */
   private readonly createAndContinueMutation = this.newCreateMutation(() => 1);
 
   /**
@@ -597,7 +589,7 @@ export class CourseEditorStore {
     );
     return EDITOR_STEPS.map((step, index) => ({
       ...step,
-      completed: done[index],
+      completed: done[index] && (index !== 2 || !this.state.examEditing()),
     }));
   });
   /** Steps holding a field whose error the author has been shown. */
@@ -698,6 +690,10 @@ export class CourseEditorStore {
 
   // Step 4: the rows, the reminder and the shares that go with the publish.
   readonly publishRows$ = this.state.publishRows.asReadonly();
+  readonly publishPicks$ = computed(() =>
+    this.state.publishRows().map((row) => row.pick),
+  );
+  readonly publishTargetLimit = PUBLISH_LIMITS.assignments;
   readonly reminderEnabled$ = this.state.reminderEnabled.asReadonly();
   readonly newShareOrgIds$ = this.state.newShareOrgIds.asReadonly();
   /** The unit that owns the course: its own while stored, else the author's. */
@@ -929,7 +925,7 @@ export class CourseEditorStore {
 
   // Commands
   goToStep(step: number): void {
-    if (this.state.examSaving() || this.state.examEditing()) return;
+    if (this.state.examSaving()) return;
     const target = Math.max(0, Math.min(EDITOR_STEPS.length - 1, step));
     this.setStep(target);
     if (!this.state.visited().includes(target)) {
@@ -955,11 +951,12 @@ export class CourseEditorStore {
     this.state.examEditing.set(editing);
   }
 
-  acceptExamCourse(saved: CourseDetail): void {
-    if (this.isCreate$()) this.moveToEditor(saved, 2);
+  acceptExamCourse(saved: CourseDetail, nextStep?: number): void {
+    if (this.isCreate$()) this.moveToEditor(saved, nextStep ?? 2);
     else {
       this.changes.bump();
       this.quizzesData.reload();
+      if (nextStep !== undefined) this.goToStep(nextStep);
     }
   }
 
@@ -993,24 +990,39 @@ export class CourseEditorStore {
   }
 
   /**
-   * "Tiếp tục": shows the current step's errors and stays while it has any, else opens the next
+   * "Tiếp theo": shows the current step's errors and stays while it has any, else opens the next
    * step. Returns whether it moved, so the page can focus the first error when it did not.
    * Leaving step 1 of a new course stores it as a draft first (the page moves on to the edit URL
    * when that is done), so the later steps always have a course to attach to.
    */
-  continue(draft: CourseDraftValue): boolean {
-    if (this.isSaving$() || this.examEditing$()) return false;
+  continue(draft: CourseDraftValue, target = this.state.step() + 1): boolean {
+    if (this.isSaving$()) return false;
     const step = this.state.step();
-    const check = this.state.stepChecks()[step];
-    check?.touch();
-    if (check?.invalid()) return false;
+    if (!this.validateBefore(target)) return false;
     if (this.isCreate$() && step === 0) {
       const command = this.createCommand(draft);
       if (!command) return false;
       this.createAndContinueMutation.run(command);
       return true;
     }
-    this.goToStep(step + 1);
+    this.goToStep(target);
+    return true;
+  }
+
+  /** Every route forward uses the same checks; a header click cannot skip unfinished content. */
+  validateBefore(target: number): boolean {
+    for (
+      let step = 0;
+      step < Math.min(target, this.state.stepChecks().length);
+      step++
+    ) {
+      const check = this.state.stepChecks()[step];
+      check.touch();
+      if (check.invalid()) {
+        this.setStep(step);
+        return false;
+      }
+    }
     return true;
   }
 
@@ -1041,11 +1053,13 @@ export class CourseEditorStore {
   /** Opens a lesson in the drawer; a published revision is not edited, so it stays shut. */
   editLesson(target: LessonTarget): void {
     if (!this.isDraft$()) return;
+    this.setScormPickerOpen(false);
     this.setSessionUploads([]);
     this.setEditingLesson(target);
   }
 
   closeLesson(): void {
+    this.setScormPickerOpen(false);
     this.setSessionUploads([]);
     this.setEditingLesson(null);
   }
@@ -1147,6 +1161,33 @@ export class CourseEditorStore {
         dueDate: '',
       },
     ]);
+  }
+
+  /** Multi-selection retains dates, row identities and refusals for unchanged targets. */
+  setPublishPicks(picks: readonly TargetPick[]): void {
+    const unique = picks
+      .filter(
+        (pick, index) =>
+          picks.findIndex((other) => sameTarget(other, pick)) === index,
+      )
+      .slice(0, PUBLISH_LIMITS.assignments);
+    const rows = this.state.publishRows();
+    this.setPublishRows(
+      unique.map((pick) => {
+        const previous = rows.find((row) => sameTarget(row.pick, pick));
+        if (!previous)
+          return {
+            id: this.nextRowId++,
+            pick,
+            startDate: dateInput(this.now()),
+            dueDate: '',
+          };
+        if (previous.pick.includeDescendants === pick.includeDescendants)
+          return { ...previous, pick };
+        const { error: _error, ...rest } = previous;
+        return { ...rest, pick };
+      }),
+    );
   }
 
   /** "Xóa dòng". */

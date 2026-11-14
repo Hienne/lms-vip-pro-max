@@ -91,11 +91,11 @@
         [disabled]="current() === 0"
         (click)="goto.emit(current() - 1)"
       >
-        <ui-icon name="chevron-left" size="sm" />Câu trước
+        <ui-icon name="chevron-left" size="sm" />Quay lại
       </button>
       @if (current() < questions().length - 1) {
       <button uiButton (click)="goto.emit(current() + 1)">
-        Câu tiếp<ui-icon name="chevron-right" size="sm" />
+        Tiếp theo<ui-icon name="chevron-right" size="sm" />
       </button>
       } @else {
       <button uiButton [disabled]="answersLocked()" (click)="submitted.emit()">

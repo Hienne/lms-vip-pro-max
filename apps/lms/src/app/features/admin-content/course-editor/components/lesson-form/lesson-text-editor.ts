@@ -3,6 +3,7 @@ import {
   Component,
   computed,
   DOCUMENT,
+  DestroyRef,
   ElementRef,
   inject,
   input,
@@ -14,8 +15,8 @@ import {
   ViewEncapsulation,
 } from '@angular/core';
 import type { FormValueControl } from '@angular/forms/signals';
-import type { BodyFormat } from '@lms/contracts';
-import { Button, Card, Textarea } from '@lms/ui';
+import { COURSE_LIMITS, type BodyFormat } from '@lms/contracts';
+import { Button, Card, Icon, IconButton, Textarea } from '@lms/ui';
 import type { AssetValue } from '../../course-draft';
 import { LessonInlineMediaStore } from '../../data-access/lesson-inline-media.store';
 import { LessonImages } from '../../../../../shared/content/markdown/lesson-images';
@@ -26,20 +27,24 @@ import {
 } from '../../../../../shared/content/markdown/lesson-html';
 
 const TOOLS = [
-  { command: 'bold', label: 'Đậm' },
-  { command: 'italic', label: 'Nghiêng' },
-  { command: 'underline', label: 'Gạch chân' },
-  { command: 'formatBlock', label: 'Tiêu đề', value: 'h2' },
-  { command: 'insertUnorderedList', label: 'Danh sách' },
-  { command: 'insertOrderedList', label: 'Đánh số' },
-  { command: 'undo', label: 'Hoàn tác' },
-  { command: 'redo', label: 'Làm lại' },
+  { command: 'bold', icon: 'bold', label: 'Bold (Ctrl+B)' },
+  { command: 'italic', icon: 'italic', label: 'Italic (Ctrl+I)' },
+  { command: 'underline', icon: 'underline', label: 'Underline (Ctrl+U)' },
+  { command: 'formatBlock', icon: 'heading-2', label: 'Heading', value: 'h2' },
+  { command: 'insertUnorderedList', icon: 'list', label: 'Bulleted list' },
+  {
+    command: 'insertOrderedList',
+    icon: 'list-ordered',
+    label: 'Numbered list',
+  },
+  { command: 'undo', icon: 'undo-2', label: 'Undo (Ctrl+Z)' },
+  { command: 'redo', icon: 'redo-2', label: 'Redo (Ctrl+Y)' },
 ] as const;
 type Tool = (typeof TOOLS)[number];
 
 @Component({
   selector: 'app-lesson-text-editor',
-  imports: [Button, Card, Textarea, LessonImages],
+  imports: [Button, Card, Icon, IconButton, Textarea, LessonImages],
   providers: [LessonInlineMediaStore],
   templateUrl: './lesson-text-editor.html',
   styleUrls: [
@@ -63,11 +68,21 @@ export class LessonTextEditor implements FormValueControl<string> {
   protected readonly media = inject(LessonInlineMediaStore);
   protected readonly sourceMode = signal(false);
   protected readonly sourceText = signal('');
+  protected readonly previewMode = signal(false);
+  protected readonly markdownOpen = signal(false);
+  protected readonly markdownText = signal('');
+  protected readonly markdownError = signal('');
+  protected readonly bodyLimit = COURSE_LIMITS.body;
+  protected readonly markdownHtml = computed(() =>
+    lessonEditorHtml(this.markdownText(), 'markdown', this.document),
+  );
   protected readonly inTable = signal(false);
   protected readonly selected = signal<ReadonlySet<string>>(new Set());
   private readonly document = inject(DOCUMENT);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly editor = viewChild<ElementRef<HTMLElement>>('editor');
   private lastValue: string | undefined;
+  private lastFormat: BodyFormat | undefined;
   private selection: Range | undefined;
   protected readonly imageIds = computed(() =>
     this.assets().map((asset) => asset.assetId),
@@ -82,10 +97,13 @@ export class LessonTextEditor implements FormValueControl<string> {
       const editor = this.editor()?.nativeElement;
       const value = this.value();
       const format = this.format();
-      if (!editor || value === this.lastValue) return;
+      this.previewMode();
+      if (!editor || (value === this.lastValue && format === this.lastFormat))
+        return;
       untracked(() => {
         editor.innerHTML = lessonEditorHtml(value, format, this.document);
         this.lastValue = value;
+        this.lastFormat = format;
         this.selection = undefined;
       });
     },
@@ -213,6 +231,8 @@ export class LessonTextEditor implements FormValueControl<string> {
   }
 
   protected toggleSource(): void {
+    this.previewMode.set(false);
+    this.markdownOpen.set(false);
     if (this.sourceMode()) this.applySource();
     else {
       const editor = this.editor()?.nativeElement;
@@ -223,6 +243,78 @@ export class LessonTextEditor implements FormValueControl<string> {
       );
       this.sourceMode.set(true);
     }
+  }
+
+  protected togglePreview(): void {
+    if (this.sourceMode()) this.applySource();
+    this.markdownOpen.set(false);
+    this.lastValue = undefined;
+    this.previewMode.update((value) => !value);
+  }
+
+  protected openMarkdown(): void {
+    if (this.disabled() || this.media.pending$()) return;
+    if (this.sourceMode()) this.applySource();
+    this.previewMode.set(false);
+    this.rememberSelection();
+    this.markdownError.set('');
+    this.markdownOpen.update((value) => !value);
+  }
+
+  protected markdownChanged(event: Event): void {
+    this.markdownText.set((event.target as HTMLTextAreaElement).value);
+    this.markdownError.set('');
+  }
+
+  protected async pickedMarkdown(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    if (file.size > COURSE_LIMITS.body * 4) {
+      this.markdownError.set(
+        `Tệp Markdown tối đa ${COURSE_LIMITS.body} ký tự.`,
+      );
+      return;
+    }
+    try {
+      const text = await file.text();
+      if (this.destroyRef.destroyed) return;
+      if (text.length > COURSE_LIMITS.body) {
+        this.markdownError.set(
+          `Tệp Markdown tối đa ${COURSE_LIMITS.body} ký tự.`,
+        );
+        return;
+      }
+      this.markdownText.set(text);
+      this.markdownError.set('');
+    } catch {
+      if (!this.destroyRef.destroyed)
+        this.markdownError.set(
+          'Không đọc được tệp Markdown. Hãy chọn lại tệp.',
+        );
+    }
+  }
+
+  protected insertMarkdown(): void {
+    if (this.disabled() || this.media.pending$() || !this.markdownText().trim())
+      return;
+    const html = this.markdownHtml();
+    const current = lessonEditorHtml(
+      this.value(),
+      this.format(),
+      this.document,
+    );
+    if (current.length + html.length > COURSE_LIMITS.body) {
+      this.markdownError.set(
+        `Nội dung sau khi chèn vượt giới hạn ${COURSE_LIMITS.body} ký tự.`,
+      );
+      return;
+    }
+    this.insertHtml(html);
+    this.markdownOpen.set(false);
+    this.markdownText.set('');
+    this.touched.set(true);
   }
 
   protected sourceChanged(event: Event): void {
@@ -304,6 +396,12 @@ export class LessonTextEditor implements FormValueControl<string> {
     ) {
       selection?.removeAllRanges();
       selection?.addRange(this.selection);
+    } else {
+      const end = this.document.createRange();
+      end.selectNodeContents(editor);
+      end.collapse(false);
+      selection?.removeAllRanges();
+      selection?.addRange(end);
     }
     this.document.execCommand('insertHTML', false, html);
     this.capture();
@@ -315,6 +413,7 @@ export class LessonTextEditor implements FormValueControl<string> {
     this.rememberSelection();
     const html = cleanLessonHtml(editor.innerHTML, this.document);
     this.lastValue = html;
+    this.lastFormat = 'html';
     this.value.set(html);
   }
 

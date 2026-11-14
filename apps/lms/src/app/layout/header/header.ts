@@ -27,7 +27,7 @@ import type { LearnerNavGroup } from './learner-navigation';
 import { searchPlaceholder } from './search-target';
 import { ThemePicker } from './theme-picker/theme-picker';
 
-export type UserMenuValue = 'profile' | 'notifications' | 'sign-out';
+export type UserMenuValue = 'profile' | 'notifications' | 'sign-out' | 'guide';
 type PanelId = LearnerNavGroup['id'] | 'account';
 
 /**
@@ -58,6 +58,7 @@ type PanelId = LearnerNavGroup['id'] | 'account';
 export class Header {
   readonly navOpen = input(false);
   readonly user = input<Profile | null>(null);
+  readonly guideAvailable = input(false);
   readonly learnerNav = input<readonly LearnerNavGroup[] | null>(null);
   readonly activePath = input('');
   readonly unread = input(0);
@@ -122,6 +123,16 @@ export class Header {
         ? [{ kind: 'label' as const, label: `Cấp độ: ${this.levelName()}` }]
         : []),
       { kind: 'item', value: 'profile', label: 'Hồ sơ cá nhân', icon: 'user' },
+      ...(this.guideAvailable()
+        ? [
+            {
+              kind: 'item',
+              value: 'guide',
+              label: 'Hướng dẫn sử dụng',
+              icon: 'circle-help',
+            } as const,
+          ]
+        : []),
       {
         kind: 'item',
         value: 'notifications',

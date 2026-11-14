@@ -72,6 +72,7 @@ const questionSchema = SaveQuestionSchema.omit({
       )
       .min(2)
       .max(10),
+    correctOptionIds: z.array(z.string()),
   })
   .superRefine((q, ctx) => {
     if (
@@ -197,7 +198,7 @@ function quizValue(
     scoreMethod: q?.scoreMethod ?? ('BEST' as const),
     graceSeconds: q?.graceSeconds ?? 0,
     allowRetakeAfterPass: q?.allowRetakeAfterPass ?? false,
-    requireLessonsCompleted: q?.requireLessonsCompleted ?? false,
+    requireLessonsCompleted: q?.requireLessonsCompleted ?? true,
   };
 }
 @Component({
@@ -460,6 +461,7 @@ export class AssessmentScreen {
     }
   }
   protected setCorrect(id: string, checked: boolean): void {
+    this.questionForm.correctOptionIds().markAsTouched();
     this.questionModel.update((q) => ({
       ...q,
       correctOptionIds:

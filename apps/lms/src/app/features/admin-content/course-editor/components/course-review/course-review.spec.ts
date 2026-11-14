@@ -40,11 +40,30 @@ describe('CourseReview step 4: assignment rows and shares', () => {
 
   /** Picks unit 1 with its sub-units in the picker and adds it as a row. */
   async function addUnitRow() {
-    await screen.choose(
-      screen.field('Đơn vị', screen.el) as HTMLSelectElement,
-      '1',
+    await screen.click(
+      screen.el.querySelector<HTMLButtonElement>(
+        'app-target-picker ui-multi-select button',
+      )!,
     );
-    await screen.click(screen.button('Thêm đối tượng'));
+    const box = document.querySelector<HTMLInputElement>(
+      '.multi-select__option input',
+    )!;
+    if (!box.checked) await screen.click(box);
+    await screen.click(screen.button('Xong', document.body));
+  }
+
+  async function openShares() {
+    await screen.click(
+      screen.el.querySelector<HTMLButtonElement>(
+        'app-share-units ui-multi-select button',
+      )!,
+    );
+  }
+  async function shareBox(index: number) {
+    await openShares();
+    return document.querySelectorAll<HTMLInputElement>(
+      '.multi-select__option input',
+    )[index];
   }
 
   const rowInputs = (label: string) =>
@@ -139,6 +158,40 @@ describe('CourseReview step 4: assignment rows and shares', () => {
       expect(rows()).toHaveLength(1);
     });
 
+    it('selects multiple targets without an add button and retains dates when the selection changes', async () => {
+      moreUnits();
+      await openStep4();
+      await addUnitRow();
+      await screen.type(rowInputs('Hạn hoàn thành')[0], '2099-03-01');
+      expect(screen.button('Thêm đối tượng')).toBeUndefined();
+      await screen.click(
+        screen.el.querySelector<HTMLButtonElement>(
+          'app-target-picker ui-multi-select button',
+        )!,
+      );
+      await screen.click(
+        document.querySelectorAll<HTMLInputElement>(
+          '.multi-select__option input',
+        )[1],
+      );
+      await screen.click(screen.button('Xong', document.body));
+      expect(rows()).toHaveLength(2);
+      expect(rowInputs('Hạn hoàn thành')[0].value).toBe('2099-03-01');
+      await screen.click(
+        screen.el.querySelector<HTMLButtonElement>(
+          'app-target-picker ui-multi-select button',
+        )!,
+      );
+      await screen.click(
+        document.querySelectorAll<HTMLInputElement>(
+          '.multi-select__option input',
+        )[1],
+      );
+      await screen.click(screen.button('Xong', document.body));
+      expect(rows()).toHaveLength(1);
+      expect(rowInputs('Hạn hoàn thành')[0].value).toBe('2099-03-01');
+    });
+
     it('names the line whose due date is before the start, and sends nothing', async () => {
       await openStep4();
       await addUnitRow();
@@ -225,7 +278,7 @@ describe('CourseReview step 4: assignment rows and shares', () => {
   describe('the shares', () => {
     const units = () =>
       Array.from(
-        screen.el.querySelectorAll<HTMLElement>('.share-units__unit'),
+        document.querySelectorAll<HTMLElement>('.multi-select__option'),
       ).map((li) => {
         const input = li.querySelector<HTMLInputElement>('input')!;
         return {
@@ -238,6 +291,7 @@ describe('CourseReview step 4: assignment rows and shares', () => {
     it('shows the owner unit and the shared units ticked and locked, and leaves out a closed unit', async () => {
       moreUnits();
       await openStep4();
+      await openShares();
       expect(screen.text()).toContain(
         'Đơn vị được chia sẻ có thể giao khóa cho học viên của mình nhưng không sửa nội dung.',
       );
@@ -259,11 +313,10 @@ describe('CourseReview step 4: assignment rows and shares', () => {
     it('sends the ticked units with the publish, and only those', async () => {
       moreUnits();
       await openStep4();
-      const hanoi = screen.el.querySelectorAll<HTMLInputElement>(
-        '.share-units__unit input',
-      )[1];
+      const hanoi = await shareBox(1);
       await screen.click(hanoi);
       expect(units()[1].checked).toBe(true);
+      await screen.click(screen.button('Xong', document.body));
       await publish();
       expect(screen.lastCall(courseEndpoints.publish)?.body).toEqual({
         expectedVersion: 1,
@@ -289,11 +342,8 @@ describe('CourseReview step 4: assignment rows and shares', () => {
       await addUnitRow();
       await screen.type(rowInputs('Bắt đầu')[0], '2099-01-01');
       await screen.type(rowInputs('Hạn hoàn thành')[0], '2099-02-01');
-      await screen.click(
-        screen.el.querySelectorAll<HTMLInputElement>(
-          '.share-units__unit input',
-        )[1],
-      );
+      await screen.click(await shareBox(1));
+      await screen.click(screen.button('Xong', document.body));
 
       await screen.click(screen.button('Xuất bản khóa học'));
       expect(screen.text(screen.alertDialog()!)).toContain(
@@ -332,16 +382,19 @@ describe('CourseReview step 4: assignment rows and shares', () => {
       moreUnits();
       await openStep4();
       await addUnitRow();
-      await screen.choose(
-        screen.field('Đơn vị', screen.el) as HTMLSelectElement,
-        '2',
-      );
-      await screen.click(screen.button('Thêm đối tượng'));
       await screen.click(
-        screen.el.querySelectorAll<HTMLInputElement>(
-          '.share-units__unit input',
+        screen.el.querySelector<HTMLButtonElement>(
+          'app-target-picker ui-multi-select button',
+        )!,
+      );
+      await screen.click(
+        document.querySelectorAll<HTMLInputElement>(
+          '.multi-select__option input',
         )[1],
       );
+      await screen.click(screen.button('Xong', document.body));
+      await screen.click(await shareBox(1));
+      await screen.click(screen.button('Xong', document.body));
       const inner = screen.calls.getMockImplementation()!;
       screen.calls.mockImplementation((endpoint, request) =>
         endpoint === courseEndpoints.publish
@@ -376,9 +429,7 @@ describe('CourseReview step 4: assignment rows and shares', () => {
       );
       expect(screen.text(rows()[0])).not.toContain('Đối tượng giao không có');
       expect(
-        screen.text(
-          screen.el.querySelectorAll<HTMLElement>('.share-units__unit')[1],
-        ),
+        screen.text(screen.el.querySelector<HTMLElement>('app-share-units')!),
       ).toContain('ID tham chiếu không tồn tại');
       expect(screen.el.querySelector('.course-editor__notice')).toBeNull();
       expect(screen.url()).toBe('/admin/courses/6/edit');
@@ -430,19 +481,21 @@ describe('CourseReview step 4: assignment rows and shares', () => {
           screen.el.querySelectorAll<HTMLElement>('.stepper__step'),
         ).find((s) => s.textContent?.includes('Đối tượng & xuất bản')),
       );
-      expect(screen.callsTo(courseEndpoints.shares)).toBe(0);
-      expect(screen.callsTo(assignmentEndpoints.courseAssignments)).toBe(0);
+      expect(screen.callsTo(courseEndpoints.shares)).toBe(1);
+      expect(screen.callsTo(assignmentEndpoints.courseAssignments)).toBe(1);
       expect(screen.text()).not.toContain('Đã giao trước đó');
+      await openShares();
       expect(
-        screen.el.querySelectorAll('.share-units__unit input:disabled'),
+        document.querySelectorAll('.multi-select__option input:disabled'),
       ).toHaveLength(1);
+      await screen.click(screen.button('Xong', document.body));
 
       await addUnitRow();
       await publish();
 
       expect(screen.callsTo(courseEndpoints.createCourse)).toBe(1);
       expect(screen.lastCall(courseEndpoints.publish)?.body).toMatchObject({
-        expectedVersion: 1,
+        expectedVersion: 2,
         assignments: [{ target: { targetType: 'org', orgId: 1 } }],
       });
       await vi.waitFor(() => expect(screen.url()).toBe('/admin/courses'));

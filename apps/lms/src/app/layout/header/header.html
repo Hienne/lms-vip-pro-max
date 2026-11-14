@@ -5,7 +5,11 @@
     <ui-mai [size]="26" />
     <span>Core Banking Academy</span>
   </a>
-  <nav class="header__nav" aria-label="Điều hướng học viên">
+  <nav
+    class="header__nav"
+    aria-label="Điều hướng học viên"
+    data-guide="learner-navigation"
+  >
     @for (group of learner; track group.id) {
     <div
       class="header__group"
@@ -79,6 +83,7 @@
     @if (user(); as me) { @if (learner !== null) {
     <div
       class="header__account"
+      data-guide="account-menu"
       data-header-panel="account"
       (pointerenter)="showAccount($event)"
       (pointerleave)="hideAccount()"
@@ -124,6 +129,7 @@
     </div>
     } @else {
     <ui-menu
+      data-guide="account-menu"
       [label]="me.fullName"
       icon="user"
       variant="ghost"

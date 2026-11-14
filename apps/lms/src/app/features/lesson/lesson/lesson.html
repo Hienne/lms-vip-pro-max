@@ -143,19 +143,7 @@
       />
 
       @if (store.view$() === 'scorm') {
-      <ui-section-card title="Bài giảng SCORM 1.2">
-        <p>
-          Học nội dung tương tác và tiếp tục từ vị trí đã lưu. Kết quả được ghi
-          vào lần học của khóa này.
-        </p>
-        <a
-          uiButton
-          variant="primary"
-          [routerLink]="['/scorm', store.scormPackageId$()]"
-          [queryParams]="store.scormContext$()"
-          >Mở bài giảng SCORM</a
-        >
-      </ui-section-card>
+      <app-scorm-block />
       <ng-container [ngTemplateOutlet]="lessonSteps" />
       } @else if (store.view$() === 'quiz') {
       <section class="lesson__quiz" aria-labelledby="lesson-quiz">
@@ -191,7 +179,7 @@
         <div class="lesson__empty-actions">
           @if (store.nextLessonLink$(); as link) {
           <a uiButton variant="primary" [routerLink]="link">
-            Bài tiếp theo<ui-icon name="arrow-right" size="sm" />
+            Tiếp theo<ui-icon name="arrow-right" size="sm" />
           </a>
           <a uiButton variant="ghost" [routerLink]="courseLink()"
             >Về khóa học</a
@@ -384,11 +372,11 @@
   <nav class="lesson__steps" aria-label="Chuyển bài học">
     @if (store.prevLessonLink$(); as link) {
     <a uiButton [routerLink]="link">
-      <ui-icon name="arrow-left" size="sm" />Bài trước
+      <ui-icon name="arrow-left" size="sm" />Quay lại
     </a>
     } @if (store.nextLessonLink$(); as link) {
     <a uiButton [routerLink]="link">
-      Bài tiếp theo<ui-icon name="arrow-right" size="sm" />
+      Tiếp theo<ui-icon name="arrow-right" size="sm" />
     </a>
     }
   </nav>
