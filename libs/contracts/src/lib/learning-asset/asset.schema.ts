@@ -16,6 +16,7 @@ export const AssetStatusSchema = z.enum([
   'canceled',
   'expired',
   'deleted',
+  'deleting',
 ]);
 export type AssetStatus = z.infer<typeof AssetStatusSchema>;
 
@@ -32,6 +33,8 @@ export const LibraryAssetSchema = z.object({
   id: z.number().int(),
   ownerOrgId: z.number().int(),
   originalName: z.string(),
+  displayName: z.string().nullish(),
+  description: z.string().nullish(),
   mimeType: z.string(),
   sizeBytes: z.number().int(),
   mediaType: MediaKindSchema,
@@ -45,6 +48,7 @@ export const AssetListQuerySchema = PageQuerySchema.extend({
   q: z.string().optional(),
   mediaType: MediaKindSchema.optional(),
   status: AssetStatusSchema.optional(),
+  includeDeleting: z.boolean().optional(),
 });
 export type AssetListQuery = z.infer<typeof AssetListQuerySchema>;
 
@@ -59,6 +63,8 @@ export const StartUploadCommandSchema = z.object({
   mimeType: z.string().min(1).max(100),
   sizeBytes: z.number().int().min(1).max(ASSET_MAX_BYTES),
   checksumSha256: z.string().regex(/^[0-9a-f]{64}$/),
+  displayName: z.string().max(255).optional(),
+  description: z.string().max(2000).optional(),
 });
 export type StartUploadCommand = z.infer<typeof StartUploadCommandSchema>;
 
