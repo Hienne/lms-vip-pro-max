@@ -106,7 +106,8 @@ describe('TrainingCatalog', () => {
   });
 
   afterEach(() => {
-    backend.verify();
+    fixture?.destroy();
+    backend.verify({ ignoreCancelled: true });
     document
       .querySelectorAll('.cdk-overlay-container')
       .forEach((c) => (c.innerHTML = ''));
@@ -123,12 +124,29 @@ describe('TrainingCatalog', () => {
   const treeRequests = (): TestRequest[] =>
     backend.match((r) => r.url === `${BASE}/tree`);
 
-  async function open(answer: CatalogTree = tree): Promise<void> {
+  async function open(
+    answer: CatalogTree = tree,
+    initialModules: readonly unknown[] = [],
+  ): Promise<void> {
     fixture = TestBed.createComponent(TrainingCatalog);
     el = fixture.nativeElement as HTMLElement;
     await settle();
     const [request] = treeRequests();
     request.flush(envelopeOk(answer));
+    await settle();
+    backend
+      .match((r) => r.url === `${BASE}/modules`)
+      .forEach((request) =>
+        request.flush(
+          envelopeOk({
+            items: initialModules,
+            page: 0,
+            size: 100,
+            totalPages: initialModules.length ? 1 : 0,
+            totalElements: initialModules.length,
+          }),
+        ),
+      );
     await settle();
   }
 
@@ -173,6 +191,50 @@ describe('TrainingCatalog', () => {
     expect(text(detail())).toContain('lĩnh vực · NV');
     expect(text(detail())).toContain('Các phân hệ nghiệp vụ lõi.');
     expect(text(detail())).toContain('Chương trình (2)');
+  });
+
+  it('shows the selected field modules and opens their management form', async () => {
+    await open(tree, [
+      {
+        id: 31,
+        fieldId: 1,
+        code: 'DEP',
+        name: 'Tiền gửi',
+        status: 'published',
+        rowVersion: 0,
+      },
+    ]);
+    expect(text(detail())).toContain('Phân hệ nghiệp vụ');
+    expect(text(detail())).toContain('Tiền gửi · DEP');
+    button('Quản lý phân hệ', detail())!.click();
+    await settle();
+    backend
+      .expectOne(
+        (r) => r.url === `${BASE}/modules` && r.params.get('fieldId') === '1',
+      )
+      .flush(
+        envelopeOk({
+          items: [
+            {
+              id: 31,
+              fieldId: 1,
+              code: 'DEP',
+              name: 'Tiền gửi',
+              status: 'published',
+              rowVersion: 0,
+            },
+          ],
+          page: 0,
+          size: 100,
+          totalPages: 1,
+          totalElements: 1,
+        }),
+      );
+    await settle();
+    expect(text(drawer()!)).toContain('Phân hệ nghiệp vụ');
+    expect(
+      (drawer()!.querySelectorAll('input')[3] as HTMLInputElement).value,
+    ).toBe('Tiền gửi');
   });
 
   it('adds multiple modules with the field in one save and removes unsaved rows immediately', async () => {
@@ -330,6 +392,42 @@ describe('TrainingCatalog', () => {
     );
     expect(button('Sao chép', detail())).toBeTruthy();
     expect(button('Xóa', detail())).toBeUndefined();
+  });
+
+  it('shows ten courses per page and resets the page when selecting another node', async () => {
+    const courses = Array.from({ length: 21 }, (_, index) => ({
+      ...course,
+      id: index + 100,
+      code: 'KH-' + index,
+      title: 'Khóa mẫu ' + (index + 1),
+    }));
+    const data: CatalogTree = {
+      fields: [
+        {
+          ...tree.fields[0],
+          programs: [
+            { ...tree.fields[0].programs[0], courses },
+            tree.fields[0].programs[1],
+          ],
+        },
+        tree.fields[1],
+      ],
+    };
+    await open(data);
+    button('Tiền gửi', detail())!.click();
+    await settle();
+    expect(text(detail())).toContain('Khóa học (21)');
+    expect(text(detail())).toContain('Khóa mẫu 10');
+    expect(text(detail())).not.toContain('Khóa mẫu 11');
+    button('2', detail().querySelector('ui-pagination')!)!.click();
+    await settle();
+    expect(text(detail())).toContain('Khóa mẫu 11');
+    expect(text(detail())).not.toContain('Khóa mẫu 1 ');
+    await pick('Nghiệp vụ');
+    button('Tiền gửi', detail())!.click();
+    await settle();
+    expect(text(detail())).toContain('Khóa mẫu 10');
+    expect(text(detail())).not.toContain('Khóa mẫu 11');
   });
 
   it('offers delete only for an empty program, and lists archive for a full one', async () => {

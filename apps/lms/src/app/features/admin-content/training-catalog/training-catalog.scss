@@ -17,7 +17,7 @@
     align-items: start;
 
     @include ui.bp(lg) {
-      grid-template-columns: ui.layout(sidebar) minmax(0, 1fr);
+      grid-template-columns: ui.layout(panel) minmax(0, 1fr);
     }
   }
 
@@ -116,13 +116,27 @@
   &__item-name {
     @include ui.grow;
     @include ui.text(sm);
-    overflow-wrap: anywhere;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   &__none {
     @include ui.text(sm, muted);
     margin: 0;
     padding: ui.space(2);
+  }
+
+  &__modules-head,
+  &__module-row {
+    @include ui.row-between(3);
+    flex-wrap: wrap;
+  }
+
+  &__module-row {
+    padding: ui.space(2) ui.space(3);
+    border: 1px solid transparent;
   }
 
   &__buttons {

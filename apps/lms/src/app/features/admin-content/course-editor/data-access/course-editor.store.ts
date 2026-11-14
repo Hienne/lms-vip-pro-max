@@ -1775,17 +1775,22 @@ export class CourseEditorStore {
     examTitle?: string,
     requireReview = false,
   ): void {
-    const counts =
-      targets.rows.length || targets.shareOrgIds.length
-        ? ` ${countsText(targets.rows.length, targets.shareOrgIds.length)}`
-        : '';
+    const details = [
+      targets.rows.length
+        ? `Giao cho ${targets.rows.length} đối tượng.`
+        : 'Chưa chọn đối tượng giao.',
+      targets.shareOrgIds.length
+        ? `Chia sẻ cho ${targets.shareOrgIds.length} đơn vị.`
+        : '',
+      examTitle
+        ? `Bài thi cuối khóa “${examTitle}” cũng sẽ được xuất bản.`
+        : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
     confirm(this.dialog, {
       title: 'Xuất bản khóa học?',
-      message: `Bản nháp được lưu rồi xuất bản. Lượt giao và lần học đã có giữ nguyên phiên bản, tiến độ và kết quả. Phiên bản mới áp dụng cho lần học mới. Muốn chuyển người chưa bắt đầu hoặc giao học lại, thực hiện riêng tại màn Giao khóa học.${counts}${
-        examTitle
-          ? ` Bài thi cuối khóa “${examTitle}” sẽ được xuất bản cùng khóa học.`
-          : ''
-      }`,
+      message: `Bản nháp sẽ được lưu và xuất bản.\n\nLượt học hiện có giữ nguyên phiên bản, tiến độ và kết quả. Phiên bản mới áp dụng cho lượt học mới.\n\n${details}`,
       confirmLabel: 'Xuất bản',
       tone: 'primary',
       ...(requireReview ? { acknowledge: 'Tôi đã rà soát nội dung' } : {}),
