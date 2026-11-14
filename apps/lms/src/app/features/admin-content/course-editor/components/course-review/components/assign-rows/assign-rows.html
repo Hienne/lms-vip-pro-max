@@ -1,6 +1,9 @@
 <section uiCard>
   <div uiCardBody class="stack">
-    <h2 class="assign-rows__title">Giao khóa học</h2>
+    <h2 class="assign-rows__title">Đối tượng nhận khóa học</h2>
+    <p class="assign-rows__previous">
+      Chọn đối tượng để giao khi xuất bản, hoặc giao sau.
+    </p>
     @if (store.assignmentCount$(); as count) {
     <p class="assign-rows__previous">
       Đã giao trước đó: {{ count }} đợt — quản lý tại
@@ -19,6 +22,13 @@
       sau khi xuất bản.
     </p>
     } @if (store.rowViews$().length) {
+    <p class="assign-rows__previous">
+      <strong>Đối tượng đã chọn: {{ store.rowViews$().length }}</strong>
+    </p>
+    <p class="assign-rows__previous">
+      Mỗi đối tượng tạo một lượt giao. Học viên thuộc nhiều đối tượng có thể
+      nhận nhiều lượt giao.
+    </p>
     <ul class="assign-rows__list" aria-label="Đối tượng được giao">
       @for (view of store.rowViews$(); track view.row.id; let index = $index) {
       <li class="assign-rows__row">

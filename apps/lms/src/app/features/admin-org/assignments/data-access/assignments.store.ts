@@ -20,7 +20,8 @@ import {
   type Page,
   type RescheduleAssignmentCommand,
 } from '@lms/contracts';
-import { switchMap } from 'rxjs';
+import { catchError, concatMap, from, map, of, switchMap, toArray } from 'rxjs';
+import { toAppError } from '../../../../core/errors/app-error';
 import { invalidation } from '../../../../core/data-access/invalidation';
 import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
@@ -112,7 +113,8 @@ export class AssignmentsStore {
     pageSize: signal(ASSIGNMENTS_PAGE_SIZE),
     /** The assign drawer; a link from the course list opens it on that course. */
     assigning: signal<Assigning | null>(
-      this.linkedCourseId
+      this.linkedCourseId &&
+        this.route.snapshot.queryParamMap.get('view') !== 'list'
         ? {
             idempotencyKey: newIdempotencyKey(),
             courseId: this.linkedCourseId,
@@ -122,6 +124,8 @@ export class AssignmentsStore {
     viewingId: signal<number | null>(null),
     revisionRecipientId: signal<number | null>(null),
     revisionKey: signal(''),
+    selectedRecipients: signal<readonly number[]>([]),
+    bulkResults: signal<readonly { id: number; message: string }[]>([]),
     revokingId: signal<number | null>(null),
     reschedulingId: signal<number | null>(null),
     withdrawingId: signal<number | null>(null),
@@ -195,7 +199,7 @@ export class AssignmentsStore {
       }),
     {
       errors: 'alert',
-      success: () => 'Đã cập nhật lần học; lịch sử cũ được giữ nguyên.',
+      success: () => 'Đã cập nhật lần học. Lịch sử cũ được giữ nguyên.',
       onSuccess: (result) => {
         this.setRevisionRecipientId(null);
         this.setViewingId(result.assignmentId);
@@ -253,6 +257,93 @@ export class AssignmentsStore {
         dueAt,
         idempotencyKey: this.state.revisionKey(),
       },
+    });
+  }
+
+  readonly selectedRecipients$ = this.state.selectedRecipients.asReadonly();
+  readonly bulkResults$ = this.state.bulkResults.asReadonly();
+  readonly bulkSaving$ = computed(() => this.bulkTransferMutation.isPending());
+
+  toggleRecipient(id: number, checked: boolean): void {
+    this.state.selectedRecipients.update((ids) =>
+      checked
+        ? [...new Set([...ids, id])]
+        : ids.filter((value) => value !== id),
+    );
+  }
+
+  selectAllRecipients(ids: readonly number[], checked: boolean): void {
+    this.state.selectedRecipients.set(checked ? [...ids] : []);
+  }
+
+  private readonly bulkTransferMutation = serverMutation(
+    (input: { ids: readonly number[]; reason: string }) =>
+      from(input.ids).pipe(
+        concatMap((id) =>
+          this.client
+            .call(assignmentEndpoints.revisionChangePreview, {
+              params: { recipientId: id },
+            })
+            .pipe(
+              concatMap((preview) => {
+                if (!preview.canTransfer || !preview.targetRevisionId) {
+                  return of({
+                    id,
+                    message:
+                      preview.blockReason ||
+                      'Không đủ điều kiện chuyển phiên bản.',
+                  });
+                }
+                return this.client
+                  .call(assignmentEndpoints.changeRevision, {
+                    params: { recipientId: id },
+                    body: {
+                      impactToken: preview.impactToken,
+                      enrollmentId: preview.enrollmentId,
+                      expectedVersion: preview.expectedVersion,
+                      targetRevisionId: preview.targetRevisionId,
+                      mode: 'transfer_unstarted' as const,
+                      reason: input.reason,
+                      dueAt: null,
+                      idempotencyKey: newIdempotencyKey(),
+                    },
+                  })
+                  .pipe(
+                    map(() => ({
+                      id,
+                      message: 'Đã chuyển sang phiên bản mới.',
+                    })),
+                  );
+              }),
+              catchError((error: unknown) =>
+                of({ id, message: toAppError(error).message }),
+              ),
+            ),
+        ),
+        toArray(),
+      ),
+    {
+      errors: 'alert',
+      onSuccess: (results) => {
+        this.state.bulkResults.set(results);
+        this.state.selectedRecipients.set([]);
+      },
+      invalidates: this.assignmentChanges,
+    },
+  );
+
+  transferSelected(reason: string): void {
+    const text = reason.trim();
+    if (
+      !text ||
+      !this.state.selectedRecipients().length ||
+      this.bulkTransferMutation.isPending()
+    )
+      return;
+    this.state.bulkResults.set([]);
+    this.bulkTransferMutation.run({
+      ids: this.state.selectedRecipients(),
+      reason: text,
     });
   }
 
@@ -537,6 +628,8 @@ export class AssignmentsStore {
 
   private setViewingId(id: number | null): void {
     this.state.viewingId.set(id);
+    this.state.selectedRecipients.set([]);
+    this.state.bulkResults.set([]);
   }
 
   private setRevokingId(id: number | null): void {

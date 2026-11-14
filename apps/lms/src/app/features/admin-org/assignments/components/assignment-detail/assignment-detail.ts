@@ -18,6 +18,7 @@ import {
   SectionCard,
   Badge,
   Button,
+  Checkbox,
   ErrorState,
   Field,
   FmtDatePipe,
@@ -47,6 +48,7 @@ import { AssignmentsStore } from '../../data-access/assignments.store';
     SectionCard,
     Badge,
     Button,
+    Checkbox,
     DueDate,
     ErrorState,
     Field,
@@ -90,6 +92,21 @@ export class AssignmentDetail {
           Number(b.active) - Number(a.active) || a.name.localeCompare(b.name),
       );
   });
+
+  protected readonly activeRecipientIds = computed(() =>
+    this.recipients()
+      .filter((row) => row.active)
+      .map((row) => row.recipient.id),
+  );
+
+  protected readonly bulkResults = computed(() =>
+    this.store.bulkResults$().map((result) => ({
+      ...result,
+      name:
+        this.recipients().find((row) => row.recipient.id === result.id)?.name ??
+        'Người nhận #' + result.id,
+    })),
+  );
 
   protected readonly assignedBy = computed(() => {
     const id = this.store.detail$()?.assignment.assignedBy;

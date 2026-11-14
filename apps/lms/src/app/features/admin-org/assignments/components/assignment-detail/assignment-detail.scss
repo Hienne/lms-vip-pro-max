@@ -71,6 +71,10 @@
     @include ui.text(sm, muted);
   }
 
+  &__revision-form {
+    @include ui.stack(3);
+  }
+
   &__revoke {
     @include ui.stack(3);
     padding-block-end: ui.space(3);

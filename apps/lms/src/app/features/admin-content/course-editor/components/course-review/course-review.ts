@@ -25,7 +25,7 @@ export class CourseReview {
   readonly draft = input.required<FieldTree<CourseDraftValue>>();
   readonly goToStep = output<number>();
 
-  private readonly store = inject(CourseEditorStore);
+  protected readonly store = inject(CourseEditorStore);
 
   protected readonly checks = computed(() =>
     draftChecks(this.draft()().value(), this.store.quizzes$()),

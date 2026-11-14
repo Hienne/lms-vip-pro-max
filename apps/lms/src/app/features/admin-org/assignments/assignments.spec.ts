@@ -104,6 +104,21 @@ describe('Assignments', () => {
     expect(courseSelect().value).toBe(linked);
   });
 
+  it('shows the selected course assignments before opening a new assignment', async () => {
+    const published = seedCourseDetails().filter(
+      (d) => d.course.publishedRevisionId,
+    );
+    const linked = String(published[published.length - 1].course.id);
+    await screen.open(`/admin/assignments?course=${linked}&view=list`);
+
+    expect(editor()).toBeNull();
+    expect(courseSelect().value).toBe(linked);
+    await screen.click(screen.button('Giao khóa học'));
+    expect(
+      (screen.field('Khóa học', editor()!) as HTMLSelectElement).value,
+    ).toBe(linked);
+  });
+
   it('assigns the published revision to the chosen targets, then closes and lists it with its counts', async () => {
     const drawer = await startAssigning();
     await screen.click(option('Nhóm học tập'));
@@ -322,7 +337,65 @@ describe('Assignments', () => {
       dueAt: null,
     });
     expect(body.idempotencyKey).toBeTruthy();
-    expect(screen.text(detail)).toContain('Thay đổi lần học');
+    expect(screen.text(detail)).toContain('Cập nhật phiên bản học');
+  });
+
+  it('transfers eligible selected learners and reports those who cannot transfer', async () => {
+    const drawer = await startAssigning();
+    await submit(drawer);
+    const backend = TestBed.inject(MockBackend);
+    let previews = 0;
+    screen.calls.mockImplementation((endpoint, request) => {
+      if (endpoint === assignmentEndpoints.revisionChangePreview) {
+        previews++;
+        return {
+          status: 200,
+          body: envelopeOk({
+            enrollmentId: 120,
+            expectedVersion: 3,
+            currentRevisionId: 31,
+            currentRevisionNo: 1,
+            targetRevisionId: 45,
+            targetRevisionNo: 2,
+            learningStatus: 'not_started',
+            activeObligations: 1,
+            impactToken: 'snapshot',
+            canTransfer: previews === 1,
+            canRelearn: true,
+            blockReason: previews === 1 ? null : 'Học viên đã bắt đầu.',
+          }),
+        };
+      }
+      if (endpoint === assignmentEndpoints.changeRevision)
+        return {
+          status: 200,
+          body: envelopeOk({
+            previousEnrollmentId: 120,
+            enrollmentId: 121,
+            assignmentId: 5000,
+            revisionId: 45,
+          }),
+        };
+      return MockBackend.prototype.handle.call(backend, endpoint, request);
+    });
+    await screen.click(
+      screen.el.querySelector<HTMLButtonElement>('tbody tr button')!,
+    );
+    const detail = screen.drawer()!;
+    const choices = detail.querySelectorAll<HTMLInputElement>(
+      'input[aria-label^="Chọn "]',
+    );
+    await screen.click(choices[0]);
+    await screen.click(choices[1]);
+    await screen.type(
+      screen.field('Lý do chuyển', detail) as HTMLTextAreaElement,
+      'Cập nhật nội dung',
+    );
+    await screen.click(screen.button('Chuyển học viên đã chọn', detail));
+    expect(screen.callsTo(assignmentEndpoints.revisionChangePreview)).toBe(2);
+    expect(screen.callsTo(assignmentEndpoints.changeRevision)).toBe(1);
+    expect(screen.text(detail)).toContain('Đã chuyển sang phiên bản mới.');
+    expect(screen.text(detail)).toContain('Học viên đã bắt đầu.');
   });
 
   it('revokes one learner with a reason', async () => {

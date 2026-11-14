@@ -89,6 +89,7 @@ export class TrainingCatalogStore {
     /** Ids of the nodes opened by hand. */
     expanded: signal<readonly string[]>([]),
     selectedId: signal<string | undefined>(undefined),
+    coursePage: signal(1),
     search: signal(''),
     editing: signal<CatalogEditing | null>(null),
   };
@@ -127,32 +128,43 @@ export class TrainingCatalogStore {
     },
   );
 
+  private loadModules(id: number): Observable<BusinessModule[]> {
+    return this.client
+      .call(trainingCatalogEndpoints.listModules, {
+        query: { fieldId: id, page: 0, size: 100 },
+      })
+      .pipe(
+        expand((page, index) => {
+          if (page.page !== index)
+            throw new Error('Không thể tải đủ phân hệ. Vui lòng tải lại.');
+          return page.page + 1 < page.totalPages
+            ? this.client.call(trainingCatalogEndpoints.listModules, {
+                query: { fieldId: id, page: page.page + 1, size: 100 },
+              })
+            : EMPTY;
+        }),
+        reduce((all, page) => [...all, ...page.items], [] as BusinessModule[]),
+      );
+  }
+
   private readonly modulesData = serverData(
-    (id: number) =>
-      this.client
-        .call(trainingCatalogEndpoints.listModules, {
-          query: { fieldId: id, page: 0, size: 100 },
-        })
-        .pipe(
-          expand((page, index) => {
-            if (page.page !== index)
-              throw new Error('Không thể tải đủ phân hệ. Vui lòng tải lại.');
-            return page.page + 1 < page.totalPages
-              ? this.client.call(trainingCatalogEndpoints.listModules, {
-                  query: { fieldId: id, page: page.page + 1, size: 100 },
-                })
-              : EMPTY;
-          }),
-          reduce(
-            (all, page) => [...all, ...page.items],
-            [] as BusinessModule[],
-          ),
-        ),
+    (id: number) => this.loadModules(id),
     {
       params: () => {
         const editing = this.state.editing();
         return editing?.kind === 'field' ? editing.item?.id : undefined;
       },
+    },
+  );
+
+  private readonly selectedModulesData = serverData(
+    (id: number) => this.loadModules(id),
+    {
+      params: () => {
+        const node = this.selected$();
+        return node?.kind === 'field' ? node.field.id : undefined;
+      },
+      reloadOn: this.changes,
     },
   );
 
@@ -210,6 +222,11 @@ export class TrainingCatalogStore {
   readonly editingModules$ = computed(() => this.modulesData.value() ?? []);
   readonly modulesLoading$ = this.modulesData.isLoading;
   readonly modulesError$ = this.modulesData.error;
+  readonly selectedModules$ = computed(
+    () => this.selectedModulesData.value() ?? [],
+  );
+  readonly selectedModulesLoading$ = this.selectedModulesData.isLoading;
+  readonly selectedModulesError$ = this.selectedModulesData.error;
 
   /** Every node by id, to find the selected one and the ancestors of a match. */
   private readonly index = computed(() => {
@@ -290,6 +307,25 @@ export class TrainingCatalogStore {
     return id === undefined ? undefined : this.index().get(id);
   });
 
+  readonly coursePageSize = 10;
+  readonly coursePage$ = computed(() => {
+    const node = this.selected$();
+    const total = node?.kind === 'program' ? node.program.courses.length : 0;
+    return Math.min(
+      this.state.coursePage(),
+      Math.max(1, Math.ceil(total / this.coursePageSize)),
+    );
+  });
+  readonly visibleCourses$ = computed(() => {
+    const node = this.selected$();
+    if (node?.kind !== 'program') return [];
+    const start = (this.coursePage$() - 1) * this.coursePageSize;
+    return node.program.courses.slice(start, start + this.coursePageSize);
+  });
+  goToCoursePage(page: number): void {
+    this.state.coursePage.set(Math.max(1, page));
+  }
+
   readonly editorTitle$ = computed(() => {
     const editing = this.state.editing();
     if (!editing) return '';
@@ -304,6 +340,7 @@ export class TrainingCatalogStore {
   }
 
   private setSelectedId(id: string | undefined): void {
+    if (this.state.selectedId() !== id) this.state.coursePage.set(1);
     this.state.selectedId.set(id);
   }
 
@@ -398,6 +435,10 @@ export class TrainingCatalogStore {
 
   retryLoad(): void {
     this.treeData.reload();
+  }
+
+  retrySelectedModules(): void {
+    this.selectedModulesData.reload();
   }
 
   retryModules(): void {

@@ -190,7 +190,8 @@
     [disabled]="store.isSaving$() || store.pendingUploads$() > 0 || (store.isCreate$() && !store.ownerOrgId$())"
     (click)="publish()"
   >
-    <ui-icon name="check" size="sm" />Xuất bản khóa học
+    <ui-icon name="check" size="sm" />{{ store.publishRows$().length ? 'Xuất bản
+    và giao khóa học' : 'Xuất bản khóa học' }}
   </button>
   }
 </footer>
