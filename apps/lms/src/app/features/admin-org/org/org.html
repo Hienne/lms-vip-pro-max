@@ -26,11 +26,11 @@
 <div class="org__split">
   <section uiCard class="org__units" aria-labelledby="org-units-title">
     <div uiCardHeader>
-      <h3 id="org-units-title">Cây đơn vị</h3>
+      <h3 id="org-units-title">Cơ cấu đơn vị, phòng &amp; nhóm</h3>
     </div>
     <div class="org__tree">
       <ui-tree
-        label="Cây đơn vị và phòng ban"
+        label="Cây đơn vị, phòng ban và nhóm"
         wrapLabels
         [nodes]="store.treeNodes$()"
         [trailing]="trailing"
@@ -43,6 +43,72 @@
   </section>
 
   <section class="org__detail">
+    @if (store.selectedTeam$(); as team) {
+    <div uiCard class="org__head">
+      <h2 class="org__title">{{ team.name }}</h2>
+      <p class="org__meta">
+        Nhóm · {{ team.code || 'Chưa có mã' }} · {{ selected.name }}
+      </p>
+    </div>
+    <section class="org__team-members" aria-labelledby="org-team-members-title">
+      <div class="org__section-head">
+        <h3 id="org-team-members-title">
+          Thành viên ({{ store.membersTotal$() }})
+        </h3>
+      </div>
+      <input
+        uiInput
+        type="search"
+        aria-label="Tìm thành viên trong nhóm"
+        placeholder="Tìm thành viên theo tên hoặc mã"
+        [value]="store.memberQuery$()"
+        (input)="store.searchMembers($any($event.target).value)"
+      />
+      @if (store.membersError$(); as error) {
+      <ui-error-state
+        title="Không tải được thành viên"
+        [message]="error.message"
+        (retry)="store.retryMembers()"
+      />
+      } @else if (store.membersLoading$()) {
+      <div class="org__loading"><span uiSpinner></span></div>
+      } @else if (store.members$().length) {
+      <div class="org__groups">
+        @for (member of store.members$(); track member.userId) {
+        <article uiCard class="org__group">
+          <div class="org__group-head">
+            <ui-avatar [name]="member.fullName" size="sm" />
+            <div class="org__group-title">
+              <strong
+                ><a
+                  [routerLink]="['/admin/users', member.userId]"
+                  [attr.title]="member.fullName"
+                  >{{ member.fullName }}</a
+                ></strong
+              >
+              <span class="org__meta"
+                >{{ member.userId }}@if (member.positionName) { · {{
+                member.positionName }} }</span
+              >
+              @if (member.email) {
+              <span class="org__meta">{{ member.email }}</span> }
+            </div>
+          </div>
+        </article>
+        }
+      </div>
+      @if (store.membersTotal$() > 10) {
+      <ui-pagination
+        [total]="store.membersTotal$()"
+        [page]="store.memberPage$()"
+        [pageSize]="10"
+        (pageChange)="store.goToMemberPage($event)"
+      />
+      } } @else {
+      <ui-empty variant="inline" title="Không có thành viên phù hợp" />
+      }
+    </section>
+    } @else {
     <div uiCard class="org__head">
       <div class="org__head-main">
         <div class="org__head-text">
@@ -94,26 +160,74 @@
           <dt>Thành viên trực tiếp</dt>
           <dd>{{ org.memberCount }}</dd>
         </div>
+        @if (selected.orgType === 'DEPARTMENT') {
         <div class="org__stat">
-          <dt>Nhóm</dt>
+          <dt>Nhóm trực thuộc</dt>
           <dd>{{ org.teamCount }}</dd>
         </div>
+        }
       </dl>
       }
     </div>
 
-    @if (store.contentsError$(); as error) {
+    @if (selected.hasChildren) {
+    <section aria-labelledby="org-children-title">
+      <div class="org__section-head">
+        <h3 id="org-children-title">
+          Đơn vị / phòng trực thuộc@if (!store.childrenLoading$() &&
+          !store.childrenError$()) { ({{ store.childrenTotal$() }}) }
+        </h3>
+      </div>
+      @if (store.childrenError$(); as error) {
+      <ui-error-state
+        title="Không tải được đơn vị / phòng trực thuộc"
+        [message]="error.message"
+        (retry)="store.retryChildren()"
+      />
+      } @else if (store.childrenLoading$()) {
+      <div class="org__loading"><span uiSpinner></span></div>
+      } @else if (store.children$().length) {
+      <ul uiList>
+        @for (child of store.children$(); track child.id) {
+        <li>
+          <button uiListItem type="button" (click)="store.selectChild(child)">
+            <ui-icon
+              [name]="child.orgType === 'UNIT' ? 'building-2' : 'layers'"
+              size="sm"
+            />
+            <span
+              >{{ child.name }} · {{ child.orgType === 'UNIT' ? 'Đơn vị' :
+              'Phòng' }}</span
+            >
+          </button>
+        </li>
+        }
+      </ul>
+      @if (store.childrenTotal$() > childPageSize) {
+      <ui-pagination
+        [total]="store.childrenTotal$()"
+        [page]="store.childPage$()"
+        [pageSize]="childPageSize"
+        (pageChange)="store.goToChildPage($event)"
+      />
+      } } @else {
+      <ui-empty variant="inline" title="Chưa có đơn vị / phòng trực thuộc" />
+      }
+    </section>
+    } @if (store.contentsError$(); as error) {
     <ui-error-state
       title="Không tải được đơn vị"
       [message]="error.message"
       (retry)="store.retryContents()"
     />
-    } @else {
+    } @else if (selected.orgType === 'DEPARTMENT') {
     <div class="org__section-head">
-      <h3>Nhóm ({{ store.teamsTotal$() }})</h3>
+      <h3>Nhóm trực thuộc ({{ store.teamsTotal$() }})</h3>
+      @if (selected.orgType === 'DEPARTMENT') {
       <button uiButton size="sm" (click)="store.editTeam(null)">
         <ui-icon name="plus" size="sm" />Thêm nhóm
       </button>
+      }
     </div>
     @if (store.teams$().length) {
     <div class="org__groups">
@@ -121,7 +235,14 @@
       <article uiCard class="org__group">
         <div class="org__group-head">
           <div class="org__group-title">
-            <strong [attr.title]="team.name">{{ team.name }}</strong>
+            <strong
+              ><a
+                [routerLink]="['/admin/users']"
+                [queryParams]="{ teamId: team.id }"
+                [attr.title]="team.name"
+                >{{ team.name }}</a
+              ></strong
+            >
             <span class="org__meta">
               {{ team.code || 'Chưa có mã' }} · {{ team.memberCount }} thành
               viên
@@ -175,8 +296,8 @@
     } } @else if (store.contentsLoading$()) {
     <div class="org__loading"><span uiSpinner></span></div>
     } @else {
-    <ui-empty variant="inline" title="Chưa có nhóm nào" />
-    } }
+    <ui-empty variant="inline" title="Chưa có nhóm trực thuộc" />
+    } } }
   </section>
 </div>
 } @else {

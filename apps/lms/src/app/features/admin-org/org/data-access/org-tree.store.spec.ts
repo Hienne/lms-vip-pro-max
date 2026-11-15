@@ -15,6 +15,11 @@ import {
   signInToMockBackend,
 } from '../../../../core/dev/mock-api/mock-backend.testing';
 import { OrgTreeStore } from './org-tree.store';
+import { SessionStore } from '../../../../core/session/session.store';
+import {
+  FakeSessionStore,
+  seedProfile,
+} from '../../../../core/session/session.testing';
 
 describe('OrgTreeStore', () => {
   let handle: MockInstance<MockBackend['handle']>;
@@ -61,12 +66,29 @@ describe('OrgTreeStore', () => {
           parseAppConfig(testAppConfig({ mockApi: true, mockBackend: true })),
         ),
         OrgTreeStore,
+        { provide: SessionStore, useClass: FakeSessionStore },
       ],
     });
     handle = vi.spyOn(TestBed.inject(MockBackend), 'handle');
     token = signInToMockBackend('super.admin');
   });
 
+  it('opens the parent and selects the signed-in user department', async () => {
+    addDepartments(1);
+    const session = TestBed.inject(SessionStore) as unknown as FakeSessionStore;
+    const profile = seedProfile('000001');
+    session.user.set({
+      ...profile,
+      org: { id: 2, code: 'PB1', name: 'Phòng 1', type: 'DEPARTMENT' },
+    });
+    const store = start();
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+      TestBed.tick();
+    }
+    expect(store.expanded$()).toContain('1');
+    expect(store.selected$()?.name).toBe('Phòng 1');
+  });
   it('reads the roots from the tree endpoint, without parentId', () => {
     const store = start();
     expect(treeReads()[0][1].query).toEqual({ page: '0', size: '50' });

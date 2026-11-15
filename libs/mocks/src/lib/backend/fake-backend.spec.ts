@@ -557,10 +557,30 @@ describe('FakeBackend', () => {
       });
     });
 
+    it('rejects creating a team directly under a unit', () => {
+      const root = login('super.admin');
+      const result = call(organizationEndpoints.createTeam, root, {
+        params: { orgId: '1' },
+        body: { name: 'Nhóm thử' },
+      });
+      expect(result.body.status).toBe('ERROR');
+      expect(result.body.message).toContain(
+        'Nhóm chỉ được tạo trong ban hoặc phòng',
+      );
+    });
     it('previews five members of a team and counts them all', () => {
       const root = login('super.admin');
+      const department = call(organizationEndpoints.createOrg, root, {
+        body: {
+          orgType: 'DEPARTMENT',
+          parentId: 1,
+          code: 'PB_NEW',
+          name: 'Phòng mới',
+          sortNo: 0,
+        },
+      }).body.data as { id: number };
       const created = call(organizationEndpoints.createTeam, root, {
-        params: { orgId: '1' },
+        params: { orgId: String(department.id) },
         body: { name: 'Nhóm thử' },
       });
       const team = created.body.data as {
@@ -571,16 +591,25 @@ describe('FakeBackend', () => {
       expect(team.code).toBeNull();
       expect(team.memberCount).toBe(0);
       const teams = call(organizationEndpoints.listTeams, root, {
-        params: { orgId: '1' },
+        params: { orgId: String(department.id) },
         query: { size: '100' },
       }).body.data as Page<{ id: number }>;
-      expect(teams.totalElements).toBe(16);
+      expect(teams.totalElements).toBe(1);
     });
 
     it('deletes an empty team but not one with members or grants', () => {
       const root = login('super.admin');
+      const department = call(organizationEndpoints.createOrg, root, {
+        body: {
+          orgType: 'DEPARTMENT',
+          parentId: 1,
+          code: 'PB_NEW',
+          name: 'Phòng mới',
+          sortNo: 0,
+        },
+      }).body.data as { id: number };
       const created = call(organizationEndpoints.createTeam, root, {
-        params: { orgId: '1' },
+        params: { orgId: String(department.id) },
         body: { name: 'Nhóm thử' },
       });
       const { id } = created.body.data as { id: number };
@@ -809,6 +838,16 @@ describe('FakeBackend', () => {
     });
 
     it('lets an org admin import teams only, in scope', () => {
+      const root = login('super.admin');
+      call(organizationEndpoints.createOrg, root, {
+        body: {
+          orgType: 'DEPARTMENT',
+          parentId: 1,
+          code: 'PB_IMPORT',
+          name: 'Phòng nhập',
+          sortNo: 0,
+        },
+      });
       const orgAdmin = login('quantri.ban');
       const result = OrganizationImportResultSchema.parse(
         importFile(orgAdmin, xlsx('nhom.xlsx'), false).body.data,

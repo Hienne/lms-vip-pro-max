@@ -9,7 +9,8 @@
   <div class="org-import">
     <p class="org-import__lead">
       Thêm mới đơn vị, phòng và nhóm từ tệp Excel theo mẫu. Mã đã có không bị
-      ghi đè; tệp có lỗi thì không dòng nào được nhập.
+      ghi đè; tệp có lỗi thì không dòng nào được nhập. Nhóm chỉ được tạo trong
+      ban hoặc phòng.
     </p>
     @if (store.teamsOnly$()) {
     <p class="org-import__lead">
@@ -32,7 +33,8 @@
     <p class="org-import__code">
       <span class="org-import__code-text"
         >Mã đơn vị đang chọn: <span class="org-import__mono">{{ code }}</span>,
-        dùng cho cột parentCode hoặc orgCode.</span
+        dùng cho parentCode nếu là đơn vị, hoặc orgCode nếu là ban /
+        phòng.</span
       >
       <button
         uiIconButton

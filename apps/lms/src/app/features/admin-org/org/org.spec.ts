@@ -2,7 +2,7 @@ import type { MockInstance } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { organizationEndpoints } from '@lms/contracts';
+import { identityEndpoints, organizationEndpoints } from '@lms/contracts';
 import { backendRefusal, SEED_ORGS, SEED_TEAMS, SEED_USERS } from '@lms/mocks';
 import { createAppRoutes } from '../../../app.routes';
 import {
@@ -66,6 +66,14 @@ describe('Org', () => {
     el = harness.routeNativeElement as HTMLElement;
   }
 
+  function useDepartmentWithGroups(): void {
+    const backend = TestBed.inject(MockBackend) as unknown as {
+      orgs: { id: number; orgType: string }[];
+    };
+    const node = backend.orgs.find((org) => org.id === ROOT.id);
+    if (!node) throw new Error('Missing department fixture');
+    node.orgType = 'DEPARTMENT';
+  }
   const text = () => el.textContent?.replace(/\s+/g, ' ') ?? '';
   const button = (root: ParentNode, label: string) =>
     Array.from(root.querySelectorAll<HTMLButtonElement>('button')).find(
@@ -125,7 +133,7 @@ describe('Org', () => {
     expect(calls(organizationEndpoints.orgContents)).toHaveLength(1);
     expect(calls(organizationEndpoints.orgContents)[0][1]).toMatchObject({
       params: { orgId: String(ROOT.id) },
-      query: { page: '0', size: '6', sort: 'name,asc' },
+      query: { page: '0', size: '10', sort: 'name,asc' },
     });
     expect(calls(organizationEndpoints.getOrg)).toHaveLength(0);
     expect(calls(organizationEndpoints.listTeams)).toHaveLength(0);
@@ -134,14 +142,15 @@ describe('Org', () => {
     );
     // Members are every seeded user of the org, as the mock counts them.
     const members = SEED_USERS.filter((u) => u.orgId === ROOT.id).length;
-    expect(stats).toEqual([String(members), String(SEED_TEAMS.length)]);
+    expect(stats).toEqual([String(members)]);
     expect(text()).toContain('Quản trị viên: Quản trị Ban Demo');
   });
 
   it('pages the teams of the picked org and previews at most five members', async () => {
+    useDepartmentWithGroups();
     await open('super.admin', '000001');
-    expect(cards()).toHaveLength(6);
-    expect(text()).toContain(`Nhóm (${SEED_TEAMS.length})`);
+    expect(cards()).toHaveLength(10);
+    expect(text()).toContain(`Nhóm trực thuộc (${SEED_TEAMS.length})`);
     button(el, '2').click();
     await settle();
     expect(
@@ -153,6 +162,7 @@ describe('Org', () => {
   });
 
   it('keeps the org header, its counts and the team total while the next team page is read', async () => {
+    useDepartmentWithGroups();
     await open('super.admin', '000001');
     const firstPage = cards().map(
       (c) => c.querySelector('strong')?.textContent,
@@ -168,19 +178,20 @@ describe('Org', () => {
     expect(button(el, 'Tạm dừng')).toBeTruthy();
     expect(text()).toContain('Quản trị viên: Quản trị Ban Demo');
     expect(el.querySelectorAll('dl dd')).toHaveLength(2);
-    expect(text()).toContain(`Nhóm (${SEED_TEAMS.length})`);
+    expect(text()).toContain(`Nhóm trực thuộc (${SEED_TEAMS.length})`);
 
     hold.release();
     await settle();
     const secondPage = cards().map(
       (c) => c.querySelector('strong')?.textContent,
     );
-    expect(secondPage).toHaveLength(Math.min(6, SEED_TEAMS.length - 6));
+    expect(secondPage).toHaveLength(Math.min(10, SEED_TEAMS.length - 10));
     expect(secondPage[0]).not.toBe(firstPage[0]);
-    expect(text()).toContain(`Nhóm (${SEED_TEAMS.length})`);
+    expect(text()).toContain(`Nhóm trực thuộc (${SEED_TEAMS.length})`);
   });
 
   it('links a team with more than five members to the users list filtered by that team', async () => {
+    useDepartmentWithGroups();
     await open('super.admin', '000001');
     const more = el.querySelector<HTMLAnchorElement>('article p a');
     if (more) {
@@ -189,8 +200,12 @@ describe('Org', () => {
     }
   });
 
-  it('adds a team, then shows it in the count', async () => {
+  it('adds a team to a department, then shows it in the count', async () => {
+    const departmentId = await addDepartment();
     await open('super.admin', '000001');
+    expect(button(el, 'Thêm nhóm')).toBeUndefined();
+    button(el, 'Phòng trống').click();
+    await settle();
     button(el, 'Thêm nhóm').click();
     await settle();
     expect(dialog()?.textContent).toContain('Thêm nhóm');
@@ -202,15 +217,16 @@ describe('Org', () => {
     button(dialog() as HTMLElement, 'Lưu').click();
     await settle();
     expect(calls(organizationEndpoints.createTeam)[0][1]).toMatchObject({
-      params: { orgId: String(ROOT.id) },
+      params: { orgId: String(departmentId) },
       body: { name: 'Nhóm Mới' },
     });
     expect(dialog()).toBeNull();
-    expect(text()).toContain(`Nhóm (${SEED_TEAMS.length + 1})`);
+    expect(text()).toContain(`Nhóm trực thuộc (1)`);
     expect(document.body.textContent).toContain('Đã lưu');
   });
 
   it('renames a team and PATCHes only the name', async () => {
+    useDepartmentWithGroups();
     await open('super.admin', '000001');
     const first = cards()[0];
     const name = first.querySelector('strong')?.textContent as string;
@@ -226,6 +242,7 @@ describe('Org', () => {
   });
 
   it('toasts the backend message when a team still has members and keeps it listed', async () => {
+    useDepartmentWithGroups();
     await open('super.admin', '000001');
     const withMembers = cards().find(
       (c) => !c.textContent?.includes('Chưa có thành viên'),
@@ -242,7 +259,10 @@ describe('Org', () => {
   });
 
   it('deletes a team nobody uses after confirming', async () => {
+    await addDepartment();
     await open('super.admin', '000001');
+    button(el, 'Phòng trống').click();
+    await settle();
     button(el, 'Thêm nhóm').click();
     await settle();
     await type(inputOf('Tên nhóm'), 'AAA Nhóm tạm');
@@ -254,7 +274,7 @@ describe('Org', () => {
     button(alertDialog() as HTMLElement, 'Xóa').click();
     await settle();
     expect(calls(organizationEndpoints.deleteTeam)).toHaveLength(1);
-    expect(text()).toContain(`Nhóm (${SEED_TEAMS.length})`);
+    expect(text()).toContain('Nhóm trực thuộc (0)');
   });
 
   it('edits the org with a PATCH of changed fields and lets a global admin pause it', async () => {
@@ -333,32 +353,103 @@ describe('Org', () => {
       .filter((item) => item.textContent?.includes(label))
       .at(-1) as HTMLElement;
 
-  it('starts the teams of another node at the first page, and drops the late answer for the old one', async () => {
+  it('shows direct departments and selects one from the detail panel', async () => {
     const departmentId = await addDepartment();
     await open('super.admin', '000001');
+    expect(text()).toContain('Đơn vị / phòng trực thuộc');
+    const child = button(el, 'Phòng trống');
+    expect(child).toBeTruthy();
+    child.click();
+    await settle();
+    expect(el.querySelector('h2')?.textContent).toBe('Phòng trống');
+    expect(calls(organizationEndpoints.orgContents).at(-1)?.[1].params).toEqual(
+      { orgId: String(departmentId) },
+    );
+  });
+
+  it('links each group name to the member list filtered by group', async () => {
+    useDepartmentWithGroups();
+    await open('super.admin', '000001');
+    const link = card(SEED_TEAMS[0].name)?.querySelector('strong a');
+    expect(link?.getAttribute('href')).toContain(`teamId=${SEED_TEAMS[0].id}`);
+  });
+  it('selects a group in the tree and reads its members', async () => {
+    useDepartmentWithGroups();
+    await open('super.admin', '000001');
+    const team = SEED_TEAMS[0];
+    expect(treeItem(team.name)).toBeTruthy();
+    treeItem(team.name).click();
+    await settle();
+    expect(el.querySelector('h2')?.textContent).toBe(team.name);
+    expect(calls(identityEndpoints.listUsers).at(-1)?.[1].query).toMatchObject({
+      teamId: String(team.id),
+      page: '0',
+      size: '10',
+    });
+    expect(text()).toContain('Thành viên');
+    expect(
+      el.querySelector('section.org__team-members article ui-avatar'),
+    ).toBeTruthy();
+    expect(
+      el
+        .querySelector('section.org__team-members article a')
+        ?.getAttribute('href'),
+    ).toContain('/admin/users/');
+  });
+
+  it('switches from a selected group back to its department', async () => {
+    useDepartmentWithGroups();
+    await open('super.admin', '000001');
+    treeItem(SEED_TEAMS[0].name).click();
+    await settle();
     treeItem(ROOT.name).click();
     await settle();
-    expect(treeItem('Phòng trống')).toBeTruthy();
-
+    expect(el.querySelector('h2')?.textContent).toBe(ROOT.name);
+    expect(text()).toContain('Nhóm trực thuộc');
+  });
+  it('drops a late team page when switching to another department', async () => {
+    const firstId = await addDepartment();
+    const token = signInToMockBackend('super.admin');
+    const backend = TestBed.inject(MockBackend);
+    const reply = backend.handle(organizationEndpoints.createOrg, {
+      token,
+      params: {},
+      query: {},
+      body: {
+        orgType: 'DEPARTMENT',
+        parentId: ROOT.id,
+        code: 'PHONG_2',
+        name: 'Phòng thứ hai',
+        sortNo: 1,
+      },
+    });
+    const secondId = (reply?.body.data as { id: number }).id;
+    for (let i = 0; i < 11; i++) {
+      backend.handle(organizationEndpoints.createTeam, {
+        token,
+        params: { orgId: String(firstId) },
+        query: {},
+        body: { name: `Nhóm ${i}` },
+      });
+    }
+    await open('super.admin', '000001');
+    button(el, 'Phòng trống').click();
+    await settle();
     const hold = TestBed.inject(ReplyGate).hold(
       organizationEndpoints.orgContents,
     );
     button(el, '2').click();
     await settle();
-    treeItem('Phòng trống').click();
+    treeItem('Phòng thứ hai').click();
     await settle();
     hold.release();
     await settle();
-
-    expect(calls(organizationEndpoints.orgContents).at(-1)?.[1]).toMatchObject({
-      params: { orgId: String(departmentId) },
-      query: { page: '0' },
-    });
-    expect(el.querySelector('h2')?.textContent).toBe('Phòng trống');
-    expect(text()).toContain('Nhóm (0)');
+    expect(calls(organizationEndpoints.orgContents).at(-1)?.[1].params).toEqual(
+      { orgId: String(secondId) },
+    );
+    expect(el.querySelector('h2')?.textContent).toBe('Phòng thứ hai');
     expect(cards()).toHaveLength(0);
   });
-
   it('shows the panel error with a retry when the node is gone or out of scope', async () => {
     const backend = TestBed.inject(MockBackend);
     handle.mockImplementation((endpoint, request) =>
@@ -375,7 +466,7 @@ describe('Org', () => {
     );
     button(el, 'Thử lại').click();
     await settle();
-    expect(cards()).toHaveLength(6);
+    expect(cards()).toHaveLength(0);
   });
 
   describe('import from file', () => {
