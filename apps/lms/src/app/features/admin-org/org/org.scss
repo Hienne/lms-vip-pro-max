@@ -17,7 +17,7 @@
     align-items: start;
 
     @include ui.bp(lg) {
-      grid-template-columns: ui.layout(sidebar) minmax(0, 1fr);
+      grid-template-columns: minmax(0, ui.layout(panel)) minmax(0, 1fr);
     }
   }
 
@@ -30,7 +30,15 @@
   }
 
   &__tree {
+    @include ui.scrollbar;
+    max-height: 60dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     padding: ui.space(2);
+
+    @include ui.bp(lg) {
+      max-height: calc(100dvh - #{ui.layout(header)} - #{ui.space(12)});
+    }
   }
 
   &__detail {
@@ -108,6 +116,10 @@
       margin: 0;
       font-family: ui.font(sans);
     }
+  }
+
+  &__team-members {
+    @include ui.stack(4);
   }
 
   &__groups {

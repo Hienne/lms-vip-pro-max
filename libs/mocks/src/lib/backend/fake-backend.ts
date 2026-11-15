@@ -2479,9 +2479,13 @@ export class FakeBackend {
       (o) =>
         visible(o) &&
         o.status === 'active' &&
-        (o.parentId === null || !this.isVisibleOrg(o.parentId, visible)),
+        (global
+          ? (o.parentId === null || !this.isVisibleOrg(o.parentId, visible)) &&
+            o.orgType === 'UNIT'
+          : o.orgType === 'DEPARTMENT'),
     );
-    if (!parent) return refuse('orgImportInvalid');
+    if (!parent || (!global && parent.orgType !== 'DEPARTMENT'))
+      return refuse('orgImportInvalid');
     const org = global
       ? { code: 'NHAP_PHONG_01', name: 'Phòng nhập từ tệp' }
       : undefined;
@@ -2678,6 +2682,8 @@ export class FakeBackend {
   private createTeam(request: FakeRequest): FakeReply {
     const actor = this.caller_(request, 'ORGANIZATION_MANAGEMENT');
     const org = this.orgIn(request, actor);
+    if (org.orgType !== 'DEPARTMENT')
+      return invalid('Nhóm chỉ được tạo trong ban hoặc phòng.');
     const body = this.bodyOf(request, ['code', 'name', 'description']);
     const code = this.text(body, 'code', 'Mã nhóm', { max: 50 }) ?? null;
     const name = this.text(body, 'name', 'Tên nhóm', {
