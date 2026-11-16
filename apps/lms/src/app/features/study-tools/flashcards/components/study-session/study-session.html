@@ -27,27 +27,37 @@
     [message]="error.message"
     (retry)="retryAnswer.emit()"
   />}
-  <ui-section-card [title]="revealed() ? 'Đáp án' : 'Câu hỏi'">
-    <div
-      class="study-session__face"
+  <div class="flip-card" [class.flip-card--back]="revealed()">
+    <button
       #face
-      tabindex="-1"
-      aria-live="polite"
-      aria-atomic="true"
+      type="button"
+      class="flip-card__inner"
+      [disabled]="busy() || answerLoading()"
+      [attr.aria-label]="revealed() ? 'Đang xem đáp án. Nhấn để xem câu hỏi' : 'Đang xem câu hỏi. Nhấn để xem đáp án'"
+      (click)="answerRequested.emit()"
     >
-      @if (revealed()) { @for (answer of answers(); track $index) {
-      <h2 class="study-session__text">{{answer}}</h2>
-      } @if (explanation()) {
-      <p class="study-session__text">{{explanation()}}</p>
-      } } @else {
-      <h2 class="study-session__text">{{question()}}</h2>
-      }
-    </div>
-    <p class="study-session__hint">
-      {{revealed() ? 'Bạn đã nhớ nội dung này chưa?' : 'Tự trả lời trước khi xem
-      đáp án.'}}
-    </p>
-  </ui-section-card>
+      <span class="flip-card__face" [attr.aria-hidden]="revealed()">
+        <span class="flip-card__label">Câu hỏi</span>
+        <span class="flip-card__content">{{ question() }}</span>
+        <span class="flip-card__hint">Nhấn để xem đáp án</span>
+      </span>
+      <span
+        class="flip-card__face flip-card__back"
+        [attr.aria-hidden]="!revealed()"
+      >
+        <span class="flip-card__label">Đáp án</span>
+        <span class="flip-card__content"
+          >@for (answer of answers(); track $index) {<span
+            class="flip-card__answer"
+            >{{ answer }}</span
+          >} @if (explanation()) {<span class="flip-card__explanation"
+            >{{ explanation() }}</span
+          >}</span
+        >
+        <span class="flip-card__hint">Nhấn để xem lại câu hỏi</span>
+      </span>
+    </button>
+  </div>
   <div class="row-between">
     <button
       uiButton

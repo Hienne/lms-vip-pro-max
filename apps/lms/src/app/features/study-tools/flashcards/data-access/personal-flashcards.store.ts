@@ -362,7 +362,8 @@ export class PersonalFlashcardsStore {
     this.setDeckName('');
   }
   revealCurrent(): void {
-    if (this.current$() && !this.progress.isPending()) this.setRevealed(true);
+    if (this.current$() && !this.progress.isPending())
+      this.setRevealed(!this.state.revealed());
   }
   rateCurrent(rating: 'AGAIN' | 'KNOWN'): void {
     const card = this.current$();

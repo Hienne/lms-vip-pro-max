@@ -3,6 +3,7 @@
 .flip-card {
   perspective: 1000px;
   min-width: 0;
+  padding: ui.space(2);
   overflow: clip;
 
   &__inner {
@@ -17,7 +18,8 @@
     text-align: left;
     cursor: pointer;
     transform-style: preserve-3d;
-    transition: transform ui.duration(slow) cubic-bezier(0.2, 0.7, 0.2, 1);
+    transition: transform calc(#{ui.duration(slow)} * 1.5)
+      cubic-bezier(0.4, 0, 0.2, 1);
     will-change: transform;
   }
 
@@ -39,9 +41,10 @@
     gap: ui.space(5);
     min-width: 0;
     padding: ui.space(5);
-    border: 1px solid ui.color(border);
+    border: 1px solid ui.color(border-strong);
     border-radius: ui.radius(card);
     background: ui.color(surface);
+    box-shadow: ui.shadow(md);
     backface-visibility: hidden;
   }
 
