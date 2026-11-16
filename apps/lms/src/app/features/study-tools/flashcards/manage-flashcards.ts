@@ -8,6 +8,7 @@ import {
   type FlashcardPublication,
 } from '@lms/contracts';
 import {
+  Alert,
   Button,
   Card,
   ErrorState,
@@ -25,6 +26,7 @@ import { EndpointClient } from '../../../core/http/endpoint-client';
 @Component({
   selector: 'app-manage-flashcards',
   imports: [
+    Alert,
     Button,
     Card,
     ErrorState,
@@ -42,6 +44,8 @@ export class ManageFlashcards {
   private readonly client = inject(EndpointClient);
   protected readonly pageSize = 20;
   protected readonly coursePage = signal(1);
+  protected readonly coursePageSize = signal(10);
+  protected readonly coursePageSizes = [10, 20, 50, 100];
   protected readonly questionPage = signal(1);
   protected readonly courseSearch = signal('');
   protected readonly questionSearch = signal('');
@@ -50,6 +54,26 @@ export class ManageFlashcards {
   protected readonly batchResult = signal<
     readonly { id: number; message: string }[] | null
   >(null);
+  protected readonly batchSummary = computed(() => {
+    const result = this.batchResult();
+    if (!result) return null;
+    const names = new Map(
+      (this.questions.value()?.items ?? []).map((item) => [item.id, item.code]),
+    );
+    const groups = new Map<string, string[]>();
+    for (const item of result) {
+      if (!item.message) continue;
+      const codes = groups.get(item.message) ?? [];
+      codes.push(names.get(item.id) || String(item.id));
+      groups.set(item.message, codes);
+    }
+    const failures = result.filter((item) => !!item.message).length;
+    return {
+      succeeded: result.length - failures,
+      failures,
+      groups: [...groups].map(([message, codes]) => ({ message, codes })),
+    };
+  });
   protected readonly batch = serverMutation(
     (input: {
       courseId: number;
@@ -122,7 +146,8 @@ export class ManageFlashcards {
     {
       params: () => ({
         page: this.coursePage() - 1,
-        size: this.pageSize,
+        size: this.coursePageSize(),
+        sort: 'publishedAt,desc',
         q: this.courseSearch().trim().slice(0, 100) || undefined,
       }),
     },
@@ -186,6 +211,12 @@ export class ManageFlashcards {
     this.courseId.set(id);
     this.questionPage.set(1);
     this.questionSearch.set('');
+  }
+
+  protected changeCoursePageSize(size: number): void {
+    this.coursePageSize.set(size);
+    this.coursePage.set(1);
+    this.selectCourse(0);
   }
 
   protected searchCourses(value: string): void {

@@ -17,24 +17,47 @@
     (retry)="courses.reload()"
   />
   } @else if (courses.value(); as list) {
-  <label
-    >Khóa học
-    <select
-      uiSelect
-      #course
-      [value]="courseId()"
-      (change)="selectCourse(+course.value)"
-    >
-      <option value="0">Chọn khóa học</option>
-      @for (item of list.items; track item.courseId) {
-      <option [value]="item.courseId">{{ item.title }}</option>
-      }
-    </select>
-  </label>
+  <div uiTableWrap>
+    <table uiTable responsive>
+      <thead>
+        <tr>
+          <th scope="col">Khóa học</th>
+          <th scope="col">Mã khóa</th>
+          <th scope="col">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (item of list.items; track item.courseId) {
+        <tr>
+          <td data-label="Khóa học">{{ item.title || 'Chưa có tên' }}</td>
+          <td data-label="Mã khóa">{{ item.code }}</td>
+          <td data-label="Thao tác">
+            <button
+              uiButton
+              type="button"
+              size="sm"
+              [variant]="courseId() === item.courseId ? 'primary' : 'secondary'"
+              [attr.aria-pressed]="courseId() === item.courseId"
+              (click)="selectCourse(item.courseId)"
+            >
+              {{ courseId() === item.courseId ? 'Đang chọn' : 'Quản lý thẻ' }}
+            </button>
+          </td>
+        </tr>
+        } @empty {
+        <tr>
+          <td colspan="3">Không tìm thấy khóa học.</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
   <ui-pagination
     [total]="list.totalElements"
     [page]="coursePage()"
-    [pageSize]="pageSize"
+    [pageSize]="coursePageSize()"
+    [pageSizeOptions]="coursePageSizes"
+    (pageSizeChange)="changeCoursePageSize($event)"
     (pageChange)="selectCourse(0); coursePage.set($event)"
   />
   } @else {
@@ -44,7 +67,7 @@
 
 @if (courseId()) {
 <section uiCard class="flashcards__card">
-  <h2>Thẻ của khóa học</h2>
+  <h2>Thẻ của khóa học: {{ selectedCourse()?.title }}</h2>
   @if (cards.error(); as error) {
   <ui-error-state
     title="Không tải được flashcard"
@@ -136,11 +159,20 @@
       Bỏ chọn
     </button>
   </div>
-  @if (batchResult(); as result) {
-  <p>Đã xử lý {{ result.length }} câu.</p>
-  @for (item of result; track item.id) { @if (item.message) {
-  <p>Câu {{ item.id }} · {{ item.message }}</p>
-  } } }
+  @if (batchSummary(); as result) {
+  <ui-alert [tone]="result.failures ? 'warning' : 'success'">
+    Đã công bố {{ result.succeeded }} câu. @if (result.failures) { {{
+    result.failures }} câu chưa công bố được. }
+  </ui-alert>
+  @if (result.failures) {
+  <details class="flashcards__batch-details">
+    <summary>Xem lý do và danh sách câu chưa công bố</summary>
+    @for (group of result.groups; track group.message) {
+    <p><strong>{{ group.message }}</strong> ({{ group.codes.length }} câu)</p>
+    <p class="flashcards__meta">Mã câu: {{ group.codes.join(', ') }}</p>
+    }
+  </details>
+  } }
   <div uiTableWrap>
     <table uiTable responsive>
       <thead>

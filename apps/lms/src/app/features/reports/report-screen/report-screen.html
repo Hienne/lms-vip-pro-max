@@ -305,7 +305,7 @@
       </p>
     </ui-section-card>
   </div>
-  <details>
+  <details class="report-screen__breakdown">
     <summary>Xem dữ liệu chi tiết</summary>
     <section
       uiCard
@@ -474,7 +474,7 @@
   class="report-screen__detail"
 >
   @if (store.dimension$() === 'results') {
-  <div class="stack">
+  <div class="report-screen__result-context">
     <p>Phạm vi chung: {{store.commonScopeLabel$()}}</p>
     <p>Bộ lọc bảng và CSV: {{store.tableScopeLabel$()}}</p>
     <p>
