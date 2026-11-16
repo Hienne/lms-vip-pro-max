@@ -297,6 +297,15 @@ export const SCREEN_TABLE = {
               '../../features/quiz/assessment-screen/assessment-screen'
             ).then((m) => m.AssessmentScreen),
         },
+        {
+          path: 'admin/competencies',
+          title: 'Danh mục nhóm năng lực',
+          mockupPage: 'competencies',
+          load: () =>
+            import(
+              '../../features/quiz/competency-catalog/competency-catalog'
+            ).then((m) => m.CompetencyCatalog),
+        },
       ],
     },
     QUIZ_MANAGEMENT: {

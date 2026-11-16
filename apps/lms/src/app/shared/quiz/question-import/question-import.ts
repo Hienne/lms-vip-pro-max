@@ -1,4 +1,5 @@
 import { Component, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import {
   Alert,
   Button,
@@ -17,7 +18,16 @@ import { QuestionImportStore } from './data-access/question-import.store';
  */
 @Component({
   selector: 'app-question-import',
-  imports: [Alert, Button, Checkbox, DrawerOutlet, Dropzone, Icon, UploadItem],
+  imports: [
+    Alert,
+    Button,
+    Checkbox,
+    DrawerOutlet,
+    Dropzone,
+    Icon,
+    UploadItem,
+    RouterLink,
+  ],
   providers: [QuestionImportStore],
   templateUrl: './question-import.html',
   styleUrl: './question-import.scss',
