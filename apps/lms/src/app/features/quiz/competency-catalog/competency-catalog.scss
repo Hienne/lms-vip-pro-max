@@ -1,0 +1,7 @@
+@use 'ui';
+
+:host {
+  @include ui.page(wide);
+  min-width: 0;
+  @include ui.text(sm);
+}

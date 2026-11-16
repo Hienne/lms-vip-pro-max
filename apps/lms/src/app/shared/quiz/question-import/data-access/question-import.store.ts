@@ -158,6 +158,10 @@ export class QuestionImportStore {
     this.state.checked.set(checked);
   }
 
+  refreshCompetencies(): void {
+    this.competenciesData.reload();
+  }
+
   downloadTemplate(): void {
     if (!this.isDownloading$()) this.templateMutation.run(undefined);
   }

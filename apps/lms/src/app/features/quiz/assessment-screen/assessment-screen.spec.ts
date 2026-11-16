@@ -680,7 +680,10 @@ describe('AssessmentScreen (admin)', () => {
       a.textContent?.trim(),
       a.getAttribute('href'),
     ]);
-    expect(links).toEqual([['Quản lý flashcard', '/admin/flashcards']]);
+    expect(links).toEqual([
+      ['Nhóm năng lực', '/admin/competencies'],
+      ['Quản lý flashcard', '/admin/flashcards'],
+    ]);
     const labels = [...el.querySelectorAll('ui-page-header button')].map((b) =>
       b.textContent?.trim(),
     );

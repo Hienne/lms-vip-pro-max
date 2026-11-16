@@ -53,6 +53,19 @@
       <summary class="question-import__help">
         Mã nhóm năng lực dùng trong Excel
       </summary>
+      <p>
+        <a [routerLink]="['/admin/competencies']" target="_blank" rel="noopener"
+          >Quản lý danh mục nhóm năng lực</a
+        >
+      </p>
+      <button
+        uiButton
+        type="button"
+        variant="ghost"
+        (click)="store.refreshCompetencies()"
+      >
+        Cập nhật danh sách
+      </button>
       <ul class="question-import__codes">
         @for (competency of store.competencies$(); track competency.id) {
         <li><strong>{{ competency.code }}</strong> · {{ competency.name }}</li>
