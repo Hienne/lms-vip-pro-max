@@ -66,7 +66,7 @@ import { OrgTreeStore } from './data-access/org-tree.store';
 })
 export class Org {
   protected readonly store = inject(OrgStore);
-  protected readonly previewSize = TEAM_PREVIEW_SIZE;
+  protected readonly previewSize = 3;
   protected readonly pageSize = TEAMS_PAGE_SIZE;
   protected readonly childPageSize = CHILD_ORGS_PAGE_SIZE;
   protected readonly teamActions: readonly MenuEntry<TeamAction>[] = [

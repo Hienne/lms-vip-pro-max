@@ -68,7 +68,7 @@ export const UserFormSchema = z.object({
       error: `Mật khẩu tạm tối thiểu ${PASSWORD_MIN_LENGTH} ký tự.`,
     })
     .refine((value) => passwordByteLength(value) <= PASSWORD_MAX_BYTES, {
-      error: `Mật khẩu tối đa ${PASSWORD_MAX_BYTES} byte.`,
+      error: 'Mật khẩu quá dài. Vui lòng rút ngắn và thử lại.',
     }),
 });
 export type UserFormValue = z.infer<typeof UserFormSchema>;

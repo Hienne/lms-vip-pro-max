@@ -157,7 +157,7 @@ describe('Org', () => {
       calls(organizationEndpoints.orgContents).at(-1)?.[1].query,
     ).toMatchObject({ page: '1' });
     for (const team of cards()) {
-      expect(team.querySelectorAll('ul a').length).toBeLessThanOrEqual(5);
+      expect(team.querySelectorAll('ul a').length).toBeLessThanOrEqual(3);
     }
   });
 
@@ -190,7 +190,7 @@ describe('Org', () => {
     expect(text()).toContain(`Nhóm trực thuộc (${SEED_TEAMS.length})`);
   });
 
-  it('links a team with more than five members to the users list filtered by that team', async () => {
+  it('links a team with more than three members to the users list filtered by that team', async () => {
     useDepartmentWithGroups();
     await open('super.admin', '000001');
     const more = el.querySelector<HTMLAnchorElement>('article p a');
