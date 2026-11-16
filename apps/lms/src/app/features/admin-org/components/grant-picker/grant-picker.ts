@@ -15,6 +15,7 @@ import type {
 } from '@lms/contracts';
 import { Button, Field, Icon, Select } from '@lms/ui';
 import { SCOPE_TYPE_LABEL } from '../../../../shared/status/scope-label';
+import { organizationOptions } from '../org-options';
 
 interface PickerValue {
   roleId: string;
@@ -51,6 +52,10 @@ export class GrantPicker {
   });
   protected readonly pickerForm = form(this.model);
 
+  protected readonly orgOptions = computed(() =>
+    organizationOptions(this.orgs()),
+  );
+
   protected readonly assignable = computed(() =>
     this.roles().filter((role) => role.assignableScopes.length > 0),
   );
@@ -69,7 +74,7 @@ export class GrantPicker {
   protected readonly needsTeam = computed(() => this.model().scope === 'TEAM');
 
   /** The request the pick adds up to, or null while a part is missing. */
-  protected readonly request = computed((): GrantRequest | null => {
+  readonly request = computed((): GrantRequest | null => {
     const { roleId, scope, orgId, teamId } = this.model();
     if (!roleId || !scope) return null;
     const request: GrantRequest = { roleId: Number(roleId), scope };
@@ -83,6 +88,8 @@ export class GrantPicker {
     }
     return request;
   });
+
+  readonly hasSelection = computed(() => Boolean(this.model().roleId));
 
   protected onRoleChange(): void {
     const first = this.role()?.assignableScopes[0] ?? '';

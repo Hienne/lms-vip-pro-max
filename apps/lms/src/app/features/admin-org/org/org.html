@@ -259,9 +259,10 @@
             (selected)="store.actOnTeam(team, $event)"
           />
         </div>
-        @if (team.memberPreview.length) {
+        @if (team.memberPreview.length) { @let preview =
+        team.memberPreview.slice(0, previewSize);
         <ul class="org__members">
-          @for (member of team.memberPreview; track member.userId) {
+          @for (member of preview; track member.userId) {
           <li>
             <a
               class="org__member"
@@ -273,9 +274,9 @@
           </li>
           }
         </ul>
-        @if (team.memberCount > previewSize) {
+        @if (team.memberCount > preview.length) {
         <p class="org__more">
-          +{{ team.memberCount - previewSize }} người khác ·
+          +{{ team.memberCount - preview.length }} người khác ·
           <a [routerLink]="['/admin/users']" [queryParams]="{ teamId: team.id }"
             >Xem tất cả</a
           >

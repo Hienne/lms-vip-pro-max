@@ -3,10 +3,54 @@
 .grant-picker {
   display: grid;
   gap: ui.space(3);
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: end;
+
+  ui-field {
+    min-width: 0;
+  }
+
+  select {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__wide {
+    grid-column: 1 / -1;
+  }
+
+  @supports (appearance: base-select) {
+    select {
+      overflow: visible;
+    }
+
+    selectedcontent {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
 
   &__add {
     justify-self: start;
+  }
+}
+
+@supports (appearance: base-select) and selector(::picker(select)) {
+  select option[data-child='true'] {
+    padding-inline-start: calc(
+      #{ui.space(3)} + var(--org-depth) * #{ui.space(4)}
+    );
+  }
+
+  select option[data-child='true']::before {
+    content: '↳';
+    color: ui.color(text-muted);
+    margin-inline-end: ui.space(2);
   }
 }

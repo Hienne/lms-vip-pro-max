@@ -17,18 +17,24 @@
     </select>
   </ui-field>
   @if (needsOrg()) {
-  <ui-field label="Đơn vị">
+  <ui-field class="grant-picker__wide" label="Đơn vị / phòng ban">
     <select uiSelect [formField]="pickerForm.orgId" (change)="onOrgChange()">
-      <option value="">— Chọn đơn vị —</option>
-      @for (org of orgs(); track org.id) {
-      <option [value]="org.id">{{ org.name }}</option>
+      <option value="">Chọn đơn vị</option>
+      @for (option of orgOptions(); track option.org.id) {
+      <option
+        [value]="option.org.id"
+        [attr.data-child]="option.depth ? 'true' : null"
+        [style.--org-depth]="option.depth"
+      >
+        {{ option.org.name.trim() }}
+      </option>
       }
     </select>
   </ui-field>
   } @if (needsTeam()) {
-  <ui-field label="Nhóm">
+  <ui-field class="grant-picker__wide" label="Nhóm">
     <select uiSelect [formField]="pickerForm.teamId">
-      <option value="">— Chọn nhóm —</option>
+      <option value="">Chọn nhóm</option>
       @for (team of teams(); track team.id) {
       <option [value]="team.id">{{ team.name }}</option>
       }

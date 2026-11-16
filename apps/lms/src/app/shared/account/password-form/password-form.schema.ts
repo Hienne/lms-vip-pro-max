@@ -23,7 +23,7 @@ export const PasswordFormSchema = z
         error: 'Mật khẩu mới không được để trống.',
       })
       .refine((value) => passwordByteLength(value) <= PASSWORD_MAX_BYTES, {
-        error: `Mật khẩu mới tối đa ${PASSWORD_MAX_BYTES} byte (ký tự có dấu chiếm nhiều hơn 1 byte).`,
+        error: 'Mật khẩu quá dài. Vui lòng rút ngắn và thử lại.',
       }),
     confirm: z.string().min(1, { error: 'Nhập lại mật khẩu mới.' }),
   })
