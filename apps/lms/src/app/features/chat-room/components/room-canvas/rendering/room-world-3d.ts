@@ -579,32 +579,34 @@ export class RoomWorld3D {
         for (const z of [-d / 2 + 0.06, d / 2 - 0.06])
           this.box(group, x, 0.21, z, 0.045, 0.42, 0.045, 0x5b7566);
     } else if (o.kind === 'board') {
-      this.box(group, 0, 1.65, 0, w, 1.15, 0.12, 0xb48b5d);
-      this.box(group, 0, 1.65, 0.075, w - 0.12, 1.02, 0.05, 0x2e6255);
+      const height = ((w - 0.14) * 9) / 16;
+      const center = 1.1 + height / 2;
+      this.box(group, 0, center, 0, w, height + 0.14, 0.12, 0xb48b5d);
+      this.box(group, 0, center, 0.075, w - 0.12, height, 0.05, 0x2e6255);
       for (const x of [-w / 2 + 0.15, w / 2 - 0.15])
         this.box(group, x, 0.52, 0, 0.07, 1.05, d, 0x788779);
       this.box(group, 0, 1.08, 0.14, w, 0.04, 0.17, 0xc4a075);
       const canvas = document.createElement('canvas');
       canvas.width = 1024;
-      canvas.height = 256;
+      canvas.height = 576;
       const ctx = canvas.getContext('2d')!;
       ctx.fillStyle = '#2e6255';
-      ctx.fillRect(0, 0, 1024, 256);
+      ctx.fillRect(0, 0, 1024, 576);
       ctx.fillStyle = '#edf3e7';
       ctx.textAlign = 'center';
       ctx.font = '64px sans-serif';
-      ctx.fillText('Giờ ra chơi', 512, 122);
+      ctx.fillText('Giờ ra chơi', 512, 260);
       ctx.font = '25px sans-serif';
-      ctx.fillText('CHAN Academy', 512, 174);
+      ctx.fillText('CHAN Academy', 512, 325);
       const texture = new THREE.CanvasTexture(canvas);
       texture.colorSpace = THREE.SRGBColorSpace;
       this.textures.push(texture);
       const material = new THREE.MeshBasicMaterial({ map: texture });
       const face = new THREE.Mesh(
-        new THREE.PlaneGeometry(w - 0.14, 0.98),
+        new THREE.PlaneGeometry(w - 0.14, height),
         material,
       );
-      face.position.set(0, 1.65, 0.102);
+      face.position.set(0, center, 0.102);
       group.add(face);
     } else if (o.kind === 'shelf') {
       this.box(group, 0, 0.61, 0, w, 1.22, d, 0xb89368);

@@ -95,7 +95,6 @@ export class RoomBoard {
   );
   protected readonly selected = this.games.boardSelected$;
   protected readonly promotion = this.games.boardPromotion$;
-  protected readonly claimPlanned = this.games.boardClaimPlanned$;
   protected readonly flipped = this.games.boardFlipped$;
   protected readonly cells = computed(() => {
     const match = this.match();

@@ -48,25 +48,6 @@
       margin: 0;
     }
   }
-  &__reactions {
-    position: relative;
-    summary {
-      cursor: pointer;
-      padding: ui.space(2);
-      background: ui.color(surface);
-      border: 1px solid ui.color(border);
-    }
-    div {
-      position: absolute;
-      z-index: 3;
-      display: grid;
-      grid-template-columns: repeat(2, max-content);
-      gap: ui.space(1);
-      padding: ui.space(2);
-      background: ui.color(surface);
-      border: 1px solid ui.color(border);
-    }
-  }
   &__gesture-notice {
     @include ui.text(sm);
     margin: 0;

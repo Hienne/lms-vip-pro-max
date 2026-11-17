@@ -1,34 +1,7 @@
-@if(room.playground$().boardGames) {
-<details class="playground__tables">
-  <summary>Khu vui chơi · Bàn cờ</summary>
-  <div class="playground__list" role="group" aria-label="Các bàn cờ">
-    @for(table of tables(); track table.id) {
-    <button uiButton size="sm" (click)="games.watchBoard(table.id)">
-      {{ table.name }} · {{ status(table.id) }}
-    </button>
-    }
-  </div>
-</details>
-} @if(room.playground$().floorGame && games.floor$(); as floor) {
-@if(nearFloor() || floor.alive || floor.joined || floor.eliminated) {
-<section class="playground__floor" aria-label="Sàn đổi màu">
-  <strong>Sàn đổi màu</strong>
-  <p role="status">
-    @switch(floor.phase) { @case('waiting') { {{ floor.queued }} bạn đang chờ ·
-    Cần ít nhất 2 bạn. } @case('countdown') { Bắt đầu sau {{
-    games.floorSeconds$() }} giây. } @case('running') { Vòng {{ floor.round }}/5
-    · Đến ô {{ target()?.symbol }} {{ target()?.label }} trong {{
-    games.floorSeconds$() }} giây. } @case('finished') { {{ floor.winners.length
-    ? 'Cùng thắng · '+floor.winners.join(', ') : 'Chưa có bạn nào về đích. Hẹn
-    vòng sau!' }} } } @if(floor.eliminated && floor.phase === 'running') { Bạn
-    đã dừng ở vòng này và có thể xem tiếp. }
-  </p>
-  @if(nearFloor() && !floor.joined && !floor.alive) {
-  <button uiButton size="sm" (click)="games.joinFloor()">
-    {{ floor.phase === 'running' ? 'Tham gia ván sau' : 'Tham gia' }}
-  </button>
-  } @if(floor.joined) {
-  <p>Bạn đã đăng ký. Chạy tới màu được gọi khi ván bắt đầu.</p>
-  }
-</section>
-} }
+<ui-menu
+  label="Thách đấu trí tuệ"
+  translucent
+  size="sm"
+  [entries]="entries()"
+  (selected)="room.chooseChallenge($event)"
+/>

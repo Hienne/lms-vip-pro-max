@@ -1,4 +1,4 @@
-<ui-section-card [title]="'Bàn Caro ' + table().table">
+<ui-section-card [title]="'Bàn Caro ' + table().table" fill flush>
   <div slot="action" class="row row--gap-1">
     <button uiButton size="sm" (click)="stood.emit()">Đứng dậy</button>
     <button uiButton size="sm" variant="ghost" (click)="closed.emit()">
@@ -6,132 +6,148 @@
     </button>
   </div>
   @if (state(); as game) {
-  <p class="caro__players">
-    <strong>X</strong> {{ game.xName }} · <strong>O</strong> {{ game.oName }}
-  </p>
-  <p
-    class="caro__status"
-    [class.caro__status--your-turn]="canPlay()"
-    role="status"
-  >
-    @if (game.result === 'draw') { Hòa · Trả lại CPoint cho hai bạn } @else if
-    (game.result) { {{ game.result === game.piece ? 'Bạn thắng' : 'Bạn chơi
-    thắng' }} @if (game.timeout === 'away') { · {{ game.result === game.piece ?
-    'Bạn chơi không quay lại kịp' : 'Bạn không quay lại kịp' }} } @else if
-    (game.timedOut) { · {{ game.result === game.piece ? 'Bạn chơi hết giờ' :
-    'Bạn hết giờ' }} } @if (game.stake) { · {{ game.result === game.piece ? '+'
-    : '−' }}{{ game.stake }} CPoint } } @else {
-    <strong
-      >{{ game.waitingForReturn ? 'Chờ bạn chơi quay lại' : (table().paused ?
-      'Chờ ngồi lại cùng bàn' : (canPlay() ? 'Đến lượt bạn' : 'Lượt của ' +
-      turn())) }}</strong
-    >
-    · Bạn là {{ game.piece }} · {{ game.stake }} CPoint mỗi bên }
-  </p>
-  @if (!game.result) {
-  <p class="caro__rules">
-    Còn {{ seconds() }} giây cho lượt này. @if (game.waitingForReturn) { Bạn
-    chơi cần quay lại trước khi hết giờ. }
-  </p>
-  }
-  <div class="caro__controls">
-    <p class="caro__rules">{{ size }}×{{ size }} · Kéo hoặc vuốt để xem bàn</p>
-    <button uiButton size="sm" (click)="centerBoard()">Về giữa</button>
-  </div>
-  <div
-    #boardViewport
-    class="caro__viewport"
-    (pointerdown)="startPan($event)"
-    (pointermove)="pan($event)"
-    (pointerup)="endPan($event)"
-    (pointercancel)="endPan($event)"
-    (lostpointercapture)="endPan($event)"
-  >
-    <div
-      class="caro__board"
-      role="group"
-      [attr.aria-label]="'Bàn Caro ' + size + ' hàng, ' + size + ' cột'"
-      [style.--caro-size]="size"
-      (keydown)="moveFocus($event)"
-    >
-      @for (piece of cells(); track $index) {
-      <button
-        class="caro__cell"
-        type="button"
-        [class.caro__cell--x]="piece === 'X'"
-        [class.caro__cell--o]="piece === 'O'"
-        [class.caro__cell--last]="game.lastCell === $index"
-        [attr.data-cell]="$index"
-        [attr.aria-label]="cellLabel($index, piece) + (game.lastCell === $index ? ', nước vừa đánh' : '')"
-        [attr.aria-disabled]="!canPlay() || piece !== '.'"
-        [attr.tabindex]="$index === centerCell ? 0 : -1"
-        (click)="playCell($event, $index, piece)"
+  <div class="caro__layout">
+    <aside class="caro__info" aria-label="Thông tin ván Caro">
+      <p class="caro__players">
+        <strong>X</strong> {{ game.xName }} · <strong>O</strong> {{ game.oName
+        }}
+      </p>
+      <p
+        class="caro__status"
+        [class.caro__status--your-turn]="canPlay()"
+        role="status"
       >
-        {{ piece === '.' ? '' : piece }}
-      </button>
+        @if (game.result === 'draw') {
+        <span>Hòa · Trả lại CPoint cho hai bạn</span>
+        } @else if (game.result) { {{ game.result === game.piece ? 'Bạn thắng' :
+        'Bạn chơi thắng' }} @if (game.timeout === 'away') { · {{ game.result ===
+        game.piece ? 'Bạn chơi không quay lại kịp' : 'Bạn không quay lại kịp' }}
+        } @else if (game.timedOut) { · {{ game.result === game.piece ? 'Bạn chơi
+        hết giờ' : 'Bạn hết giờ' }} } @if (game.stake) { · {{ game.result ===
+        game.piece ? '+' : '−' }}{{ game.stake }} CPoint } } @else {
+        <strong
+          >{{ game.waitingForReturn ? 'Chờ bạn chơi quay lại' : (table().paused
+          ? 'Chờ ngồi lại cùng bàn' : (canPlay() ? 'Đến lượt bạn' : 'Lượt của '
+          + turn())) }}</strong
+        >
+        · Bạn là {{ game.piece }} · {{ game.stake }} CPoint mỗi bên }
+      </p>
+      @if (!game.result) {
+      <p class="caro__rules">
+        Còn {{ seconds() }} giây cho lượt này. @if (game.waitingForReturn) { Bạn
+        chơi cần quay lại trước khi hết giờ. }
+      </p>
       }
+      <div class="caro__controls">
+        <p class="caro__rules">
+          {{ size }}×{{ size }} · Kéo hoặc vuốt để xem bàn
+        </p>
+        <button uiButton size="sm" (click)="centerBoard()">Về giữa</button>
+      </div>
+      @if (game.result) {
+      <button uiButton size="sm" (click)="restarted.emit()">Ván mới</button>
+      }
+    </aside>
+    <div class="caro__play">
+      <div
+        #boardViewport
+        class="caro__viewport"
+        (pointerdown)="startPan($event)"
+        (pointermove)="pan($event)"
+        (pointerup)="endPan($event)"
+        (pointercancel)="endPan($event)"
+        (lostpointercapture)="endPan($event)"
+      >
+        <div
+          class="caro__board"
+          role="group"
+          [attr.aria-label]="'Bàn Caro ' + size + ' hàng, ' + size + ' cột'"
+          [style.--caro-size]="size"
+          (keydown)="moveFocus($event)"
+        >
+          @for (piece of cells(); track $index) {
+          <button
+            class="caro__cell"
+            type="button"
+            [class.caro__cell--x]="piece === 'X'"
+            [class.caro__cell--o]="piece === 'O'"
+            [class.caro__cell--last]="game.lastCell === $index"
+            [attr.data-cell]="$index"
+            [attr.aria-label]="cellLabel($index, piece) + (game.lastCell === $index ? ', nước vừa đánh' : '')"
+            [attr.aria-disabled]="!canPlay() || piece !== '.'"
+            [attr.tabindex]="$index === centerCell ? 0 : -1"
+            (click)="playCell($event, $index, piece)"
+          >
+            {{ piece === '.' ? '' : piece }}
+          </button>
+          }
+        </div>
+      </div>
     </div>
   </div>
-  @if (game.result) {
-  <button uiButton size="sm" (click)="restarted.emit()">Ván mới</button>
-  } } @else { @if (invitation(); as invite) { @if (invite.to === me()) {
-  <p role="status">
-    <strong>{{ invite.fromName }}</strong> mời bạn chơi và cùng góp {{
-    invite.stake }} CPoint mỗi bên.
-  </p>
-  <div class="caro__reply">
-    <button
-      uiButton
-      variant="primary"
-      (click)="replied.emit(true)"
-      [disabled]="invite.stake > balance()"
-    >
-      Đồng ý
-    </button>
-    <button uiButton (click)="replied.emit(false)">Từ chối</button>
+  } @else {
+  <div class="caro__lobby">
+    @if (invitation(); as invite) { @if (invite.to === me()) {
+    <p role="status">
+      <strong>{{ invite.fromName }}</strong> mời bạn chơi và cùng góp {{
+      invite.stake }} CPoint mỗi bên.
+    </p>
+    <div class="caro__reply">
+      <button
+        uiButton
+        variant="primary"
+        (click)="replied.emit(true)"
+        [disabled]="invite.stake > balance()"
+      >
+        Đồng ý
+      </button>
+      <button uiButton (click)="replied.emit(false)">Từ chối</button>
+    </div>
+    @if (invite.stake > balance()) {
+    <p>Bạn chưa đủ CPoint cho ván này.</p>
+    } } @else if (table().paused) {
+    <p role="status">Đang chờ hai bạn ngồi cùng bàn. Đồng hồ lượt vẫn chạy.</p>
+    } @else {
+    <p role="status">
+      Đang chờ {{ invite.toName }} đồng ý · {{ invite.stake }} CPoint mỗi bên.
+    </p>
+    } } @else {
+    <p class="caro__rules">
+      Từ 6 quân liên tiếp thì thắng. Đúng 5 quân cần ít nhất một đầu trống.
+    </p>
+    <p class="caro__rules">
+      Số dư {{ balance() }} CPoint. Góp ít nhất {{ minimumStake }} CPoint mỗi
+      bên.
+    </p>
+    @if (table().host) { @if (table().stake !== undefined && !table().partner) {
+    <p role="status">
+      Đang chờ bạn cùng chơi · {{ table().stake }} CPoint mỗi bên.
+    </p>
+    }
+    <form class="caro__form" [formRoot]="challengeForm">
+      <ui-field label="CPoint góp" required>
+        <input
+          uiInput
+          type="number"
+          inputmode="numeric"
+          step="1"
+          [formField]="challengeForm.stake"
+        />
+      </ui-field>
+      <button
+        uiButton
+        variant="primary"
+        type="submit"
+        [disabled]="balance() < minimumStake"
+      >
+        Góp điểm
+      </button>
+    </form>
+    } @else {
+    <p role="status">Đang chờ {{ table().partner }} góp điểm.</p>
+    } }
   </div>
-  @if (invite.stake > balance()) {
-  <p>Bạn chưa đủ CPoint cho ván này.</p>
-  } } @else if (table().paused) {
-  <p role="status">Đang chờ hai bạn ngồi cùng bàn. Đồng hồ lượt vẫn chạy.</p>
-  } @else {
-  <p role="status">
-    Đang chờ {{ invite.toName }} đồng ý · {{ invite.stake }} CPoint mỗi bên.
-  </p>
-  } } @else {
-  <p class="caro__rules">
-    Từ 6 quân liên tiếp thì thắng. Đúng 5 quân cần ít nhất một đầu trống.
-  </p>
-  <p class="caro__rules">
-    Số dư {{ balance() }} CPoint. Góp ít nhất {{ minimumStake }} CPoint mỗi bên.
-  </p>
-  @if (table().host) { @if (table().stake !== undefined && !table().partner) {
-  <p role="status">
-    Đang chờ bạn cùng chơi · {{ table().stake }} CPoint mỗi bên.
-  </p>
-  }
-  <form class="caro__form" [formRoot]="challengeForm">
-    <ui-field label="CPoint góp" required>
-      <input
-        uiInput
-        type="number"
-        inputmode="numeric"
-        step="1"
-        [formField]="challengeForm.stake"
-      />
-    </ui-field>
-    <button
-      uiButton
-      variant="primary"
-      type="submit"
-      [disabled]="balance() < minimumStake"
-    >
-      Góp điểm
-    </button>
-  </form>
-  } @else {
-  <p role="status">Đang chờ {{ table().partner }} góp điểm.</p>
-  } } } @if (error()) {
+  } @if (error()) {
   <p role="alert" class="caro__error">{{ error() }}</p>
   }
 </ui-section-card>

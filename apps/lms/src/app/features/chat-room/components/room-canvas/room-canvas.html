@@ -29,26 +29,13 @@
         Vẫy chào
       </button>
       @if (reactionsEnabled()) {
-      <details
-        #picker
-        tabindex="-1"
-        class="room-canvas__reactions"
-        (keydown.escape)="picker.removeAttribute('open')"
-      >
-        <summary>Thả cảm xúc</summary>
-        <div role="group" aria-label="Chọn cảm xúc">
-          @for (reaction of reactions; track reaction.id) {
-          <button
-            uiButton
-            size="sm"
-            (click)="chooseReaction(reaction.id, picker)"
-          >
-            <span aria-hidden="true">{{ reaction.icon }}</span> {{
-            reaction.label }}
-          </button>
-          }
-        </div>
-      </details>
+      <ui-menu
+        label="Thả cảm xúc"
+        translucent
+        size="sm"
+        [entries]="reactionEntries"
+        (selected)="chooseReaction($event)"
+      />
       }
     </div>
     } @if (interactionsEnabled()) {

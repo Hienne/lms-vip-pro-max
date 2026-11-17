@@ -25,6 +25,33 @@ describe('playground socket contracts', () => {
     ).toBe(false);
   });
 
+  it('bounds media signaling and rejects malformed connection identities', () => {
+    const signal = {
+      type: 'media-signal',
+      id: 'bfb32f1e-6002-4f1f-95eb-a5bbb8bc15e9',
+      connection: 'afac8aca-8b30-41f0-9b0d-e765273fa2af',
+      to: 'viewer',
+      kind: 'offer',
+      payload: 'v=0',
+    };
+    expect(RoomCommandSchema.safeParse(signal).success).toBe(true);
+    expect(
+      RoomCommandSchema.safeParse({ ...signal, connection: 'other' }).success,
+    ).toBe(false);
+    expect(
+      RoomCommandSchema.safeParse({ ...signal, payload: 'x'.repeat(20001) })
+        .success,
+    ).toBe(false);
+    expect(
+      RoomCommandSchema.safeParse({
+        type: 'media-start',
+        id: signal.id,
+        source: 'youtube',
+        videoId: 'https://example.com',
+      }).success,
+    ).toBe(false);
+  });
+
   it('keeps old maps and joins compatible while validating board command bounds', () => {
     const map = RoomMapSchema.parse({
       width: 3200,
