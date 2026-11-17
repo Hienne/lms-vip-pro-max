@@ -476,10 +476,10 @@ describe('LearningProgress', () => {
       expect(passed).toContain('Tự nộp');
       expect(passed).toContain('100% Đạt');
       expect(
-        Array.from(card().querySelectorAll('.learning-progress__fail')).map(
-          (n) => n.textContent,
+        Array.from(card().querySelectorAll('[uiBadge]')).map((n) =>
+          n.textContent?.trim(),
         ),
-      ).toEqual(['Chưa đạt']);
+      ).toEqual(['Chưa đạt', 'Đạt']);
     });
 
     it('has a separate tab from competency', async () => {

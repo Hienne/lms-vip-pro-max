@@ -2,8 +2,12 @@ import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   BarChart,
+  Badge,
   Button,
   Checkbox,
+  DataTable,
+  DataTableCell,
+  type DataTableColumn,
   Empty,
   ErrorState,
   FmtDatePipe,
@@ -48,10 +52,13 @@ import {
   imports: [
     ActivityHeatmap,
     BarChart,
+    Badge,
     Button,
     Checkbox,
     CompetencyView,
     CourseStatus,
+    DataTable,
+    DataTableCell,
     Empty,
     ErrorState,
     FmtDatePipe,
@@ -93,6 +100,23 @@ export class LearningProgress {
   );
   protected readonly pageSize = PROGRESS_PAGE_SIZE;
   protected readonly historyPageSize = EXAM_HISTORY_SIZE;
+  /** The graded attempts as table rows; the server sorts and pages them. */
+  protected readonly historyRows$ = computed(() =>
+    this.store.filteredAttempts$().map((a) => ({ ...a, id: a.attemptId })),
+  );
+  protected readonly historyColumns: readonly DataTableColumn[] = [
+    { key: 'quizTitle', label: 'Bài kiểm tra', sortable: false },
+    { key: 'attemptNo', label: 'Lần thi', sortable: false, nowrap: true },
+    {
+      key: 'submittedAt',
+      label: 'Thời điểm nộp',
+      sortable: false,
+      nowrap: true,
+    },
+    { key: 'correct', label: 'Câu đúng', sortable: false, nowrap: true },
+    { key: 'score', label: 'Điểm', sortable: false, nowrap: true },
+    { key: 'result', label: 'Kết quả', sortable: false, nowrap: true },
+  ];
   protected readonly tabs: readonly TabItem[] = [
     { id: 'courses', label: 'Tiến độ khóa học' },
     { id: 'competency', label: 'Năng lực' },

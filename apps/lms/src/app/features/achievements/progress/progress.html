@@ -434,72 +434,56 @@
           }
         </div>
       </div>
-      @if (store.filteredAttempts$().length) {
-      <div uiTableWrap class="learning-progress__table-wrap">
-        <table uiTable responsive>
-          <caption class="sr-only">
-            Các lượt thi đã chấm gần nhất
-          </caption>
-          <thead>
-            <tr>
-              <th scope="col">Bài kiểm tra</th>
-              <th scope="col">Lần thi</th>
-              <th scope="col">Thời điểm nộp</th>
-              <th scope="col">Câu đúng</th>
-              <th scope="col">Điểm</th>
-              <th scope="col">Kết quả</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (attempt of store.filteredAttempts$(); track attempt.attemptId)
-            {
-            <tr>
-              <td data-label="Bài kiểm tra">
-                <a
-                  uiTablePrimary
-                  [routerLink]="['/quiz', attempt.quizId, 'result', attempt.attemptId]"
-                  >{{ attempt.quizTitle }}</a
-                >
-              </td>
-              <td data-label="Lần thi">{{ attempt.attemptNo }}</td>
-              <td data-label="Thời điểm nộp">
-                {{ attempt.submittedAt | fmtDatetime }} @if (attempt.status ===
-                'AUTO_SUBMITTED') { · Tự nộp }
-              </td>
-              <td data-label="Câu đúng">
-                @if (attempt.correctCount !== null) { {{ attempt.correctCount
-                }}/{{ attempt.totalQuestions }} } @else { — }
-              </td>
-              <td data-label="Điểm">
-                @if (attempt.scorePercent !== null) { {{ attempt.scorePercent |
-                fmtPct: 2 }} } @else { — }
-              </td>
-              <td data-label="Kết quả">
-                @if (attempt.passed === true) { Đạt } @else if (attempt.passed
-                === false) {
-                <span class="learning-progress__fail">Chưa đạt</span> } @else {
-                — }
-              </td>
-            </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-      } @else if (store.historyHasFilters$()) {
-      <p class="learning-progress__muted">
-        Không có lượt thi phù hợp với bộ lọc.
-      </p>
-      } @else {
-      <p class="learning-progress__muted">
-        Bạn chưa có bài kiểm tra nào được chấm.
-      </p>
-      }
-      <ui-pagination
+      <ui-data-table
+        caption="Các lượt thi đã chấm gần nhất"
+        [columns]="historyColumns"
+        [rows]="historyRows$()"
         [total]="store.historyTotal$()"
         [page]="store.historyPage$()"
         [pageSize]="historyPageSize"
+        [pageSizeOptions]="[]"
         (pageChange)="store.goToHistoryPage($event)"
-      />
+      >
+        <ui-empty
+          slot="empty"
+          variant="inline"
+          [title]="
+            store.historyHasFilters$()
+              ? 'Không có lượt thi phù hợp với bộ lọc.'
+              : 'Bạn chưa có bài kiểm tra nào được chấm.'
+          "
+        />
+        <ng-template uiDataTableCell="quizTitle" [of]="historyRows$()" let-row>
+          <a
+            uiTablePrimary
+            [routerLink]="['/quiz', row.quizId, 'result', row.attemptId]"
+            >{{ row.quizTitle }}</a
+          >
+        </ng-template>
+        <ng-template
+          uiDataTableCell="submittedAt"
+          [of]="historyRows$()"
+          let-row
+        >
+          {{ row.submittedAt | fmtDatetime }} @if (row.status ===
+          'AUTO_SUBMITTED') { · Tự nộp }
+        </ng-template>
+        <ng-template uiDataTableCell="correct" [of]="historyRows$()" let-row>
+          @if (row.correctCount !== null) { {{ row.correctCount }}/{{
+          row.totalQuestions }} } @else { — }
+        </ng-template>
+        <ng-template uiDataTableCell="score" [of]="historyRows$()" let-row>
+          @if (row.scorePercent !== null) { {{ row.scorePercent | fmtPct: 2 }} }
+          @else { — }
+        </ng-template>
+        <ng-template uiDataTableCell="result" [of]="historyRows$()" let-row>
+          @if (row.passed === true) {
+          <span uiBadge tone="success" dot>Đạt</span>
+          } @else if (row.passed === false) {
+          <span uiBadge tone="danger" dot>Chưa đạt</span>
+          } @else { — }
+        </ng-template>
+      </ui-data-table>
       } @else {
       <div
         uiSkeleton
