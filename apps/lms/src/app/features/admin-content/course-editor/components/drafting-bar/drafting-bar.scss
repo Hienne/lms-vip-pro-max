@@ -7,3 +7,8 @@
 .drafting-bar {
   margin-bottom: ui.space(4);
 }
+
+.drafting-bar__again {
+  display: flex;
+  justify-content: flex-end;
+}

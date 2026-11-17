@@ -26,6 +26,35 @@
   </button>
   }
 </ui-alert>
+} @else if (fill.failed$(); as failed) {
+<ui-alert
+  tone="danger"
+  heading="Trợ lý không soạn được bước này"
+  class="drafting-bar"
+>
+  {{ failed.error }}
+  <button
+    uiButton
+    uiAlertAction
+    type="button"
+    size="sm"
+    [disabled]="fill.isChanging$()"
+    (click)="fill.proposeAgain(failed.step)"
+  >
+    <ui-icon name="rotate-ccw" size="sm" />Thử lại
+  </button>
+  <button
+    uiButton
+    uiAlertAction
+    type="button"
+    variant="ghost"
+    size="sm"
+    [disabled]="fill.isChanging$()"
+    (click)="fill.fillByHand(failed.step)"
+  >
+    Tự điền
+  </button>
+</ui-alert>
 } @else if (fill.confirmStep$(); as step) {
 <ui-alert tone="info" heading="Chốt bước này" class="drafting-bar">
   @if (fill.suggestedCode$(); as code) {
@@ -47,7 +76,19 @@
   @if (step === 2) { Nội dung từng bài để trống để bạn tự viết; bài chưa có nội
   dung không chặn bước này. } @if (step === 3) { Các câu hỏi được giữ lại thành
   bài kiểm tra cuối khóa mới, được chọn để xét hoàn thành. } Bấm Đã chốt để lưu
-  và để trợ lý sang bước tiếp theo. }
+  và để trợ lý sang bước tiếp theo. } @if (fill.proposeAgainStep$() === step) {
+  <button
+    uiButton
+    uiAlertAction
+    type="button"
+    variant="ghost"
+    size="sm"
+    [disabled]="fill.isChanging$() || fill.isConfirming$()"
+    (click)="proposeAgain(step)"
+  >
+    <ui-icon name="rotate-ccw" size="sm" />Đề xuất lại
+  </button>
+  }
   <button
     uiButton
     uiAlertAction
@@ -60,6 +101,20 @@
     <ui-icon name="check" size="sm" />Đã chốt
   </button>
 </ui-alert>
+} @else if (fill.proposeAgainStep$(); as step) {
+<!-- A step confirmed before: saved with "Lưu nháp", and the assistant may still redo it. -->
+<div class="drafting-bar drafting-bar__again">
+  <button
+    uiButton
+    type="button"
+    variant="ghost"
+    size="sm"
+    [disabled]="fill.isChanging$()"
+    (click)="proposeAgain(step)"
+  >
+    <ui-icon name="rotate-ccw" size="sm" />Đề xuất lại
+  </button>
+</div>
 } @if (fill.confirmError$(); as error) {
 <ui-alert tone="danger" [heading]="error.title ?? ''" class="drafting-bar">
   {{ error.message }}

@@ -394,12 +394,34 @@ describe('DraftingSessionMock', () => {
     ) as DraftingSession;
     expect(manual.status).toBe('manual');
     expect(stepOf(manual, 1)?.state).toBe('manual');
-    // A manual session's next step is filled by hand too.
-    const next = parsed(
-      draftingSessionEndpoints.confirm,
-      confirm(manual, 1),
+    // The assistant's part is over: nothing is confirmed or proposed again through the session.
+    expect(code(confirm(manual, 1))).toBe('CORE-VALIDATION_FAILED');
+    expect(
+      code(
+        call(draftingSessionEndpoints.proposeAgain, null, {
+          sessionId: String(other.id),
+          step: '1',
+        }),
+      ),
+    ).toBe('CORE-VALIDATION_FAILED');
+    expect(get(other.id).steps).toHaveLength(1);
+  });
+
+  it('fills a failed step by hand: the session ends as manual', () => {
+    mock.failNext(1);
+    const failed = ready(start().id);
+    expect(failed.status).toBe('failed');
+
+    const manual = parsed(
+      draftingSessionEndpoints.manual,
+      call(draftingSessionEndpoints.manual, null, {
+        sessionId: String(failed.id),
+        step: '1',
+      }),
     ) as DraftingSession;
-    expect(stepOf(next, 2)?.state).toBe('manual');
+
+    expect(manual).toMatchObject({ status: 'manual', error: null });
+    expect(stepOf(manual, 1)).toMatchObject({ state: 'manual', error: null });
   });
 
   it('keeps a session private to its owner', () => {

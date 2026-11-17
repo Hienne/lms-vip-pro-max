@@ -66,7 +66,11 @@ export const draftingSessionEndpoints = {
     response: DraftingSessionSchema,
     served: 'mock',
   }),
-  /** Proposes a `proposed`, `confirmed` or `failed` step again; other steps and the course stay. */
+  /**
+   * Proposes a `proposed`, `confirmed` or `failed` step again ("Đề xuất lại", "Thử lại"); other
+   * steps and the course stay, a failed session is active again. Counts against the daily
+   * course-generation limit (`ASSISTANT-JOB_RATE_LIMITED`); a finished or manual session refuses.
+   */
   proposeAgain: defineEndpoint({
     method: 'post',
     path: '/api/v1/assistant/drafting-sessions/{sessionId}/steps/{step}/propose-again',

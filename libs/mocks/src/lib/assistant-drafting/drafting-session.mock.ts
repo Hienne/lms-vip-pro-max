@@ -38,15 +38,19 @@ const refusal = (key: keyof typeof BACKEND_RESPONSES): FakeReply =>
   backendRefusal(key);
 
 const INVALID_STATE_MESSAGE = 'Bước này chưa sẵn sàng để chốt.';
-const invalidState = (): FakeReply => ({
+const invalidState = (message = INVALID_STATE_MESSAGE): FakeReply => ({
   status: 200,
   body: envelopeError(
     BACKEND_RESPONSES.validationFailed.code,
     BACKEND_RESPONSES.validationFailed.title,
-    INVALID_STATE_MESSAGE,
-    [{ field: 'step', code: 'INVALID_STATE', message: INVALID_STATE_MESSAGE }],
+    message,
+    [{ field: 'step', code: 'INVALID_STATE', message }],
   ),
 });
+
+/** A session the assistant still works in: a failed one is retried or filled by hand. */
+const isOpen = (session: DraftingSession) =>
+  session.status === 'active' || session.status === 'failed';
 const CONTENT_NOT_EMPTY_MESSAGE =
   'Bài do trợ lý đề xuất được lưu với nội dung trống; hãy thêm nội dung sau khi chốt bước này.';
 const contentNotEmpty = (): FakeReply => ({
@@ -331,7 +335,9 @@ export class DraftingSessionMock {
     if (step === 1 && session.courseId !== null) {
       return ok(this.view(entry));
     }
+    // Like the server: only an active session's current step, once proposed or left to the author.
     if (
+      session.status !== 'active' ||
       step !== session.currentStep ||
       !current ||
       !['proposed', 'failed', 'manual'].includes(current.state)
@@ -432,10 +438,6 @@ export class DraftingSessionMock {
       };
     }
     this.replace(entry, { ...confirmed, state: 'confirmed', error: null });
-    if (session.status === 'failed') {
-      session.status = 'active';
-      session.error = null;
-    }
     if (step === 4) {
       session.status = 'finished';
     } else {
@@ -444,10 +446,7 @@ export class DraftingSessionMock {
       entry.polls.set(next, 0);
       session.steps = [
         ...session.steps,
-        draftingStepFixture(
-          next,
-          session.status === 'manual' ? 'manual' : 'proposing',
-        ),
+        draftingStepFixture(next, 'proposing'),
       ];
     }
     return ok(this.view(entry));
@@ -478,10 +477,11 @@ export class DraftingSessionMock {
   ): FakeReply {
     const current = this.stepOf(entry, step);
     if (
+      !isOpen(entry.session) ||
       !current ||
       !['proposed', 'confirmed', 'failed'].includes(current.state)
     )
-      return invalidState();
+      return invalidState('Bước này không đề xuất lại được lúc này.');
     entry.polls.set(step, 0);
     this.replace(entry, {
       ...current,
@@ -494,11 +494,17 @@ export class DraftingSessionMock {
     return ok(this.view(entry));
   }
 
-  /** Mock proposals appear whole, so a stopped step has nothing yet and becomes `manual`. */
+  /**
+   * A stopped step keeps a proposal it still holds (`proposed`), else it is the author's
+   * (`manual`); the session goes on. Mock proposals appear whole, so it is `manual`.
+   */
   private stop(entry: MockSession): FakeReply {
     for (const step of entry.session.steps) {
       if (step.state === 'proposing')
-        this.replace(entry, { ...step, state: 'manual' });
+        this.replace(entry, {
+          ...step,
+          state: step.proposal ? 'proposed' : 'manual',
+        });
     }
     return ok(this.view(entry));
   }
@@ -506,11 +512,12 @@ export class DraftingSessionMock {
   private manual(entry: MockSession, step: DraftingStepNumber): FakeReply {
     const current = this.stepOf(entry, step);
     if (
+      !isOpen(entry.session) ||
       step !== entry.session.currentStep ||
       !current ||
       current.state === 'confirmed'
     ) {
-      return invalidState();
+      return invalidState('Bước này không tự điền được lúc này.');
     }
     this.replace(entry, { ...current, state: 'manual', error: null });
     entry.session.status = 'manual';

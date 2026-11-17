@@ -1003,3 +1003,217 @@ describe('CourseEditor confirming a drafting step', () => {
     });
   });
 });
+
+describe('CourseEditor proposing a step again, stopping and failed steps', () => {
+  const screen = setUpAdminScreen([
+    { provide: Sha256Hasher, useValue: new FakeHasher() },
+  ]);
+  const FAILURE = 'Không đọc được tài liệu nguồn. Hãy thử lại hoặc tự điền.';
+
+  let session: DraftingSession;
+  let polls = 0;
+
+  const original = (endpoint: unknown, request: unknown): FakeReply =>
+    MockBackend.prototype.handle.call(
+      TestBed.inject(MockBackend),
+      endpoint as never,
+      request as never,
+    ) as FakeReply;
+
+  /** The session's step 1 as the server has it now. */
+  const stepOne = (change: Partial<DraftingStep>): DraftingStep =>
+    ({ ...session.steps[0], ...change }) as DraftingStep;
+
+  beforeEach(() => {
+    session = proposing();
+    polls = 0;
+    screen.calls.mockImplementation((endpoint, request) => {
+      if (endpoint === draftingSessionEndpoints.get) {
+        polls++;
+        return ok(session);
+      }
+      if (endpoint === draftingSessionEndpoints.proposeAgain) {
+        session = {
+          ...session,
+          status: 'active',
+          error: null,
+          steps: [stepOne({ state: 'proposing', proposal: null, error: null })],
+        };
+        return ok(session);
+      }
+      if (endpoint === draftingSessionEndpoints.manual) {
+        session = {
+          ...session,
+          status: 'manual',
+          error: null,
+          steps: [stepOne({ state: 'manual', error: null })],
+        };
+        return ok(session);
+      }
+      if (endpoint === draftingSessionEndpoints.stop) {
+        session = {
+          ...session,
+          steps: session.steps.map((step) =>
+            step.state === 'proposing' ? { ...step, state: 'manual' } : step,
+          ),
+        };
+        return ok(session);
+      }
+      return original(endpoint, request);
+    });
+  });
+
+  afterEach(() => vi.useRealTimers());
+
+  const advance = async (ms: number) => {
+    await vi.advanceTimersByTimeAsync(ms);
+    TestBed.tick();
+    await vi.advanceTimersByTimeAsync(0);
+    TestBed.tick();
+  };
+
+  async function open() {
+    const reply = TestBed.inject(ReplyGate).hold(draftingSessionEndpoints.get);
+    await screen.open('/admin/courses/new?session=1');
+    vi.useFakeTimers();
+    reply.release();
+    await advance(0);
+  }
+
+  const tap = async (target: HTMLElement | null | undefined) => {
+    if (!target) throw new Error('Nothing to click');
+    target.click();
+    await advance(0);
+    await advance(0);
+  };
+
+  /** The server has `proposal` for step 1 and every field of it is written. */
+  const proposed = async (title = basicsProposalFixture.title, time = '') => {
+    session = {
+      ...draftingSessionFixture(1),
+      steps: [
+        {
+          ...draftingStepFixture(1, 'proposed'),
+          proposal: { ...basicsProposalFixture, title },
+          updateTime: time || draftingStepFixture(1).updateTime,
+        } as DraftingStep,
+      ],
+    };
+    await advance(DRAFTING_POLL_INTERVAL_MS);
+    await advance(DRAFTING_FIELD_DELAY_MS * PATCHES);
+  };
+
+  const failed = (): DraftingSession => ({
+    ...draftingSessionFixture(1),
+    status: 'failed',
+    error: FAILURE,
+    steps: [
+      { ...draftingStepFixture(1, 'failed'), proposal: null, error: FAILURE },
+    ],
+  });
+
+  const fieldset = () =>
+    screen.el.querySelector<HTMLFieldSetElement>(
+      'fieldset.course-editor__body',
+    )!;
+  const typeTitle = async (text: string) => {
+    const title = screen.field('Tên khóa học') as HTMLInputElement;
+    title.value = text;
+    title.dispatchEvent(new Event('input', { bubbles: true }));
+    await advance(0);
+  };
+
+  it('"Đề xuất lại" asks first, then proposes only that step and writes its new proposal over its fields', async () => {
+    await open();
+    await proposed();
+    await typeTitle('Tên do tác giả sửa');
+
+    await tap(screen.button('Đề xuất lại'));
+    expect(screen.text(screen.alertDialog()!)).toContain(
+      'Các bước khác giữ nguyên',
+    );
+    await tap(screen.button('Hủy', screen.alertDialog()!));
+    expect(screen.callsTo(draftingSessionEndpoints.proposeAgain)).toBe(0);
+    expect(screen.field('Tên khóa học').value).toBe('Tên do tác giả sửa');
+
+    await tap(screen.button('Đề xuất lại'));
+    await tap(screen.button('Đề xuất lại', screen.alertDialog()!));
+    expect(screen.callsTo(draftingSessionEndpoints.proposeAgain)).toBe(1);
+    expect(
+      screen.lastCall(draftingSessionEndpoints.proposeAgain),
+    ).toMatchObject({ params: { sessionId: '1', step: '1' } });
+    expect(screen.text()).toContain('Trợ lý đang soạn…');
+    expect(fieldset().disabled).toBe(true);
+    expect(screen.field('Tên khóa học').value).toBe('Tên do tác giả sửa');
+
+    await proposed('Tên trợ lý đề xuất lại', '2026-11-18T09:00:00+07:00');
+
+    expect(screen.field('Tên khóa học').value).toBe('Tên trợ lý đề xuất lại');
+    expect(fieldset().disabled).toBe(false);
+    expect(screen.button('Đã chốt')).toBeDefined();
+  });
+
+  it('a failed step shows its error with "Thử lại", which proposes only that step again', async () => {
+    session = failed();
+    await open();
+
+    expect(screen.text()).toContain('Trợ lý không soạn được bước này');
+    expect(screen.text()).toContain(FAILURE);
+    expect(screen.button('Tự điền')).toBeDefined();
+    expect(screen.button('Đã chốt')).toBeUndefined();
+
+    await tap(screen.button('Thử lại'));
+
+    expect(screen.alertDialog()).toBeNull();
+    expect(
+      screen.lastCall(draftingSessionEndpoints.proposeAgain),
+    ).toMatchObject({ params: { sessionId: '1', step: '1' } });
+    expect(screen.text()).toContain('Trợ lý đang soạn…');
+    expect(screen.text()).not.toContain(FAILURE);
+
+    await proposed();
+    expect(screen.field('Tên khóa học').value).toBe(
+      basicsProposalFixture.title,
+    );
+  });
+
+  it('"Tự điền" ends the assistant\'s part: the step is the author\'s and nothing more is asked or written', async () => {
+    session = failed();
+    await open();
+
+    await tap(screen.button('Tự điền'));
+
+    expect(screen.lastCall(draftingSessionEndpoints.manual)).toMatchObject({
+      params: { sessionId: '1', step: '1' },
+    });
+    expect(screen.text()).not.toContain('Trợ lý không soạn được bước này');
+    expect(screen.button('Đã chốt')).toBeUndefined();
+    expect(screen.button('Đề xuất lại')).toBeUndefined();
+    expect(fieldset().disabled).toBe(false);
+    const asked = polls;
+    await advance(DRAFTING_POLL_INTERVAL_MS * 3);
+    expect(polls).toBe(asked);
+    expect(screen.field('Tên khóa học').value).toBe('');
+  });
+
+  it('"Dừng" after "Đề xuất lại" stops the server and keeps what the step already held', async () => {
+    await open();
+    await proposed();
+    await tap(screen.button('Đề xuất lại'));
+    await tap(screen.button('Đề xuất lại', screen.alertDialog()!));
+
+    await tap(screen.button('Dừng'));
+
+    expect(screen.lastCall(draftingSessionEndpoints.stop)).toMatchObject({
+      params: { sessionId: '1' },
+    });
+    expect(screen.text()).not.toContain('Trợ lý đang soạn…');
+    expect(fieldset().disabled).toBe(false);
+    expect(screen.field('Tên khóa học').value).toBe(
+      basicsProposalFixture.title,
+    );
+    // Stopped, the step is the author's: confirmed as usual, not proposed again from here.
+    expect(screen.button('Đã chốt')).toBeDefined();
+    expect(screen.button('Đề xuất lại')).toBeUndefined();
+  });
+});

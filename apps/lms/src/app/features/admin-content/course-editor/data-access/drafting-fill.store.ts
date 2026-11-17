@@ -59,6 +59,24 @@ export interface LessonNoteView {
   readonly suggested: boolean;
 }
 
+/** One "Đề xuất lại", "Thử lại" or "Tự điền": the step of the session. */
+interface StepInput {
+  readonly sessionId: number;
+  readonly step: DraftingStepNumber;
+}
+
+/** A step the assistant could not propose, with why, as the page shows it. */
+export interface FailedStepView {
+  readonly step: DraftingStepNumber;
+  readonly error: string;
+}
+
+/** The states a step is proposed again from ("Đề xuất lại"); a failed one is retried instead. */
+const PROPOSE_AGAIN_FROM: readonly DraftingStep['state'][] = [
+  'proposed',
+  'confirmed',
+];
+
 /** One "Đã chốt": the step and the page's values for it. */
 interface ConfirmInput {
   readonly sessionId: number;
@@ -104,6 +122,8 @@ export class DraftingFillStore {
     playedSteps: signal<readonly DraftingStepNumber[]>([]),
     /** Steps the author stopped: what the server proposes for them later is not written. */
     stopped: signal<readonly DraftingStepNumber[]>([]),
+    /** Steps the author asked to propose again: their next proposal is written over the form. */
+    reproposed: signal<readonly DraftingStepNumber[]>([]),
     /** What was written into each field, as JSON, for the "AI đề xuất" marker. */
     written: signal<Partial<Record<FillField, string>>>({}),
     /** How the page confirms a step with its values, handed over by the page. */
@@ -136,6 +156,13 @@ export class DraftingFillStore {
     this.session() ? this.drafting.step$() : undefined,
   );
 
+  /** The session's step the page shows, whether it is the current one or one before it. */
+  private readonly shownStep = computed((): DraftingStep | undefined => {
+    const session = this.session();
+    const index = this.editor.step$();
+    return session?.steps.find((step) => step.step === index + 1);
+  });
+
   /** The page shows the session's current step. */
   private readonly shown = computed(() => {
     const step = this.step();
@@ -162,20 +189,44 @@ export class DraftingFillStore {
     },
   );
 
-  /** The step whose proposal is ready and not written yet. */
+  private readonly againMutation = serverMutation(
+    (input: StepInput) =>
+      this.drafting.proposeAgain(input.sessionId, input.step),
+    {
+      errors: 'toast',
+      onSuccess: (session) => this.awaitAgain(session),
+    },
+  );
+
+  private readonly manualMutation = serverMutation(
+    (input: StepInput) => this.drafting.manual(input.sessionId, input.step),
+    {
+      errors: 'toast',
+      success: () => 'Bạn tự điền tiếp khóa học',
+      onSuccess: () => this.drafting.refresh(),
+    },
+  );
+
+  /**
+   * The step whose proposal is ready and not written yet: the current step, or one the author
+   * asked to propose again.
+   */
   private readonly ready = computed((): DraftingStep | null => {
-    const step = this.step();
-    if (
-      !this.state.target() ||
-      !step?.proposal ||
-      step.state !== 'proposed' ||
-      this.state.stopped().includes(step.step)
-    ) {
-      return null;
-    }
-    return `${step.step}|${step.updateTime}` === this.state.played()
-      ? null
-      : step;
+    const session = this.session();
+    if (!this.state.target() || !session) return null;
+    const awaited = (step: DraftingStep) =>
+      step.step === session.currentStep ||
+      this.state.reproposed().includes(step.step);
+    return (
+      session.steps.find(
+        (step) =>
+          awaited(step) &&
+          !!step.proposal &&
+          step.state === 'proposed' &&
+          !this.state.stopped().includes(step.step) &&
+          `${step.step}|${step.updateTime}` !== this.state.played(),
+      ) ?? null
+    );
   });
 
   /** The page follows a session. */
@@ -186,11 +237,9 @@ export class DraftingFillStore {
   /** "Trợ lý đang soạn…": the server works on the step, or its fields are being written. */
   readonly working$ = computed(() => {
     if (this.state.playing()) return true;
-    const step = this.step();
+    const step = this.shownStep();
     return (
-      this.shown() &&
-      step?.state === 'proposing' &&
-      !this.state.stopped().includes(step.step)
+      step?.state === 'proposing' && !this.state.stopped().includes(step.step)
     );
   });
 
@@ -201,7 +250,7 @@ export class DraftingFillStore {
   readonly confirmStep$ = computed((): DraftingStepNumber | null => {
     const session = this.session();
     const step = this.step();
-    return session?.status !== 'finished' &&
+    return session?.status === 'active' &&
       step &&
       this.shown() &&
       step.state !== 'confirmed' &&
@@ -211,6 +260,39 @@ export class DraftingFillStore {
   });
 
   readonly isConfirming$ = this.confirmMutation.isPending;
+
+  /**
+   * The step shown can be proposed again ("Đề xuất lại"): it holds a proposal or was confirmed,
+   * the session is not over and nothing is being written. Null otherwise.
+   */
+  readonly proposeAgainStep$ = computed((): DraftingStepNumber | null => {
+    const session = this.session();
+    const step = this.shownStep();
+    return session?.status === 'active' &&
+      step &&
+      PROPOSE_AGAIN_FROM.includes(step.state) &&
+      !this.working$()
+      ? step.step
+      : null;
+  });
+
+  /** The step shown failed: its error, with "Thử lại" and "Tự điền". */
+  readonly failed$ = computed((): FailedStepView | null => {
+    const session = this.session();
+    const step = this.shownStep();
+    return session?.status === 'failed' && step?.state === 'failed'
+      ? {
+          step: step.step,
+          error:
+            step.error ?? session.error ?? 'Trợ lý không soạn được bước này.',
+        }
+      : null;
+  });
+
+  /** "Đề xuất lại", "Thử lại" or "Tự điền" is on its way. */
+  readonly isChanging$ = computed(
+    () => this.againMutation.isPending() || this.manualMutation.isPending(),
+  );
 
   /**
    * The code the server proposes after the one confirmed was taken, while the code field still
@@ -403,6 +485,17 @@ export class DraftingFillStore {
     );
   }
 
+  /** The step's next proposal is written over what the form holds for it. */
+  private setReproposed(step: DraftingStepNumber): void {
+    this.state.stopped.update((steps) => steps.filter((item) => item !== step));
+    this.state.playedSteps.update((steps) =>
+      steps.filter((item) => item !== step),
+    );
+    this.state.reproposed.update((steps) =>
+      steps.includes(step) ? steps : [...steps, step],
+    );
+  }
+
   private setWritten(field: FillField, written: string): void {
     this.state.written.update((fields) => ({ ...fields, [field]: written }));
   }
@@ -528,9 +621,38 @@ export class DraftingFillStore {
     this.drafting.refresh();
   }
 
+  /**
+   * "Đề xuất lại" once the author agreed to lose what the step holds, or "Thử lại" on a failed
+   * step: the server proposes only this step again, and its proposal replaces only this step's
+   * fields.
+   */
+  proposeAgain(step: DraftingStepNumber): void {
+    const sessionId = this.session()?.id;
+    if (sessionId === undefined) return;
+    if (this.proposeAgainStep$() !== step && this.failed$()?.step !== step)
+      return;
+    this.againMutation.run({ sessionId, step });
+  }
+
+  /**
+   * "Tự điền" on a failed step: the assistant's part ends there and the author goes on by hand,
+   * saving with the page's own buttons.
+   */
+  fillByHand(step: DraftingStepNumber): void {
+    const sessionId = this.session()?.id;
+    if (sessionId === undefined || this.failed$()?.step !== step) return;
+    this.manualMutation.run({ sessionId, step });
+  }
+
+  private awaitAgain(session: DraftingSession): void {
+    for (const step of session.steps)
+      if (step.state === 'proposing') this.setReproposed(step.step);
+    this.drafting.refresh();
+  }
+
   /** "Dừng": nothing more is written, and the server stops if it still works on the step. */
   stop(): void {
-    const step = this.step();
+    const step = this.shownStep() ?? this.step();
     this.cancel();
     if (!step) return;
     this.setStopped(step.step);
@@ -544,7 +666,11 @@ export class DraftingFillStore {
     // over what the author has: the page offers the new code instead.
     if (this.state.playedSteps().includes(step.step)) return;
     this.setPlayedStep(step.step);
-    const patches = [...fillSteps(step)];
+    // A course that exists keeps its code: step 1 proposed again leaves it alone.
+    const keepCode = !this.editor.isCreate$();
+    const patches = fillSteps(step).filter(
+      (patch) => !(keepCode && patch.field === 'code'),
+    );
     // The step unlocks as soon as its last field is written.
     const next = (): void => {
       const patch = patches.shift();

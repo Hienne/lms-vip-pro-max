@@ -179,6 +179,29 @@ export class CourseDraftingStore {
     return true;
   }
 
+  /**
+   * "Đề xuất lại" (and "Thử lại" on a failed step): the server proposes this step again, leaving
+   * the other steps and the course alone. It counts against the daily course generation limit.
+   */
+  proposeAgain(
+    sessionId: number,
+    step: DraftingStepNumber,
+  ): Observable<DraftingSession> {
+    return this.client.call(draftingSessionEndpoints.proposeAgain, {
+      params: { sessionId, step },
+    });
+  }
+
+  /** "Tự điền": the author fills this step and the rest; no proposal arrives any more. */
+  manual(
+    sessionId: number,
+    step: DraftingStepNumber,
+  ): Observable<DraftingSession> {
+    return this.client.call(draftingSessionEndpoints.manual, {
+      params: { sessionId, step },
+    });
+  }
+
   /** "Dừng": the server stops the step it is working on; nothing happens when none is. */
   stop(): void {
     const session = this.session$();
