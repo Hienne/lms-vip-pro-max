@@ -14,3 +14,25 @@ The four pillars lead to excellence (xuất sắc), which the motto names: "Kế
 (Connecting Knowledge. Accelerating Excellence.)
 
 _Avoid_: Core Banking Academy, CHANX Academy.
+
+## Soạn cùng trợ lý
+
+The way an author builds a new course with the assistant from one source document: the assistant reads
+the document, fills the course editor one step at a time in front of the author, and waits for the author
+to confirm each step before it moves to the next. The author can edit anything the assistant filled. The
+assistant never writes the lessons' content; that stays the author's work. It can be started from the chat
+or from the new course page.
+
+_Avoid_: Tạo bằng AI, Soạn bằng AI (the earlier flow, in which the AI also wrote every lesson).
+
+## Đề xuất
+
+What the assistant fills into one step of the course editor during Soạn cùng trợ lý. A field stays an
+Đề xuất, marked as such, until the author edits it or confirms the step.
+
+## Chốt bước
+
+The author's confirmation that a step is as they want it, after any edits of their own. It is what lets the
+assistant move on to the next step. Chốt bước on the first step saves the course as a draft.
+
+_Avoid_: duyệt (kept for publishing and reviewing content).
