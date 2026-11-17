@@ -1,0 +1,40 @@
+@use 'ui';
+:host {
+  position: absolute;
+  top: ui.space(3);
+  left: 30%;
+  z-index: 1;
+  max-width: 45%;
+}
+.playground {
+  &__tables {
+    background: ui.color(surface);
+    padding: ui.space(2);
+    border: 1px solid ui.color(border);
+    summary {
+      cursor: pointer;
+    }
+  }
+  &__list {
+    display: grid;
+    gap: ui.space(1);
+    padding-top: ui.space(2);
+    max-height: 35dvh;
+    overflow-y: auto;
+  }
+  &__floor {
+    background: ui.color(surface);
+    border: 1px solid ui.color(border);
+    padding: ui.space(2);
+    p {
+      margin: ui.space(1) 0;
+    }
+  }
+}
+@media (max-width: 639px) {
+  :host {
+    top: ui.space(18);
+    left: ui.space(3);
+    max-width: calc(100% - 2 * ui.space(3));
+  }
+}

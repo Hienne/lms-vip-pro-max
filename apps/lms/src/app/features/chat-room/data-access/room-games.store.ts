@@ -14,9 +14,13 @@ import type {
   RoomDiceState,
   RoomEvent,
   RoomRank,
+  RoomBoardState,
+  RoomBoardTables,
+  RoomBoardMove,
+  RoomColorFloorState,
 } from '@lms/contracts';
 
-type RoomPanel = 'dice' | 'caro' | 'rank';
+type RoomPanel = 'dice' | 'caro' | 'rank' | 'board';
 
 @Injectable()
 export class RoomGamesStore {
@@ -32,10 +36,41 @@ export class RoomGamesStore {
     caroTable: signal<RoomCaroTable | null>(null),
     caroError: signal(''),
     now: signal(Date.now()),
+    board: signal<RoomBoardState | null>(null),
+    boardTables: signal<RoomBoardTables>([]),
+    boardError: signal(''),
+    floor: signal<RoomColorFloorState | null>(null),
+    boardSelected: signal<number | null>(null),
+    boardPromotion: signal<RoomBoardMove[]>([]),
+    boardClaimPlanned: signal(false),
+    boardFlipped: signal(false),
+    boardPreparing: signal(false),
   };
   private send?: (command: RoomCommand) => void;
   private clock?: ReturnType<typeof setInterval>;
   private clockOffset = 0;
+  private boardRequested = false;
+  readonly board$ = this.state.board.asReadonly();
+  readonly boardTables$ = this.state.boardTables.asReadonly();
+  readonly boardError$ = this.state.boardError.asReadonly();
+  readonly floor$ = this.state.floor.asReadonly();
+  readonly now$ = this.state.now.asReadonly();
+  readonly boardSelected$ = this.state.boardSelected.asReadonly();
+  readonly boardPromotion$ = this.state.boardPromotion.asReadonly();
+  readonly boardClaimPlanned$ = this.state.boardClaimPlanned.asReadonly();
+  readonly boardFlipped$ = this.state.boardFlipped.asReadonly();
+  readonly boardPreparing$ = this.state.boardPreparing.asReadonly();
+  readonly boardCanPlay$ = computed(() => {
+    const board = this.board$();
+    return (
+      board?.seated &&
+      board.match?.result === 'playing' &&
+      board.match.side === board.match.turn
+    );
+  });
+  readonly floorSeconds$ = computed(() =>
+    this.seconds(this.floor$()?.deadline),
+  );
 
   readonly panel$ = this.state.panel.asReadonly();
   readonly balance$ = this.state.balance.asReadonly();
@@ -59,6 +94,7 @@ export class RoomGamesStore {
   readonly caroSeconds$ = computed(() => this.seconds(this.caro$()?.expiresAt));
 
   constructor() {
+    this.clock = setInterval(() => this.updateClock(), 250);
     inject(DestroyRef).onDestroy(() => clearInterval(this.clock));
   }
 
@@ -80,7 +116,6 @@ export class RoomGamesStore {
       this.state.caroError.set('');
     }
     this.updateClock();
-    this.clock = setInterval(() => this.updateClock(), 250);
   }
 
   close(): void {
@@ -88,8 +123,94 @@ export class RoomGamesStore {
       this.send?.({ type: 'dice-close' });
       this.state.pending.set(false);
     }
-    clearInterval(this.clock);
     this.state.panel.set(null);
+  }
+  watchBoard(table: string): void {
+    this.boardRequested = true;
+    this.state.boardError.set('');
+    this.send?.({ type: 'board-watch', table });
+  }
+  readyBoard(points: number): void {
+    const board = this.board$();
+    if (board?.seated) {
+      this.state.boardError.set('');
+      this.send?.({ type: 'board-ready', table: board.table, points });
+    }
+  }
+  moveBoard(move: RoomBoardMove): void {
+    const board = this.board$();
+    if (board?.match && board.seated) {
+      this.state.boardError.set('');
+      this.send?.({
+        type: 'board-move',
+        table: board.table,
+        matchId: board.match.id,
+        version: board.match.version,
+        ...move,
+      });
+    }
+  }
+  setBoardSelected(cell: number | null): void {
+    this.state.boardSelected.set(cell);
+  }
+  private setBoardPromotion(moves: RoomBoardMove[]): void {
+    this.state.boardPromotion.set(moves);
+  }
+  private setBoardClaimPlanned(value: boolean): void {
+    this.state.boardClaimPlanned.set(value);
+  }
+  private setBoardFlipped(value: boolean): void {
+    this.state.boardFlipped.set(value);
+  }
+  private setBoardPreparing(value: boolean): void {
+    this.state.boardPreparing.set(value);
+  }
+  flipBoard(): void {
+    this.setBoardFlipped(!this.boardFlipped$());
+  }
+  toggleBoardClaimPlanned(): void {
+    this.setBoardClaimPlanned(!this.boardClaimPlanned$());
+  }
+  prepareBoard(): void {
+    this.setBoardPreparing(true);
+  }
+  chooseBoardCell(cell: number): void {
+    if (!this.boardCanPlay$()) return;
+    const legal = this.board$()?.match?.legal ?? [];
+    const moves = legal.filter(
+      (move) => move.from === this.boardSelected$() && move.to === cell,
+    );
+    if (moves.length > 1) this.setBoardPromotion(moves);
+    else if (moves[0]) this.chooseBoardMove(moves[0]);
+    else if (legal.some((move) => move.from === cell))
+      this.setBoardSelected(cell);
+  }
+  chooseBoardMove(move: RoomBoardMove): void {
+    this.setBoardPromotion([]);
+    if (this.boardClaimPlanned$()) {
+      this.boardAction('claim-draw', move);
+      this.setBoardClaimPlanned(false);
+    } else this.moveBoard(move);
+  }
+  boardAction(
+    action: 'resign' | 'offer-draw' | 'accept-draw' | 'claim-draw',
+    planned?: RoomBoardMove,
+  ): void {
+    const board = this.board$();
+    if (board?.match && board.seated) {
+      this.state.boardError.set('');
+      this.send?.({
+        type: 'board-action',
+        table: board.table,
+        matchId: board.match.id,
+        version: board.match.version,
+        action,
+        ...planned,
+      });
+    }
+  }
+  joinFloor(): void {
+    this.send?.({ type: 'floor-join' });
   }
 
   bet(bet: RoomDiceBet): void {
@@ -142,6 +263,40 @@ export class RoomGamesStore {
 
   receive(event: RoomEvent): void {
     switch (event.type) {
+      case 'board-state': {
+        const previous = this.board$();
+        if (
+          event.match?.id !== previous?.match?.id ||
+          event.match?.version !== previous?.match?.version ||
+          event.table !== previous?.table
+        ) {
+          this.setBoardSelected(null);
+          this.setBoardPromotion([]);
+          this.setBoardClaimPlanned(false);
+        }
+        if (
+          event.match?.id !== previous?.match?.id ||
+          event.table !== previous?.table
+        )
+          this.setBoardPreparing(false);
+        this.state.board.set(event);
+        if (event.match) this.syncClock(event.match.serverTime);
+        if (this.boardRequested || (event.seated && !previous?.seated)) {
+          this.boardRequested = false;
+          this.open('board');
+        }
+        break;
+      }
+      case 'board-tables':
+        this.state.boardTables.set(event.tables);
+        break;
+      case 'board-error':
+        this.state.boardError.set(event.message);
+        break;
+      case 'floor-state':
+        this.syncClock(event.serverTime);
+        this.state.floor.set(event);
+        break;
       case 'wallet':
         this.state.balance.set(event.balance);
         break;
@@ -201,6 +356,16 @@ export class RoomGamesStore {
     this.state.caro.set(null);
     this.state.caroTable.set(null);
     this.state.caroError.set('');
+    this.state.board.set(null);
+    this.state.boardTables.set([]);
+    this.state.floor.set(null);
+    this.state.boardError.set('');
+    this.boardRequested = false;
+    this.setBoardSelected(null);
+    this.setBoardPromotion([]);
+    this.setBoardClaimPlanned(false);
+    this.setBoardFlipped(false);
+    this.setBoardPreparing(false);
   }
 
   private seconds(deadline: number | undefined): number {

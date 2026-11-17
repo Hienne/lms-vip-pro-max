@@ -1,0 +1,186 @@
+@if(board(); as table) {
+<ui-section-card [title]="table.name">
+  <div slot="action" class="row row--gap-1">
+    @if(table.seated) {
+    <button
+      uiButton
+      size="sm"
+      (click)="room.interact({type:'seat',action:'stand'})"
+    >
+      Đứng dậy
+    </button>
+    }
+    <button uiButton size="sm" (click)="closed.emit()">Đóng</button>
+  </div>
+  @if(!preparing() && match(); as game) {
+  <div class="board__players">
+    @for(name of game.players; track $index) {
+    <p [class.board__turn]="game.result === 'playing' && game.turn === $index">
+      <strong
+        >{{ $index === 0 ? (table.kind === 'chess' ? 'Trắng' : 'Đỏ') : 'Đen'
+        }}</strong
+      >
+      {{ name }} <time>{{ clock($index) }}</time>
+    </p>
+    }
+  </div>
+  <p role="status">
+    @if(game.result !== 'playing') { {{ game.result === 'draw' ? 'Hòa' :
+    (game.result === ''+game.side ? 'Bạn thắng' : game.players[+game.result]+'
+    thắng') }} · {{ reason() }} } @else { {{ canPlay() ? 'Đến lượt bạn' : 'Lượt
+    của '+game.players[game.turn] }} @if(game.check){ · Chiếu! } }
+    @if(game.mustChange >= 0 && game.result === 'playing') { · {{
+    game.players[game.mustChange] }} cần đổi cách đi để tránh lặp lại. }
+  </p>
+  @if(!table.seated && game.side >= 0 && game.result === 'playing') {
+  <button uiButton (click)="sit()">Trở lại ghế của bạn</button>
+  } @else if(game.side < 0) {
+  <p>Bạn đang xem ván cờ.</p>
+  }
+  <div class="board__toolbar">
+    <button uiButton size="sm" (click)="games.flipBoard()">Lật bàn</button>
+    @if(selected() !== null) { <span>Đã chọn {{ label(selected()!) }}</span> }
+  </div>
+  <div
+    class="board__grid"
+    [class.board__grid--xiangqi]="table.kind === 'xiangqi'"
+    [style.--board-width]="width()"
+    role="group"
+    [attr.aria-label]="table.name"
+    (keydown)="key($event)"
+  >
+    @for(cell of cells(); track cell) { @if(table.kind === 'xiangqi' && $index
+    === 45) {
+    <div class="board__river" aria-label="Sông">楚河 · Sông · 漢界</div>
+    }
+    <button
+      type="button"
+      class="board__cell"
+      [attr.data-board-cell]="cell"
+      [class.board__cell--dark]="(cell%width()+Math.floor(cell/width()))%2 === 1"
+      [class.board__cell--last]="game.lastCells.includes(cell)"
+      [class.board__cell--selected]="selected() === cell"
+      [class.board__cell--legal]="destinations().has(cell)"
+      [class.board__cell--first]="game.board[cell] !== '.' && game.board[cell] === game.board[cell].toUpperCase()"
+      [attr.aria-label]="label(cell)+(destinations().has(cell) ? ', có thể đi tới' : '')"
+      [attr.aria-pressed]="selected() === cell"
+      [attr.tabindex]="$index === 0 ? 0 : -1"
+      (click)="choose(cell)"
+    >
+      @if(table.kind === 'xiangqi' && (cell === 13 || cell === 76)) {
+      <svg
+        class="board__palace"
+        viewBox="0 0 100 100"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <path d="M0 0L100 100M100 0L0 100" />
+      </svg>
+      }
+      <span>{{ glyph(cell) }}</span>
+    </button>
+    }
+  </div>
+  @if(promotion().length) {
+  <div role="group" aria-label="Chọn quân phong cấp" class="board__toolbar">
+    @for(move of promotion(); track move.promotion) {
+    <button uiButton (click)="sendMove(move)">
+      {{ move.promotion === 'q' ? 'Hậu' : move.promotion === 'r' ? 'Xe' :
+      move.promotion === 'b' ? 'Tượng' : 'Mã' }}
+    </button>
+    }
+  </div>
+  } @if(table.seated && game.side >= 0 && game.result === 'playing') {
+  <div class="board__toolbar">
+    <button uiButton size="sm" (click)="games.boardAction('resign')">
+      Đầu hàng
+    </button>
+    @if(game.drawOffer >= 0 && game.drawOffer !== game.side) {
+    <button uiButton size="sm" (click)="games.boardAction('accept-draw')">
+      Đồng ý hòa
+    </button>
+    } @else {
+    <button
+      uiButton
+      size="sm"
+      [disabled]="game.version < 2"
+      (click)="games.boardAction('offer-draw')"
+    >
+      Mời hòa
+    </button>
+    }
+    <button
+      uiButton
+      size="sm"
+      [disabled]="!canPlay()"
+      (click)="games.boardAction('claim-draw')"
+    >
+      Yêu cầu xác minh hòa
+    </button>
+    @if(table.kind === 'chess') {
+    <button
+      uiButton
+      size="sm"
+      [disabled]="!canPlay()"
+      [attr.aria-pressed]="claimPlanned()"
+      (click)="games.toggleBoardClaimPlanned()"
+    >
+      Xin hòa theo nước dự định
+    </button>
+    }
+  </div>
+  @if(claimPlanned()) {
+  <p>Chọn quân và ô đích để xác minh hòa trước nước đó.</p>
+  } }
+  <details>
+    <summary>Lịch sử · {{ game.version }} lượt đi</summary>
+    <ol class="board__history">
+      @for(move of game.history; track $index) {
+      <li>{{ move }}</li>
+      }
+    </ol>
+  </details>
+  @if(table.seated && game.result !== 'playing') {
+  <button uiButton (click)="games.prepareBoard()">Ván mới</button>
+  } } @else {
+  <p>
+    {{ table.players[0] || 'Ghế trống' }} · {{ table.players[1] || 'Ghế trống'
+    }}
+  </p>
+  <p>
+    {{ table.baseMillis/60000 }} phút mỗi bên + {{ table.incrementMillis/1000 }}
+    giây mỗi nước. Đồng hồ chạy khi rời phòng. Mỗi bạn góp từ 10 CPoint.
+  </p>
+  @if(table.seated) { @if(table.ready) {
+  <p role="status">Bạn đã sẵn sàng. Đang chờ bạn chơi.</p>
+  } @else if(table.readyNames.length) {
+  <p>
+    {{ table.readyNames.join(', ') }} đã sẵn sàng · {{ table.points }} CPoint
+    mỗi bên.
+  </p>
+  <button
+    uiButton
+    variant="primary"
+    [disabled]="(games.balance$() ?? 0) < table.points"
+    (click)="readyWithPoints()"
+  >
+    Đồng ý và sẵn sàng
+  </button>
+  } @else {
+  <form [formRoot]="readyForm" class="board__ready">
+    <ui-field label="CPoint góp" required
+      ><input uiInput type="number" step="1" [formField]="readyForm.points"
+    /></ui-field>
+    <button uiButton variant="primary" type="submit">Sẵn sàng</button>
+  </form>
+  } } @else {
+  <button uiButton (click)="sit()">Ngồi vào bàn</button>
+  } } @if(games.boardError$()) {
+  <p role="alert">{{ games.boardError$() }}</p>
+  }
+  <p class="board__help">
+    Chọn quân rồi chọn ô đích. Phím mũi tên đổi ô, Enter chọn. Máy chủ xác nhận
+    nước hợp lệ và đổi lượt đồng hồ.
+  </p>
+</ui-section-card>
+}

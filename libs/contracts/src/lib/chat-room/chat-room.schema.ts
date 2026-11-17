@@ -53,6 +53,24 @@ export const RoomPlayerSchema = RoomIdentitySchema.extend({
 });
 export type RoomPlayer = z.infer<typeof RoomPlayerSchema>;
 
+export const ROOM_REACTIONS = [
+  { id: 'hello', icon: '👋', label: 'Chào' },
+  { id: 'laugh', icon: '😂', label: 'Cười' },
+  { id: 'clap', icon: '👏', label: 'Vỗ tay' },
+  { id: 'love', icon: '❤️', label: 'Yêu thích' },
+  { id: 'celebrate', icon: '🎉', label: 'Ăn mừng' },
+  { id: 'surprise', icon: '😮', label: 'Bất ngờ' },
+] as const;
+const RoomReactionIdSchema = z.enum([
+  'hello',
+  'laugh',
+  'clap',
+  'love',
+  'celebrate',
+  'surprise',
+]);
+export type RoomReactionId = z.infer<typeof RoomReactionIdSchema>;
+
 export const RoomChatSchema = z.object({
   id: z.string(),
   playerId: z.string(),
@@ -98,6 +116,36 @@ export const RoomMapSchema = z.object({
       }),
     )
     .optional(),
+  playgroundArea: RoomAreaSchema.nullish(),
+  boardTables: z
+    .array(
+      z.object({
+        id: z.string(),
+        kind: z.enum(['chess', 'xiangqi']),
+        name: z.string(),
+        desk: z.int().nonnegative(),
+        chairs: z.tuple([z.int().nonnegative(), z.int().nonnegative()]),
+      }),
+    )
+    .default([]),
+  boardClock: z
+    .object({
+      baseMillis: z.int().positive(),
+      incrementMillis: z.int().nonnegative(),
+    })
+    .optional(),
+  colorFloor: RoomAreaSchema.nullish(),
+  colorTiles: z
+    .array(
+      z.object({
+        color: z.string(),
+        label: z.string(),
+        symbol: z.string(),
+        fill: z.string(),
+        area: RoomAreaSchema,
+      }),
+    )
+    .default([]),
   objects: z.array(
     z.object({
       kind: z.enum(['board', 'shelf', 'plant', 'desk', 'chair']),
@@ -237,12 +285,82 @@ const HighFiveSchema = z.object({
 });
 export type RoomHighFive = z.infer<typeof HighFiveSchema>;
 
+const BoardMoveSchema = z.object({
+  from: z.int().min(0).max(89),
+  to: z.int().min(0).max(89),
+  promotion: z.enum(['', 'q', 'r', 'b', 'n']).default(''),
+});
+const BoardMatchSchema = z.object({
+  id: z.uuid(),
+  board: z.string().min(64).max(90),
+  side: z.int().min(-1).max(1),
+  turn: z.int().min(0).max(1),
+  version: z.int().nonnegative(),
+  players: z.array(z.string()).length(2),
+  clocks: z.array(z.number().nonnegative()).length(2),
+  serverTime: z.number(),
+  check: z.boolean(),
+  history: z.array(z.string()),
+  legal: z.array(BoardMoveSchema),
+  result: z.enum(['playing', 'draw', '0', '1']),
+  reason: z.string(),
+  drawOffer: z.int().min(-1).max(1),
+  mustChange: z.int().min(-1).max(1),
+  lastCells: z.array(z.int().nonnegative()),
+});
+const BoardStateSchema = z.object({
+  type: z.literal('board-state'),
+  table: z.string(),
+  kind: z.enum(['chess', 'xiangqi']),
+  name: z.string(),
+  points: z.int().min(10),
+  seated: z.boolean(),
+  ready: z.boolean(),
+  players: z.array(z.string()).length(2),
+  readyNames: z.array(z.string()),
+  baseMillis: z.number().positive(),
+  incrementMillis: z.number().nonnegative(),
+  match: BoardMatchSchema.optional(),
+});
+export type RoomBoardState = z.infer<typeof BoardStateSchema>;
+export type RoomBoardMove = z.infer<typeof BoardMoveSchema>;
+const BoardTablesSchema = z.object({
+  type: z.literal('board-tables'),
+  tables: z.array(
+    z.object({
+      id: z.string(),
+      status: z.enum(['empty', 'waiting', 'playing']),
+      players: z.array(z.string()).length(2),
+    }),
+  ),
+});
+export type RoomBoardTables = z.infer<typeof BoardTablesSchema>['tables'];
+const ColorFloorStateSchema = z.object({
+  type: z.literal('floor-state'),
+  id: z.uuid(),
+  phase: z.enum(['waiting', 'countdown', 'running', 'finished']),
+  round: z.int().min(0).max(5),
+  target: z.string(),
+  deadline: z.number(),
+  serverTime: z.number(),
+  players: z.array(z.string()),
+  queued: z.int().nonnegative(),
+  joined: z.boolean(),
+  alive: z.boolean(),
+  eliminated: z.boolean(),
+  winners: z.array(z.string()),
+});
+export type RoomColorFloorState = z.infer<typeof ColorFloorStateSchema>;
+
 export const RoomCommandSchema = z.discriminatedUnion('type', [
   RoomIdentitySchema.extend({
     type: z.literal('join'),
     roomGames: z.literal(true).optional(),
     gestures: z.literal(true).optional(),
     interactions: z.literal(true).optional(),
+    reactions: z.literal(true).optional(),
+    boardGames: z.literal(true).optional(),
+    floorGame: z.literal(true).optional(),
   }),
   RoomMovementSchema.extend({ type: z.literal('move') }),
   z.object({
@@ -279,6 +397,30 @@ export const RoomCommandSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('approach-cancel') }),
   z.object({ type: z.literal('gesture'), kind: RoomGestureKindSchema }),
+  z.object({ type: z.literal('reaction'), reaction: RoomReactionIdSchema }),
+  z.object({ type: z.literal('floor-join') }),
+  z.object({ type: z.literal('board-watch'), table: z.string() }),
+  z.object({
+    type: z.literal('board-ready'),
+    table: z.string(),
+    points: z.int().min(10).max(ROOM_MAX_STAKE),
+  }),
+  BoardMoveSchema.extend({
+    type: z.literal('board-move'),
+    table: z.string(),
+    matchId: z.uuid(),
+    version: z.int().nonnegative(),
+  }),
+  z.object({
+    type: z.literal('board-action'),
+    table: z.string(),
+    matchId: z.uuid(),
+    version: z.int().nonnegative(),
+    action: z.enum(['resign', 'offer-draw', 'accept-draw', 'claim-draw']),
+    from: z.int().min(0).max(89).optional(),
+    to: z.int().min(0).max(89).optional(),
+    promotion: z.enum(['', 'q', 'r', 'b', 'n']).optional(),
+  }),
   RoomSeatCommandSchema,
   HighFiveInviteCommandSchema,
   HighFiveReplyCommandSchema,
@@ -307,6 +449,21 @@ export const RoomEventSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('correction'), x: z.number(), y: z.number() }),
   RoomChatSchema.extend({ type: z.literal('chat') }),
+  z.object({
+    type: z.literal('playground-ready'),
+    reactions: z.boolean(),
+    boardGames: z.boolean(),
+    floorGame: z.boolean(),
+  }),
+  z.object({
+    type: z.literal('reaction'),
+    playerId: z.string(),
+    reaction: RoomReactionIdSchema,
+  }),
+  BoardStateSchema,
+  BoardTablesSchema,
+  ColorFloorStateSchema,
+  z.object({ type: z.literal('board-error'), message: z.string() }),
   RoomGestureSchema,
   HighFiveInviteSchema,
   z.object({ type: z.literal('high-five-end'), id: z.string() }),

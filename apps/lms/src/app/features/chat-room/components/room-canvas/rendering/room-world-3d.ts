@@ -1,5 +1,10 @@
 import * as THREE from 'three';
-import type { RoomArea, RoomMap, RoomFurniture } from '@lms/contracts';
+import type {
+  RoomArea,
+  RoomMap,
+  RoomFurniture,
+  RoomBoardTables,
+} from '@lms/contracts';
 import { inRoomArea } from '../../../data-access/chat-room.model';
 
 export const WORLD_SCALE = 80;
@@ -45,6 +50,14 @@ export class RoomWorld3D {
   private readonly materials = new Map<number, THREE.MeshStandardMaterial>();
   private readonly textures: THREE.Texture[] = [];
   private readonly dicePips: THREE.Mesh[][] = [];
+  private readonly tableLabels = new Map<
+    string,
+    { canvas: HTMLCanvasElement; texture: THREE.CanvasTexture }
+  >();
+  private readonly floorTiles: {
+    color: string;
+    material: THREE.MeshStandardMaterial;
+  }[] = [];
   private readonly walls = {
     left: new THREE.Group(),
     right: new THREE.Group(),
@@ -206,6 +219,91 @@ export class RoomWorld3D {
         0.5,
         350,
       );
+    });
+    map.boardTables?.forEach((table) => {
+      const desk = map.objects[table.desk];
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 128;
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      this.textures.push(texture);
+      const label = new THREE.Sprite(
+        new THREE.SpriteMaterial({
+          map: texture,
+          transparent: true,
+          depthWrite: false,
+          toneMapped: false,
+        }),
+      );
+      label.scale.set(2.35, 0.59, 1);
+      label.position.set(
+        (desk.x + desk.w / 2) / WORLD_SCALE,
+        1.58,
+        (desk.y + desk.h / 2) / WORLD_SCALE,
+      );
+      this.root.add(label);
+      this.tableLabels.set(table.id, { canvas, texture });
+    });
+    this.showBoardTables([]);
+    map.colorTiles?.forEach((tile) => {
+      this.drawArea(
+        tile.area,
+        tile.symbol + ' ' + tile.label,
+        [tile.fill, '#ffffff', '#182c30'],
+        0.5,
+        220,
+      );
+      const mark = this.root.children[
+        this.root.children.length - 1
+      ] as THREE.Mesh;
+      this.floorTiles.push({
+        color: tile.color,
+        material: mark.material as THREE.MeshStandardMaterial,
+      });
+    });
+    if (map.colorFloor) {
+      const area = map.colorFloor;
+      this.drawArea(
+        { x: area.x, y: area.y - 58, w: area.w, h: 48 },
+        'Sàn đổi màu · Theo ký hiệu',
+        ['#e7ddca', '#a9997c', '#28413e'],
+        0.5,
+        240,
+      );
+    }
+  }
+
+  showBoardTables(states: RoomBoardTables): void {
+    this.map.boardTables?.forEach((table) => {
+      const label = this.tableLabels.get(table.id);
+      const ctx = label?.canvas.getContext('2d');
+      if (!ctx || !label) return;
+      const status = states.find((state) => state.id === table.id)?.status;
+      ctx.clearRect(0, 0, 512, 128);
+      ctx.fillStyle = '#fffdf3';
+      ctx.fillRect(0, 0, 512, 128);
+      ctx.fillStyle = '#183b36';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 36px "Segoe UI",sans-serif';
+      ctx.fillText(table.name, 256, 48);
+      ctx.font = '30px "Segoe UI",sans-serif';
+      ctx.fillText(
+        status === 'playing'
+          ? 'Đang chơi'
+          : status === 'waiting'
+            ? 'Chờ bạn chơi'
+            : 'Trống',
+        256,
+        98,
+      );
+      label.texture.needsUpdate = true;
+    });
+  }
+  showFloorTarget(color: string): void {
+    this.floorTiles.forEach((tile) => {
+      tile.material.emissive.set(tile.color === color ? 0xaaa37c : 0x000000);
+      tile.material.emissiveIntensity = 0.3;
     });
   }
 
@@ -380,6 +478,53 @@ export class RoomWorld3D {
         this.showDice();
         return;
       }
+      const board = this.map.boardTables?.find((table) => table.desk === index);
+      if (board) {
+        this.box(group, 0, 0.84, 0, 0.9, 0.03, 0.72, 0xf6e3bf);
+        const rows = board.kind === 'chess' ? 8 : 10;
+        const columns = board.kind === 'chess' ? 8 : 9;
+        for (let row = 0; row < rows; row++) {
+          for (let column = 0; column < columns; column++) {
+            if (board.kind === 'chess') {
+              this.box(
+                group,
+                (column - 3.5) * 0.09,
+                0.86,
+                (row - 3.5) * 0.075,
+                0.09,
+                0.006,
+                0.075,
+                (row + column) % 2 ? 0x5c7867 : 0xe9debd,
+              );
+            }
+          }
+        }
+        if (board.kind === 'xiangqi') {
+          for (let column = 0; column < 9; column++)
+            this.box(
+              group,
+              (column - 4) * 0.09,
+              0.86,
+              0,
+              0.008,
+              0.005,
+              0.61,
+              0x7e6852,
+            );
+          for (let row = 0; row < 10; row++)
+            this.box(
+              group,
+              0,
+              0.86,
+              (row - 4.5) * 0.067,
+              0.72,
+              0.005,
+              0.008,
+              0x7e6852,
+            );
+        }
+        return;
+      }
       if (this.map.caroTables?.some((table) => table.desk === index)) {
         this.box(group, 0, 0.84, 0, 0.7, 0.03, 0.7, 0xf6e3bf);
         for (let line = -3; line <= 3; line++) {
@@ -505,6 +650,9 @@ export class RoomWorld3D {
     const geometries = new Set<THREE.BufferGeometry>();
     const materials = new Set<THREE.Material>();
     this.root.traverse((object) => {
+      if (object instanceof THREE.Sprite) {
+        materials.add(object.material);
+      }
       if (object instanceof THREE.Mesh) {
         geometries.add(object.geometry);
         (Array.isArray(object.material)

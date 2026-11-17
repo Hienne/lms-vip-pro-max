@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import type { RoomApproach, RoomFacing, RoomPlayer } from '@lms/contracts';
 import type { RoomSpeech } from '../../../data-access/chat-room.model';
+import type { RoomReaction } from '../../../data-access/chat-room.model';
+import { ROOM_REACTIONS } from '@lms/contracts';
+import { bubbleLines } from './room-label';
 import { facingFromVector, facingYaw, type GesturePose } from './room.motion';
 import { CHAIR_SEAT_TOP, RoomWorld3D, WORLD_SCALE } from './room-world-3d';
 
@@ -31,6 +34,21 @@ export class RoomAvatar3D {
   private speechId = '';
   private route?: RoomApproach;
   private routeStartedAt = 0;
+  private readonly reactionCanvas = document.createElement('canvas');
+  private readonly reactionTexture = new THREE.CanvasTexture(
+    this.reactionCanvas,
+  );
+  private readonly reactionSprite = new THREE.Sprite(
+    new THREE.SpriteMaterial({
+      map: this.reactionTexture,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+      toneMapped: false,
+      fog: false,
+    }),
+  );
+  private reactionAt = -1;
   target: { x: number; y: number; facing: RoomFacing };
   seated = false;
 
@@ -49,7 +67,7 @@ export class RoomAvatar3D {
     this.body.scale.setScalar(AVATAR_SCALE);
     this.root.add(this.body);
     this.buildBody();
-    this.canvas.width = 512;
+    this.canvas.width = 1024;
     this.canvas.height = 512;
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.colorSpace = THREE.SRGBColorSpace;
@@ -58,9 +76,15 @@ export class RoomAvatar3D {
       transparent: true,
       depthWrite: false,
       depthTest: true,
+      toneMapped: false,
+      fog: false,
     });
     this.label = new THREE.Sprite(material);
     this.root.add(this.label);
+    this.reactionCanvas.width = this.reactionCanvas.height = 256;
+    this.reactionTexture.colorSpace = THREE.SRGBColorSpace;
+    this.reactionSprite.visible = false;
+    this.root.add(this.reactionSprite);
     this.paintLabel();
   }
 
@@ -340,6 +364,7 @@ export class RoomAvatar3D {
     pose: GesturePose,
     localWalking?: boolean,
     smoothLocalPosition = false,
+    reaction?: RoomReaction,
   ): void {
     const target = this.approachPosition(time);
     const dx = target.x / WORLD_SCALE - this.root.position.x,
@@ -409,55 +434,87 @@ export class RoomAvatar3D {
       LABEL_HEIGHT + this.label.scale.y / 2 + lift,
       this.body.position.z,
     );
+    this.showReaction(reaction, time, reducedMotion, lift);
+  }
+  private showReaction(
+    reaction: RoomReaction | undefined,
+    time: number,
+    reduced: boolean,
+    lift: number,
+  ): void {
+    this.reactionSprite.visible =
+      !!reaction && time - reaction.startedAt < 2800;
+    if (!reaction || !this.reactionSprite.visible) return;
+    if (reaction.startedAt !== this.reactionAt) {
+      this.reactionAt = reaction.startedAt;
+      const ctx = this.reactionCanvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, 256, 256);
+        ctx.font = '160px "Segoe UI Emoji", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(
+          ROOM_REACTIONS.find((item) => item.id === reaction.reaction)?.icon ??
+            '',
+          128,
+          128,
+        );
+        this.reactionTexture.needsUpdate = true;
+      }
+    }
+    const scale = reduced
+      ? 1
+      : Math.min(1, 0.65 + Math.max(0, time - reaction.startedAt) / 400);
+    this.reactionSprite.scale.setScalar(0.72 * scale);
+    this.reactionSprite.position.set(
+      this.body.position.x + 0.36,
+      LABEL_HEIGHT + lift + this.label.scale.y + 0.42,
+      this.body.position.z,
+    );
   }
   private paintLabel(speech?: RoomSpeech): void {
-    // Speech is UI anchored to the head; long bubbles remain readable against the ceiling.
     this.label.material.depthTest = !speech;
-    const ctx = this.canvas.getContext('2d')!;
-    ctx.clearRect(0, 0, 512, 512);
-    ctx.font = speech ? '25px sans-serif' : 'bold 27px sans-serif';
-    const lines: string[] = [];
-    let line = '';
+    const ctx = this.canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, 1024, 512);
+    ctx.font = speech
+      ? '500 48px "Segoe UI", sans-serif'
+      : 'bold 50px "Segoe UI", sans-serif';
     const name = this.local ? `${this.player.name} · Bạn` : this.player.name;
-    for (const word of (speech?.text ?? name).split(/\s+/)) {
-      if (line && ctx.measureText(line + ' ' + word).width > 440) {
-        lines.push(line);
-        line = '';
-      }
-      if (line) line += ' ';
-      for (const char of word) {
-        if (ctx.measureText(line + char).width > 440) {
-          lines.push(line);
-          line = char;
-        } else line += char;
-      }
-    }
-    if (line) lines.push(line);
-    const shown = lines;
-    const width = Math.min(
-      490,
-      Math.max(...shown.map((text) => ctx.measureText(text).width), 70) + 36,
+    const lines = bubbleLines(
+      speech?.text ?? name,
+      (line) => ctx.measureText(line).width,
+      900,
     );
-    const height = shown.length * 30 + 24;
-    ctx.fillStyle = speech ? '#fffdf5' : '#253a32';
+    const width = Math.min(
+      1000,
+      Math.max(160, ...lines.map((line) => ctx.measureText(line).width)) + 72,
+    );
+    const height = lines.length * 62 + 48;
+    ctx.shadowColor = 'rgba(15, 30, 40, 0.32)';
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetY = 5;
+    ctx.fillStyle = speech ? '#fffffc' : '#253a32';
     ctx.beginPath();
-    ctx.roundRect((512 - width) / 2, 4, width, height - 8, 12);
+    ctx.roundRect((1024 - width) / 2, 8, width, height - 16, 20);
     ctx.fill();
-    if (!speech && this.local) {
-      ctx.strokeStyle = '#e5bc77';
-      ctx.lineWidth = 4;
-      ctx.stroke();
-    }
-    ctx.fillStyle = speech ? '#23443c' : '#ffffff';
+    ctx.shadowColor = 'transparent';
+    ctx.strokeStyle = speech ? '#53676a' : this.local ? '#e5bc77' : '#52746a';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    ctx.fillStyle = speech ? '#13282b' : '#ffffff';
     ctx.textAlign = 'center';
-    shown.forEach((text, i) => ctx.fillText(text, 256, 33 + i * 30));
+    lines.forEach((line, i) => ctx.fillText(line, 512, 64 + i * 62));
     this.texture.repeat.set(1, height / 512);
     this.texture.offset.set(0, 1 - height / 512);
     this.texture.needsUpdate = true;
-    this.label.scale.set(LABEL_SCALE, (height / 512) * LABEL_SCALE, 1);
+    const scale = speech ? 2.35 : LABEL_SCALE;
+    this.label.scale.set(scale, (height / 1024) * scale, 1);
     this.label.position.y = LABEL_HEIGHT + this.label.scale.y / 2;
   }
   dispose(): void {
+    this.reactionTexture.dispose();
+    this.reactionSprite.material.dispose();
     this.texture.dispose();
     (this.label.material as THREE.SpriteMaterial).dispose();
   }
