@@ -140,6 +140,20 @@
       }
     }
   }
+  &__game--waiting {
+    width: min(1.5 * ui.layout(panel), calc(100% - 2 * ui.space(3)));
+    height: auto;
+    max-height: calc(100% - 2 * ui.space(2));
+    overflow-y: auto;
+    @include ui.bp-below(sm) {
+      bottom: auto;
+      max-height: calc(100dvh - 2 * ui.space(2));
+    }
+    @media (max-height: 480px) {
+      bottom: auto;
+      max-height: calc(100dvh - 2 * ui.space(2));
+    }
+  }
   &__rank {
     ol {
       margin: ui.space(2) 0;

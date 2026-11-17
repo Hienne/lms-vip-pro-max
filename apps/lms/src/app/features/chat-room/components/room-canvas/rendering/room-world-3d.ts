@@ -1,10 +1,5 @@
 import * as THREE from 'three';
-import type {
-  RoomArea,
-  RoomMap,
-  RoomFurniture,
-  RoomBoardTables,
-} from '@lms/contracts';
+import type { RoomArea, RoomMap, RoomFurniture } from '@lms/contracts';
 import { inRoomArea } from '../../../data-access/chat-room.model';
 
 export const WORLD_SCALE = 80;
@@ -50,10 +45,6 @@ export class RoomWorld3D {
   private readonly materials = new Map<number, THREE.MeshStandardMaterial>();
   private readonly textures: THREE.Texture[] = [];
   private readonly dicePips: THREE.Mesh[][] = [];
-  private readonly tableLabels = new Map<
-    string,
-    { canvas: HTMLCanvasElement; texture: THREE.CanvasTexture }
-  >();
   private readonly floorTiles: {
     color: string;
     material: THREE.MeshStandardMaterial;
@@ -209,43 +200,6 @@ export class RoomWorld3D {
         0.5,
         310,
       );
-    map.caroTables?.forEach((table, index) => {
-      const desk = map.objects[table.desk];
-      if (!desk) return;
-      this.drawArea(
-        { x: desk.x - 24, y: desk.y - 82, w: desk.w + 48, h: 273 },
-        `Caro ${index + 1}`,
-        ['#c4dadb', '#649395', '#355f61'],
-        0.5,
-        350,
-      );
-    });
-    map.boardTables?.forEach((table) => {
-      const desk = map.objects[table.desk];
-      const canvas = document.createElement('canvas');
-      canvas.width = 512;
-      canvas.height = 128;
-      const texture = new THREE.CanvasTexture(canvas);
-      texture.colorSpace = THREE.SRGBColorSpace;
-      this.textures.push(texture);
-      const label = new THREE.Sprite(
-        new THREE.SpriteMaterial({
-          map: texture,
-          transparent: true,
-          depthWrite: false,
-          toneMapped: false,
-        }),
-      );
-      label.scale.set(2.35, 0.59, 1);
-      label.position.set(
-        (desk.x + desk.w / 2) / WORLD_SCALE,
-        1.58,
-        (desk.y + desk.h / 2) / WORLD_SCALE,
-      );
-      this.root.add(label);
-      this.tableLabels.set(table.id, { canvas, texture });
-    });
-    this.showBoardTables([]);
     map.colorTiles?.forEach((tile) => {
       this.drawArea(
         tile.area,
@@ -274,32 +228,6 @@ export class RoomWorld3D {
     }
   }
 
-  showBoardTables(states: RoomBoardTables): void {
-    this.map.boardTables?.forEach((table) => {
-      const label = this.tableLabels.get(table.id);
-      const ctx = label?.canvas.getContext('2d');
-      if (!ctx || !label) return;
-      const status = states.find((state) => state.id === table.id)?.status;
-      ctx.clearRect(0, 0, 512, 128);
-      ctx.fillStyle = '#fffdf3';
-      ctx.fillRect(0, 0, 512, 128);
-      ctx.fillStyle = '#183b36';
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 36px "Segoe UI",sans-serif';
-      ctx.fillText(table.name, 256, 48);
-      ctx.font = '30px "Segoe UI",sans-serif';
-      ctx.fillText(
-        status === 'playing'
-          ? 'Đang chơi'
-          : status === 'waiting'
-            ? 'Chờ bạn chơi'
-            : 'Trống',
-        256,
-        98,
-      );
-      label.texture.needsUpdate = true;
-    });
-  }
   showFloorTarget(color: string): void {
     this.floorTiles.forEach((tile) => {
       tile.material.emissive.set(tile.color === color ? 0xaaa37c : 0x000000);
