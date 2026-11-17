@@ -223,10 +223,14 @@ export const ConfirmOutlineCommandSchema = z.object({
 });
 export type ConfirmOutlineCommand = z.infer<typeof ConfirmOutlineCommandSchema>;
 
-/** Step 3: saves the rules and creates the final exam from the kept (and edited) questions. */
+/**
+ * Step 3: saves the rules and creates a new final exam from the kept (and edited) questions,
+ * selected to complete the course. The competency is required while questions are kept; with none
+ * kept, only the rules are saved.
+ */
 export const ConfirmRulesCommandSchema = z.object({
   draft: SaveDraftCommandSchema,
-  competencyId: z.number().int().positive(),
+  competencyId: z.number().int().positive().nullable(),
   questions: z.array(DraftQuestionSchema),
 });
 export type ConfirmRulesCommand = z.infer<typeof ConfirmRulesCommandSchema>;

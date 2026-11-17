@@ -482,13 +482,15 @@ export class CourseEditor implements HasUnsavedChanges {
       return 'Còn tệp đang tải lên. Chờ tải xong rồi bấm Đã chốt.';
     if (this.store.isCreate$() && !this.store.ownerOrgId$())
       return 'Chưa xác định được đơn vị sở hữu khóa học.';
+    if (this.store.step$() === 2) return this.fill.rulesProblem$();
     return null;
   });
 
   /**
    * "Đã chốt" on the bar or on the chat's card: the step is confirmed with what the page holds
    * now. Step 1 sends the create command, so the server makes the draft course from it; step 2
-   * the whole draft, as "Lưu nháp" saves it (lessons without content do not stop it).
+   * the whole draft, as "Lưu nháp" saves it (lessons without content do not stop it); step 3 the
+   * draft with the kept questions and their competency, which become a new final exam.
    */
   protected confirmDraftingStep(step: DraftingStepNumber): void {
     if (this.store.step$() !== step - 1 || this.draftingProblem() !== null) {
@@ -508,6 +510,13 @@ export class CourseEditor implements HasUnsavedChanges {
     if (step === 2 && revision) {
       this.fill.confirm(step, {
         draft: toSaveDraftCommand(value, revision.rowVersion),
+      });
+    }
+    const rules = this.fill.rulesCommand();
+    if (step === 3 && revision && rules) {
+      this.fill.confirm(step, {
+        draft: toSaveDraftCommand(value, revision.rowVersion),
+        ...rules,
       });
     }
   }

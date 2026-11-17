@@ -171,7 +171,11 @@
     } @case (3) {
     <app-course-review [draft]="courseForm" (goToStep)="navigate($event)" />
     } }
-    <app-course-rules [hidden]="store.step$() !== 2" [draft]="courseForm" />
+    <app-course-rules
+      [hidden]="store.step$() !== 2"
+      [draft]="courseForm"
+      [suggested]="fill.marks$()"
+    />
   </fieldset>
 </form>
 

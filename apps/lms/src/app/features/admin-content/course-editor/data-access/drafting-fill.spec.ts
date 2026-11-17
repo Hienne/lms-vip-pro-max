@@ -2,9 +2,11 @@ import type {
   BasicsProposal,
   DraftingStep,
   OutlineProposal,
+  RulesProposal,
 } from '@lms/contracts';
 import { emptyDraftValue, type CourseDraftValue } from '../course-draft';
-import { fillSteps } from './drafting-fill';
+import { fillSteps, type FillPatch, type RulesPatch } from './drafting-fill';
+import { emptyRules, type DraftRulesValue } from './drafting-rules';
 
 const proposal: BasicsProposal = {
   title: 'Quy trình đối soát cuối ngày',
@@ -30,7 +32,9 @@ const stepOne = (patch: Partial<BasicsProposal> = {}): DraftingStep => ({
 /** The values the form holds after each patch, in order. */
 const frames = (step: DraftingStep): CourseDraftValue[] => {
   let value = emptyDraftValue();
-  return fillSteps(step).map((patch) => (value = patch.apply(value)));
+  return fillSteps(step)
+    .filter((patch): patch is FillPatch => 'apply' in patch)
+    .map((patch) => (value = patch.apply(value)));
 };
 
 describe('fillSteps', () => {
@@ -94,7 +98,8 @@ describe('fillSteps', () => {
       ...emptyDraftValue(),
       objectives: ['Cũ'],
     };
-    for (const patch of fillSteps(stepOne())) value = patch.apply(value);
+    for (const patch of fillSteps(stepOne()))
+      if ('apply' in patch) value = patch.apply(value);
 
     expect(value.objectives).toEqual([
       'Nắm các bước đối soát',
@@ -188,12 +193,97 @@ describe('fillSteps', () => {
         ...emptyDraftValue(),
         chapters: [{ key: 'old', title: 'Cũ', lessons: [] }],
       };
-      for (const patch of fillSteps(stepTwo)) value = patch.apply(value);
+      for (const patch of fillSteps(stepTwo))
+        if ('apply' in patch) value = patch.apply(value);
 
       expect(value.chapters.map((chapter) => chapter.title)).toEqual([
         'Tổng quan',
         'Thực hiện',
       ]);
+    });
+  });
+
+  describe('step 3', () => {
+    const rules: RulesProposal = {
+      rewardPoints: 30,
+      competencyId: 7,
+      questions: [
+        {
+          type: 'SINGLE',
+          content: 'Đối soát khi nào?',
+          explanation: 'Theo mục 3.',
+          difficulty: 'EASY',
+          options: [
+            { content: 'Sau khóa sổ', correct: true },
+            { content: 'Trước giờ mở', correct: false },
+          ],
+          sourceSection: 'Mục 3',
+        },
+        {
+          type: 'MULTIPLE',
+          content: 'Nguồn dữ liệu?',
+          explanation: null,
+          difficulty: 'MEDIUM',
+          options: [
+            { content: 'Sổ cái', correct: true },
+            { content: 'Báo cáo kênh', correct: true },
+          ],
+          sourceSection: 'Mục 2',
+        },
+      ],
+    };
+    const stepThree = (patch: Partial<RulesProposal> = {}): DraftingStep => ({
+      step: 3,
+      state: 'proposed',
+      proposal: { ...rules, ...patch },
+      notes: [],
+      error: null,
+      updateTime: '2026-11-17T09:10:00+07:00',
+    });
+    const rulesFrames = (step: DraftingStep): DraftRulesValue[] => {
+      let value = emptyRules();
+      return fillSteps(step)
+        .filter((patch): patch is RulesPatch => 'rules' in patch)
+        .map((patch) => (value = patch.rules(value)));
+    };
+
+    it('writes the points, the competency, then the questions one at a time', () => {
+      expect(fillSteps(stepThree()).map((patch) => patch.field)).toEqual([
+        'rewardPoints',
+        'competencyId',
+        'questions',
+        'questions',
+      ]);
+      expect(frames(stepThree()).at(-1)?.rewardPoints).toBe(30);
+      const shown = rulesFrames(stepThree());
+      expect(shown.map((value) => value.questions.length)).toEqual([0, 1, 2]);
+      expect(shown.at(-1)?.competencyId).toBe('7');
+      expect(shown[1].questions[0].key).toBe(shown[2].questions[0].key);
+    });
+
+    it('keeps each question with its options, explanation and source section', () => {
+      const [first, second] = rulesFrames(stepThree()).at(-1)?.questions ?? [];
+
+      expect(first).toMatchObject({
+        content: 'Đối soát khi nào?',
+        explanation: 'Theo mục 3.',
+        difficulty: 'EASY',
+        sourceSection: 'Mục 3',
+      });
+      expect(first.options.map((o) => [o.content, o.correct])).toEqual([
+        ['Sau khóa sổ', true],
+        ['Trước giờ mở', false],
+      ]);
+      expect(second.explanation).toBe('');
+    });
+
+    it('leaves the competency empty when the assistant did not pick one', () => {
+      const step = stepThree({ competencyId: null });
+
+      expect(fillSteps(step).map((patch) => patch.field)).not.toContain(
+        'competencyId',
+      );
+      expect(rulesFrames(step).at(-1)?.competencyId).toBe('');
     });
   });
 });

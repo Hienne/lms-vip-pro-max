@@ -7,6 +7,7 @@ import {
   StartDraftingFieldsSchema,
   type AnyEndpoint,
   type CourseDetail,
+  type ConfirmRulesCommand,
   type CreateCourseCommand,
   type DraftingSession,
   type DraftingStep,
@@ -63,6 +64,15 @@ const contentNotEmpty = (): FakeReply => ({
     ],
   ),
 });
+const fieldRequired = (field: string, message: string): FakeReply => ({
+  status: 200,
+  body: envelopeError(
+    BACKEND_RESPONSES.validationFailed.code,
+    BACKEND_RESPONSES.validationFailed.title,
+    message,
+    [{ field, code: 'REQUIRED', message }],
+  ),
+});
 const takenCode = (): FakeReply => {
   const { status, code, title, message } = BACKEND_RESPONSES.learningDuplicate;
   return {
@@ -111,7 +121,8 @@ const stepNumber = (value: unknown): DraftingStepNumber | undefined => {
 /**
  * The course writes of a confirm, as the backend does them through its course service: step 1
  * creates the draft course, step 2 saves the outline (and marks the revision as AI made when the
- * step held a proposal). The fake backend hands its own over; without one, the mock makes up ids.
+ * step held a proposal), step 3 saves the rules, creates the kept questions and a new final exam
+ * of them, all or nothing. The fake backend hands its own over; without one, the mock makes up ids.
  */
 export interface DraftingCourses {
   create(command: CreateCourseCommand): FakeReply | undefined;
@@ -119,6 +130,12 @@ export interface DraftingCourses {
     courseId: number,
     revisionId: number,
     draft: SaveDraftCommand,
+    aiGenerated: boolean,
+  ): FakeReply | undefined;
+  saveRules(
+    courseId: number,
+    revisionId: number,
+    command: ConfirmRulesCommand,
     aiGenerated: boolean,
   ): FakeReply | undefined;
 }
@@ -344,6 +361,30 @@ export class DraftingSessionMock {
       session.revisionId = detail?.revision.id ?? 600 + session.id;
     }
     let confirmed: DraftingStep = current;
+    if (current.step === 3) {
+      const rules = parsed.data as ConfirmRulesCommand;
+      // Kept questions go to the bank, which tags each with a competency and the course's programme.
+      if (rules.questions.length > 0 && rules.competencyId === null)
+        return fieldRequired(
+          'competencyId',
+          'Chọn năng lực cho các câu hỏi trước khi chốt bước này.',
+        );
+      if (rules.questions.length > 0 && rules.draft.programId == null)
+        return fieldRequired(
+          'draft.programId',
+          'Chọn chương trình đào tạo để tạo bài kiểm tra từ các câu hỏi.',
+        );
+      const savedReply =
+        session.courseId !== null && session.revisionId !== null
+          ? courses?.saveRules(
+              session.courseId,
+              session.revisionId,
+              rules,
+              current.proposal !== null && rules.questions.length > 0,
+            )
+          : undefined;
+      if (savedReply && !replyData(savedReply)) return savedReply;
+    }
     if (current.step === 2) {
       const draft = (parsed.data as { draft: SaveDraftCommand }).draft;
       const proposal = current.proposal;

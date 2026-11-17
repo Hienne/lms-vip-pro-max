@@ -1,10 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import {
+  assessmentV1Endpoints,
   courseEndpoints,
   draftingSessionEndpoints,
   type ConfirmBasicsCommand,
   type ConfirmOutlineCommand,
+  type ConfirmRulesCommand,
   type DraftingSession,
   type DraftingStep,
 } from '@lms/contracts';
@@ -15,6 +17,7 @@ import {
   draftingStepFixture,
   envelopeOk,
   outlineProposalFixture,
+  rulesProposalFixture,
   type FakeReply,
 } from '@lms/mocks';
 import { of } from 'rxjs';
@@ -315,6 +318,12 @@ describe('CourseEditor confirming a drafting step', () => {
       ) {
         return confirmOutline(request);
       }
+      if (
+        endpoint === draftingSessionEndpoints.confirm &&
+        (request as { params: Record<string, string> }).params['step'] === '3'
+      ) {
+        return confirmRules(request);
+      }
       if (endpoint === draftingSessionEndpoints.confirm) {
         const { course } = (request as { body: ConfirmBasicsCommand }).body;
         if (session.courseId !== null) return ok(session);
@@ -378,6 +387,50 @@ describe('CourseEditor confirming a drafting step', () => {
     return ok(session);
   };
 
+  /**
+   * The server's step 3 confirm, short of the bank: the draft is saved, the step confirmed and
+   * step 4 queued. Questions and the exam are the server's (corebanking-academy `confirmRules`).
+   */
+  const confirmRules = (request: unknown): FakeReply => {
+    const { draft } = (request as { body: ConfirmRulesCommand }).body;
+    const saved = original(courseEndpoints.saveDraft, {
+      ...(request as object),
+      body: draft,
+      params: {
+        courseId: String(session.courseId),
+        revisionId: String(session.revisionId),
+      },
+      query: {},
+    });
+    if (saved.body.status !== 'SUCCESS') return saved;
+    session = {
+      ...session,
+      currentStep: 4,
+      steps: [
+        ...session.steps.slice(0, 2),
+        { ...session.steps[2], state: 'confirmed' } as DraftingStep,
+        draftingStepFixture(4, 'proposing'),
+      ],
+    };
+    return ok(session);
+  };
+
+  /** Steps 1 and 2 confirmed: the rules are being proposed. */
+  const atStepThree = (
+    courseId: number,
+    revisionId: number,
+  ): DraftingSession => ({
+    ...session,
+    courseId,
+    revisionId,
+    currentStep: 3,
+    steps: [
+      { ...session.steps[0], state: 'confirmed' } as DraftingStep,
+      draftingStepFixture(2, 'confirmed'),
+      draftingStepFixture(3, 'proposing'),
+    ],
+  });
+
   afterEach(() => vi.useRealTimers());
 
   const advance = async (ms: number) => {
@@ -391,7 +444,9 @@ describe('CourseEditor confirming a drafting step', () => {
    * A draft the assistant made at step 1, opened later on its edit page: step 1 is confirmed and
    * step 2 is being proposed.
    */
-  async function openDraftAtStepTwo(): Promise<number> {
+  async function openDraftAtStepTwo(
+    at: (courseId: number, revisionId: number) => DraftingSession = atStepTwo,
+  ): Promise<number> {
     await open('/admin/courses/new');
     // A request the page sent while signed in, so the course is made as its author.
     const template = screen.calls.mock.calls
@@ -421,7 +476,7 @@ describe('CourseEditor confirming a drafting step', () => {
         data: { course: { id: number }; revision: { id: number } };
       }
     ).data;
-    session = atStepTwo(detail.course.id, detail.revision.id);
+    session = at(detail.course.id, detail.revision.id);
 
     // The draft is opened later: the page follows no session until it asks for the course's.
     const opening = TestBed.inject(Router).navigateByUrl(
@@ -689,6 +744,119 @@ describe('CourseEditor confirming a drafting step', () => {
         outlineProposalFixture.chapters[0].lessons[0].description,
       );
       expect(confirmButton()).toBeUndefined();
+    });
+  });
+
+  describe('step 3, the rules and draft questions', () => {
+    const rules = { ...rulesProposalFixture, competencyId: 1 };
+    /** The points, the competency, then each question. */
+    const RULES_PATCHES = 2 + rules.questions.length;
+    const questions = () =>
+      Array.from(
+        screen.el.querySelectorAll<HTMLElement>(
+          '.drafting-questions__question',
+        ),
+      );
+    const rewardPoints = () =>
+      screen.el.querySelector<HTMLInputElement>(
+        'app-course-rules input[type=number]',
+      )?.value;
+
+    /** The server finishes the rules; the page sees them at its next look. */
+    const proposeRules = async () => {
+      session = {
+        ...session,
+        steps: [
+          ...session.steps.slice(0, 2),
+          {
+            ...draftingStepFixture(3, 'proposed'),
+            proposal: rules,
+          } as DraftingStep,
+        ],
+      };
+      await advance(DRAFTING_POLL_INTERVAL_MS);
+    };
+
+    it('writes the points, the competency and the questions one at a time, each naming its source', async () => {
+      await openDraftAtStepTwo(atStepThree);
+      expect(legend()).toContain('Bài kiểm tra & điều kiện');
+
+      await proposeRules();
+      expect(questions()).toHaveLength(0);
+      await advance(DRAFTING_FIELD_DELAY_MS * 2);
+      expect(rewardPoints()).toBe(String(rules.rewardPoints));
+      expect(questions()).toHaveLength(1);
+
+      await advance(DRAFTING_FIELD_DELAY_MS * RULES_PATCHES);
+      expect(questions()).toHaveLength(rules.questions.length);
+      expect(screen.text()).toContain(
+        `Nguồn: ${rules.questions[1].sourceSection}`,
+      );
+      expect(screen.text()).toContain('AI đề xuất');
+      expect(
+        screen.el.querySelector<HTMLSelectElement>('.drafting-questions select')
+          ?.value,
+      ).toBe('1');
+      // Nothing reaches the question bank before the step is confirmed.
+      expect(screen.callsTo(assessmentV1Endpoints.createQuestion)).toBe(0);
+      expect(screen.callsTo(assessmentV1Endpoints.saveCourseExam)).toBe(0);
+      expect(confirmButton()?.disabled).toBe(false);
+    });
+
+    it('keeps "Đã chốt" disabled while kept questions have no competency', async () => {
+      await openDraftAtStepTwo(atStepThree);
+      await proposeRules();
+      await advance(DRAFTING_FIELD_DELAY_MS * RULES_PATCHES);
+
+      const select = screen.el.querySelector<HTMLSelectElement>(
+        '.drafting-questions select',
+      ) as HTMLSelectElement;
+      select.value = '';
+      select.dispatchEvent(new Event('change'));
+      await advance(0);
+
+      expect(confirmButton()?.disabled).toBe(true);
+      expect(screen.text()).toContain(
+        'Chọn năng lực cho các câu hỏi trước khi chốt.',
+      );
+    });
+
+    it('confirms with the kept and edited questions only, then moves on to step 4', async () => {
+      await openDraftAtStepTwo(atStepThree);
+      await proposeRules();
+      await advance(DRAFTING_FIELD_DELAY_MS * RULES_PATCHES);
+
+      // The author rewrites the first question and removes the second.
+      const content = questions()[0].querySelector(
+        'textarea',
+      ) as HTMLTextAreaElement;
+      content.value = 'Đối soát cuối ngày làm khi nào?';
+      content.dispatchEvent(new Event('input'));
+      await advance(0);
+      const remove = Array.from(questions()[1].querySelectorAll('button')).find(
+        (button) => button.textContent?.includes('Bỏ câu hỏi'),
+      );
+      await press(remove);
+      expect(questions()).toHaveLength(1);
+
+      await press(confirmButton());
+
+      const sent = screen.lastCall(draftingSessionEndpoints.confirm) as {
+        params: Record<string, unknown>;
+        body: ConfirmRulesCommand;
+      };
+      expect(sent.params).toMatchObject({ step: '3' });
+      expect(sent.body.competencyId).toBe(1);
+      expect(sent.body.draft.rewardPoints).toBe(rules.rewardPoints);
+      expect(sent.body.questions).toEqual([
+        {
+          ...rules.questions[0],
+          content: 'Đối soát cuối ngày làm khi nào?',
+        },
+      ]);
+      expect(screen.callsTo(assessmentV1Endpoints.createQuestion)).toBe(0);
+      expect(legend()).toContain('Đối tượng');
+      expect(questions()).toHaveLength(0);
     });
   });
 });

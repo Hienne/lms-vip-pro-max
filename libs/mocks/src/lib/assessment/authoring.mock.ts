@@ -87,9 +87,11 @@ export class AssessmentAuthoringMock {
 
   checkpointExamWrites(): () => void {
     const quizzes = structuredClone(this.quizzes);
+    const questions = structuredClone(this.questions);
     const nextId = this.nextId;
     return () => {
       this.quizzes = quizzes;
+      this.questions = questions;
       this.nextId = nextId;
     };
   }

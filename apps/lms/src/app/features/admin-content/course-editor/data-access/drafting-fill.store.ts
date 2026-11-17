@@ -9,24 +9,34 @@ import {
   type WritableSignal,
 } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import type {
-  ConfirmDraftingStepCommand,
-  DraftingSession,
-  DraftingStep,
-  DraftingStepNumber,
+import {
+  assessmentV1Endpoints,
+  type ConfirmDraftingStepCommand,
+  type DraftingSession,
+  type DraftingStep,
+  type DraftingStepNumber,
 } from '@lms/contracts';
 import { catchError, throwError } from 'rxjs';
 import { CourseDraftingStore } from '../../../../core/course-drafting/course-drafting.store';
+import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
+import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { toAppError } from '../../../../core/errors/app-error';
 import type { CourseDraftValue } from '../course-draft';
 import { CourseEditorStore, DUPLICATE_CODE } from './course-editor.store';
 import {
   DRAFTING_FIELD_DELAY_MS,
   fillSteps,
+  type DraftingPatch,
   type FillField,
-  type FillPatch,
 } from './drafting-fill';
+import {
+  emptyRules,
+  rulesProblem,
+  toConfirmQuestions,
+  type DraftQuestionValue,
+  type DraftRulesValue,
+} from './drafting-rules';
 
 /** The fields the assistant may leave empty, with what the page says under them. */
 const EMPTY_HINTS = {
@@ -38,7 +48,7 @@ const EMPTY_HINTS = {
 export type DraftingHints = Partial<Record<keyof typeof EMPTY_HINTS, string>>;
 
 /** The steps the page confirms with "Đã chốt" so far; the later tickets add theirs. */
-const CONFIRMABLE_STEPS: readonly DraftingStepNumber[] = [1, 2];
+const CONFIRMABLE_STEPS: readonly DraftingStepNumber[] = [1, 2, 3];
 
 /**
  * What the outline shows under a lesson the assistant proposed: what it teaches and the part of
@@ -75,6 +85,7 @@ export class DraftingFillStore {
   private readonly drafting = inject(CourseDraftingStore);
   private readonly editor = inject(CourseEditorStore);
   private readonly route = inject(ActivatedRoute);
+  private readonly client = inject(EndpointClient);
 
   private readonly state = {
     /** The session a new course page follows (`?session=`); none for a course typed by hand. */
@@ -97,6 +108,12 @@ export class DraftingFillStore {
     written: signal<Partial<Record<FillField, string>>>({}),
     /** How the page confirms a step with its values, handed over by the page. */
     pageConfirm: signal<((step: DraftingStepNumber) => void) | null>(null),
+    /** Step 3's draft questions and their competency, kept here until the step is confirmed. */
+    rules: signal<DraftRulesValue>(emptyRules()),
+    /** What was written into the competency, as JSON, for its "AI đề xuất" marker. */
+    writtenCompetency: signal<string | null>(null),
+    /** Each question as the assistant wrote it, as JSON by key, for its "AI đề xuất" marker. */
+    writtenQuestions: signal<Readonly<Record<string, string>>>({}),
   };
 
   private timer: ReturnType<typeof setTimeout> | undefined;
@@ -264,6 +281,54 @@ export class DraftingFillStore {
     return notes;
   });
 
+  /**
+   * Step 3's draft questions are on the page: the step is the session's current one and not
+   * confirmed yet. Once confirmed they are the course's final exam, shown by the exam card.
+   */
+  readonly rulesShown$ = computed(() => {
+    const step = this.step();
+    return step?.step === 3 && step.state !== 'confirmed';
+  });
+
+  /** The draft questions and their competency as the author has them now. */
+  readonly rules$ = this.state.rules.asReadonly();
+
+  /** Why the kept questions cannot become the final exam yet; null when they can. */
+  readonly rulesProblem$ = computed(() =>
+    this.rulesShown$() ? rulesProblem(this.state.rules()) : null,
+  );
+
+  /** The competency still holds what the assistant picked. */
+  readonly competencyMarked$ = computed(
+    () =>
+      this.state.writtenCompetency() !== null &&
+      this.state.writtenCompetency() === this.state.rules().competencyId,
+  );
+
+  /** The keys of the questions the author has not changed since the assistant wrote them. */
+  readonly questionMarks$ = computed((): ReadonlySet<string> => {
+    const written = this.state.writtenQuestions();
+    return new Set(
+      this.state
+        .rules()
+        .questions.filter(
+          (question) => written[question.key] === JSON.stringify(question),
+        )
+        .map((question) => question.key),
+    );
+  });
+
+  private readonly competenciesData = serverData(
+    () =>
+      this.client.call(assessmentV1Endpoints.competencies, {
+        query: { status: 'ACTIVE' },
+      }),
+    { params: () => (this.rulesShown$() ? true : undefined) },
+  );
+
+  /** The competencies a question may be tagged with, the list the server picks from. */
+  readonly competencies$ = computed(() => this.competenciesData.value() ?? []);
+
   /** A proposal arrived: writing it starts a timer, outside the signal graph. */
   private readonly playWhenReady = effect(() => {
     const step = this.ready();
@@ -342,6 +407,23 @@ export class DraftingFillStore {
     this.state.written.update((fields) => ({ ...fields, [field]: written }));
   }
 
+  private setRules(rules: DraftRulesValue): void {
+    this.state.rules.set(rules);
+  }
+
+  private setWrittenCompetency(competencyId: string | null): void {
+    this.state.writtenCompetency.set(competencyId);
+  }
+
+  private setWrittenQuestions(questions: readonly DraftQuestionValue[]): void {
+    this.state.writtenQuestions.update((written) => ({
+      ...written,
+      ...Object.fromEntries(
+        questions.map((question) => [question.key, JSON.stringify(question)]),
+      ),
+    }));
+  }
+
   // ---- commands ---------------------------------------------------------------------------
 
   /**
@@ -379,6 +461,47 @@ export class DraftingFillStore {
     this.confirmMutation.run({ sessionId, step, body });
   }
 
+  /** The competency the kept questions are tagged with; '' for none. */
+  setCompetency(competencyId: string): void {
+    this.setRules({ ...this.state.rules(), competencyId });
+  }
+
+  /** The author edits a draft question; it stops showing "AI đề xuất". */
+  updateQuestion(question: DraftQuestionValue): void {
+    this.setRules({
+      ...this.state.rules(),
+      questions: this.state
+        .rules()
+        .questions.map((item) => (item.key === question.key ? question : item)),
+    });
+  }
+
+  /** "Bỏ câu hỏi": the question is not created when the step is confirmed. */
+  removeQuestion(key: string): void {
+    this.setRules({
+      ...this.state.rules(),
+      questions: this.state
+        .rules()
+        .questions.filter((item) => item.key !== key),
+    });
+  }
+
+  /**
+   * What "Đã chốt" on step 3 sends beside the draft: the competency and the kept questions as
+   * edited; null while they cannot be sent ({@link rulesProblem$} says why).
+   */
+  rulesCommand(): {
+    competencyId: number | null;
+    questions: ReturnType<typeof toConfirmQuestions>;
+  } | null {
+    const rules = this.state.rules();
+    if (rulesProblem(rules) !== null) return null;
+    return {
+      competencyId: rules.competencyId ? Number(rules.competencyId) : null,
+      questions: toConfirmQuestions(rules),
+    };
+  }
+
   /** "Dùng mã …": the code field takes the code the server proposed. */
   useSuggestedCode(): void {
     const code = this.suggestedCode$();
@@ -388,6 +511,13 @@ export class DraftingFillStore {
 
   private moveOn(session: DraftingSession): void {
     const next = session.currentStep - 1;
+    // Confirmed questions are the course's exam now: the page keeps no draft of them.
+    if (
+      session.steps.some(
+        (step) => step.step === 3 && step.state === 'confirmed',
+      )
+    )
+      this.setRules(emptyRules());
     if (this.editor.isCreate$() && session.courseId !== null)
       this.editor.moveToCourse(session.courseId, next);
     else {
@@ -427,7 +557,15 @@ export class DraftingFillStore {
     next();
   }
 
-  private write(patch: FillPatch): void {
+  private write(patch: DraftingPatch): void {
+    if ('rules' in patch) {
+      const rules = patch.rules(this.state.rules());
+      this.setRules(rules);
+      if (patch.field === 'competencyId')
+        this.setWrittenCompetency(rules.competencyId);
+      else this.setWrittenQuestions(rules.questions);
+      return;
+    }
     const target = this.state.target();
     if (!target) return;
     target.update(patch.apply);

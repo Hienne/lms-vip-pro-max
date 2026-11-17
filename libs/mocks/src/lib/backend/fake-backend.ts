@@ -25,6 +25,7 @@ import {
   USER_LIMITS,
   type AccessRequest,
   type AnyEndpoint,
+  type ConfirmRulesCommand,
   type Envelope,
   type PendingAction,
   type ProfileChange,
@@ -479,6 +480,14 @@ export class FakeBackend {
             }
             return saved;
           },
+          saveRules: (courseId, revisionId, rules, aiGenerated) =>
+            this.saveDraftingRules(
+              request,
+              courseId,
+              revisionId,
+              rules,
+              aiGenerated,
+            ),
         });
       } catch (error) {
         if (error instanceof Refused) return error.reply;
@@ -582,6 +591,118 @@ export class FakeBackend {
       );
       committed = !!data(linkedReply);
       return linkedReply ?? invalid();
+    } finally {
+      if (!committed) {
+        undoCourse();
+        undoQuiz();
+      }
+    }
+  }
+
+  /**
+   * Chốt bước 3 of a drafting session, as the server's `confirmRules`: the draft is saved, the
+   * kept questions are created in the course's bank and a new fixed final exam of exactly those
+   * questions is saved and selected through the course exam save. All or nothing.
+   */
+  private saveDraftingRules(
+    request: FakeRequest,
+    courseId: number,
+    revisionId: number,
+    rules: ConfirmRulesCommand,
+    aiGenerated: boolean,
+  ): FakeReply | undefined {
+    const undoCourse = this.learning.checkpointCourseWrites();
+    const undoQuiz = this.authoring.checkpointExamWrites();
+    let committed = false;
+    const call = (
+      endpoint: AnyEndpoint,
+      body: unknown,
+      params: FakeRequest['params'] = {},
+    ) => this.handle(endpoint, { ...request, body, params, query: {} });
+    const data = (reply: FakeReply | undefined) =>
+      reply?.body.status === 'SUCCESS' ? reply.body.data : undefined;
+    const courseParams = {
+      courseId: String(courseId),
+      revisionId: String(revisionId),
+    };
+    try {
+      const savedReply = call(
+        courseEndpoints.saveDraft,
+        rules.draft,
+        courseParams,
+      );
+      if (!data(savedReply)) return savedReply;
+      let saved = CourseDetailSchema.parse(data(savedReply));
+      if (rules.questions.length > 0) {
+        const ids: number[] = [];
+        for (const question of rules.questions) {
+          const created = call(assessmentV1Endpoints.createQuestion, {
+            courseId,
+            lessonId: null,
+            competencyId: rules.competencyId,
+            code: '',
+            questionType: question.type,
+            content: question.content,
+            explanation: question.explanation,
+            difficulty: question.difficulty,
+            points: 1,
+            status: 'ACTIVE',
+            options: question.options,
+          });
+          if (!data(created)) return created;
+          ids.push((data(created) as { id: number }).id);
+        }
+        const title = rules.draft.title?.trim();
+        const examReply = this.saveCourseExam({
+          ...request,
+          params: {},
+          query: {},
+          body: {
+            courseId,
+            revisionId,
+            draft: {
+              ...rules.draft,
+              expectedVersion: saved.revision.rowVersion,
+            },
+            quiz: {
+              courseId,
+              title: title ? `Thi cuối khóa: ${title}` : 'Thi cuối khóa',
+              description: null,
+              quizType: 'FINAL_EXAM',
+              selectionMode: 'FIXED',
+              questionCount: ids.length,
+              shuffleQuestions: true,
+              shuffleOptions: true,
+              timeLimitMinutes: 15,
+              openAt: null,
+              closeAt: null,
+              graceSeconds: 0,
+              passPercent: 70,
+              scoringMode: 'ALL_OR_NOTHING',
+              scoreMethod: 'BEST',
+              reviewPolicy: 'AFTER_SUBMIT',
+              maxAttempts: 3,
+              retakeWaitHours: 0,
+              allowRetakeAfterPass: false,
+              requireLessonsCompleted: true,
+            },
+            pool: {
+              items: ids.map((questionId, sortNo) => ({
+                questionId,
+                sortNo,
+                points: null,
+              })),
+            },
+          },
+        });
+        if (!data(examReply)) return examReply;
+        saved = CourseDetailSchema.parse(data(examReply));
+        if (aiGenerated) this.learning.markAiGenerated(courseId);
+      }
+      committed = true;
+      return call(courseEndpoints.getCourse, null, {
+        courseId: String(saved.course.id),
+      });
     } finally {
       if (!committed) {
         undoCourse();

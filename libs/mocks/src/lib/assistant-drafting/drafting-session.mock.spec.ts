@@ -1,4 +1,5 @@
 import {
+  assessmentV1Endpoints,
   authV1Endpoints,
   courseEndpoints,
   draftingSessionEndpoints,
@@ -61,7 +62,7 @@ const confirmBody = (session: DraftingSession, step: number): unknown => {
   if (step === 2) return { draft };
   if (step === 3)
     return {
-      draft,
+      draft: { ...draft, programId: 1 },
       competencyId: 4,
       questions: rulesProposalFixture.questions,
     };
@@ -278,6 +279,34 @@ describe('DraftingSessionMock', () => {
     expect(code(refused)).toBe('CORE-VALIDATION_FAILED');
     expect(refused?.body.errors?.[0]?.code).toBe('CONTENT_NOT_EMPTY');
     expect(stepOf(get(session.id), 2)?.state).toBe('proposed');
+  });
+
+  it('refuses kept questions without a competency or a programme, and keeps the step', () => {
+    let session = ready(start().id);
+    for (const step of [1, 2]) {
+      parsed(draftingSessionEndpoints.confirm, confirm(session, step));
+      session = ready(session.id);
+    }
+    const at = (body: unknown) =>
+      call(draftingSessionEndpoints.confirm, body, {
+        sessionId: String(session.id),
+        step: '3',
+      });
+    const questions = rulesProposalFixture.questions;
+
+    const noCompetency = at({ draft, competencyId: null, questions });
+    expect(code(noCompetency)).toBe('CORE-VALIDATION_FAILED');
+    expect(noCompetency?.body.errors?.[0]?.field).toBe('competencyId');
+    const noProgramme = at({ draft, competencyId: 4, questions });
+    expect(noProgramme?.body.errors?.[0]?.field).toBe('draft.programId');
+    expect(get(session.id).currentStep).toBe(3);
+
+    // with every question removed, only the rules are saved
+    const kept = parsed(
+      draftingSessionEndpoints.confirm,
+      at({ draft, competencyId: null, questions: [] }),
+    ) as DraftingSession;
+    expect(kept.currentStep).toBe(4);
   });
 
   it('refuses a confirm body that does not fit the step', () => {
@@ -599,6 +628,104 @@ describe('FakeBackend drafting sessions', () => {
     expect(
       outline?.step === 2 && outline.lessonNotes?.map((note) => note.lessonId),
     ).toEqual(lessons.map((lesson) => lesson.lesson.id));
+  });
+
+  it('creates a final exam of the kept questions only when step 3 is confirmed', () => {
+    const token = login('giangvien');
+    const at = (
+      endpoint: AnyEndpoint,
+      body: unknown,
+      params: Record<string, string>,
+      query: Record<string, string> = {},
+    ) => backend.handle(endpoint, { token, params, query, body });
+    const ready = (id: number): DraftingSession => {
+      let session: DraftingSession;
+      let i = 0;
+      do {
+        session = parsed(
+          draftingSessionEndpoints.get,
+          at(draftingSessionEndpoints.get, null, { sessionId: String(id) }),
+        ) as DraftingSession;
+      } while (++i < 10 && session.steps.at(-1)?.state === 'proposing');
+      return session;
+    };
+    const confirmAt = (session: DraftingSession, step: number, body: unknown) =>
+      at(draftingSessionEndpoints.confirm, body, {
+        sessionId: String(session.id),
+        step: String(step),
+      });
+    const course = (courseId: number | null) =>
+      parsed(
+        courseEndpoints.getCourse,
+        at(courseEndpoints.getCourse, null, { courseId: String(courseId) }),
+      ) as {
+        revision: {
+          rowVersion: number;
+          programId: number | null;
+          aiGenerated?: boolean;
+        };
+        finalQuizId?: number | null;
+        completionRule?: { rewardPoints: number } | null;
+      };
+    const bank = (courseId: number | null) =>
+      (
+        parsed(
+          assessmentV1Endpoints.questions,
+          at(
+            assessmentV1Endpoints.questions,
+            null,
+            {},
+            {
+              courseId: String(courseId),
+            },
+          ),
+        ) as { items: { contentPreview: string }[] }
+      ).items.map((item) => item.contentPreview);
+
+    const started = parsed(
+      draftingSessionEndpoints.start,
+      startAs(token),
+    ) as DraftingSession;
+    let session = parsed(
+      draftingSessionEndpoints.confirm,
+      confirmAt(ready(started.id), 1, {
+        course: { ownerOrgId: 1, code: 'AI-RULES01', title: 'Đối soát' },
+      }),
+    ) as DraftingSession;
+    session = ready(session.id);
+    session = parsed(
+      draftingSessionEndpoints.confirm,
+      confirmAt(session, 2, {
+        draft: {
+          ...draft,
+          expectedVersion: course(session.courseId).revision.rowVersion,
+        },
+      }),
+    ) as DraftingSession;
+    session = ready(session.id);
+    const before = bank(session.courseId);
+    expect(before).toEqual([]);
+
+    const [kept] = rulesProposalFixture.questions;
+    const confirmed = parsed(
+      draftingSessionEndpoints.confirm,
+      confirmAt(session, 3, {
+        draft: {
+          ...draft,
+          programId: 1,
+          rewardPoints: 25,
+          expectedVersion: course(session.courseId).revision.rowVersion,
+        },
+        competencyId: 1,
+        questions: [kept],
+      }),
+    ) as DraftingSession;
+
+    expect(confirmed.currentStep).toBe(4);
+    expect(bank(session.courseId)).toEqual([kept.content]);
+    const detail = course(session.courseId);
+    expect(detail.finalQuizId).toEqual(expect.any(Number));
+    expect(detail.revision.aiGenerated).toBe(true);
   });
 
   it('answers a dev build whose token the real backend issued', () => {
