@@ -2,6 +2,8 @@
 
 :host {
   display: block;
+  height: 100%;
+  min-height: 0;
 }
 
 p {
@@ -9,6 +11,38 @@ p {
 }
 
 .caro {
+  &__layout {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2.5fr);
+    gap: ui.space(3);
+    padding: ui.space(3);
+    @include ui.bp-below(sm) {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: ui.space(2);
+      padding: ui.space(2);
+    }
+  }
+  &__info {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: ui.space(2);
+    overflow-wrap: anywhere;
+  }
+  &__play {
+    container-type: size;
+    display: grid;
+    place-items: center;
+    min-height: 0;
+    min-width: 0;
+  }
+  &__lobby {
+    padding: ui.space(3);
+    overflow-y: auto;
+  }
   &__players,
   &__status {
     @include ui.text(sm);
@@ -49,9 +83,9 @@ p {
     margin-top: ui.space(2);
   }
   &__viewport {
-    width: min(100%, 52dvh);
+    width: min(100cqw, 100cqh);
     aspect-ratio: 1;
-    margin: ui.space(2) auto;
+    margin: 0;
     border: 1px solid ui.color(border);
     overflow: auto;
     overscroll-behavior: contain;

@@ -1,0 +1,120 @@
+@if(media.meta$(); as screen) {
+<div class="screen__actions">
+  <button
+    uiButton
+    size="sm"
+    [disabled]="!!screen.controller && !media.controller$()"
+    (click)="room.choosePresentation()"
+  >
+    {{media.controller$() ? 'Điều khiển trình chiếu' : 'Bàn trình chiếu'}}
+  </button>
+  @if(screen.source !== 'idle') {
+  <button uiIconButton label="Bật/tắt toàn màn hình" (click)="fullscreen()">
+    <ui-icon name="maximize" />
+  </button>
+  }
+</div>
+@if(media.controller$() && media.controls$()) {
+<aside class="screen__settings" aria-label="Điều khiển trình chiếu">
+  <ui-section-card title="Trình chiếu chung">
+    <button slot="action" uiButton size="sm" (click)="media.setControls(false)">
+      Đóng
+    </button>
+    <p>Phát từ máy của bạn. Tệp không được lưu lên máy chủ.</p>
+    <ui-field label="Chọn ảnh hoặc video"
+      ><input
+        uiInput
+        type="file"
+        accept="video/*,image/jpeg,image/png,image/webp,image/gif"
+        [disabled]="media.busy$()"
+        (change)="fileChanged($event)"
+    /></ui-field>
+    <form [formRoot]="linkForm" class="screen__form">
+      <ui-field label="Link YouTube" required
+        ><input
+          uiInput
+          type="url"
+          placeholder="https://www.youtube.com/watch?v=…"
+          [formField]="linkForm.url"
+      /></ui-field>
+      <button uiButton type="submit" [disabled]="media.busy$()">
+        Phát YouTube
+      </button>
+    </form>
+    <button uiButton [disabled]="media.busy$()" (click)="media.shareScreen()">
+      Chia sẻ màn hình
+    </button>
+    @if(screen.source === 'youtube' || screen.source === 'video') {
+    <div class="row row--gap-2">
+      <button uiButton size="sm" (click)="media.control(true)">Tạm dừng</button
+      ><button uiButton size="sm" (click)="media.control(false)">
+        Tiếp tục
+      </button>
+    </div>
+    } @if(screen.source === 'youtube') {
+    <form [formRoot]="seekForm" class="screen__form">
+      <ui-field label="Giây phát" required
+        ><input
+          uiInput
+          type="number"
+          step="1"
+          [formField]="seekForm.seconds" /></ui-field
+      ><button uiButton size="sm" type="submit">Đến thời điểm</button>
+    </form>
+    } @if(screen.source !== 'idle') {<button uiButton (click)="media.stop()">
+      Dừng trình chiếu</button
+    >} @if(media.busy$()){
+    <p role="status">Đang mở nội dung…</p>
+    }
+    <button
+      uiButton
+      size="sm"
+      (click)="room.interact({type:'seat',action:'stand'})"
+    >
+      Đứng dậy
+    </button>
+  </ui-section-card>
+</aside>
+} @if(media.error$()){
+<p class="screen__error" role="alert">
+  {{media.error$()}}
+  <button uiButton size="sm" (click)="media.watch()">
+    Kết nối lại màn hình
+  </button>
+</p>
+}
+<div
+  #surface
+  class="screen__surface"
+  [class.screen__surface--idle]="screen.source === 'idle'"
+  data-room-screen="true"
+  role="group"
+  aria-label="Màn hình chung 16:9"
+>
+  <div #content class="screen__content"></div>
+  @if(!media.element$()) {
+  <div class="screen__placeholder">
+    <strong>Giờ ra chơi</strong>
+    <p>
+      {{ screen.source !== 'idle' ? 'Đang mở nội dung…' : screen.controller ?
+      screen.name+' đang chuẩn bị trình chiếu' : 'Ngồi vào bàn trình chiếu để
+      phát ảnh, video hoặc YouTube' }}
+    </p>
+  </div>
+  }
+  <div class="screen__toolbar">
+    <span>{{screen.title || 'Màn hình chung'}}</span>
+    @if(screen.source !== 'idle') { @if(screen.source !== 'image') {<button
+      uiButton
+      size="sm"
+      (click)="media.enableSound()"
+    >
+      Bật âm thanh</button
+    >}
+    <button uiIconButton label="Bật/tắt toàn màn hình" (click)="fullscreen()">
+      <ui-icon name="maximize" />
+    </button>
+    }
+  </div>
+</div>
+}

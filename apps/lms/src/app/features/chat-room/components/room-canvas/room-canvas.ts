@@ -16,7 +16,7 @@ import type {
   RoomMovement,
   RoomReactionId,
 } from '@lms/contracts';
-import { Button } from '@lms/ui';
+import { Button, Menu, type MenuEntry } from '@lms/ui';
 import { ROOM_REACTIONS } from '@lms/contracts';
 import type {
   RoomCanvasState,
@@ -24,6 +24,7 @@ import type {
 } from '../../data-access/chat-room.model';
 
 interface RoomRenderer {
+  setScreen(element: HTMLElement | null): void;
   setTouch(x: number, y: number): void;
   setPortrait(portrait: boolean): void;
   chairAt(clientX: number, clientY: number): number | undefined;
@@ -31,7 +32,7 @@ interface RoomRenderer {
 
 @Component({
   selector: 'app-room-canvas',
-  imports: [Button],
+  imports: [Button, Menu],
   templateUrl: './room-canvas.html',
   styleUrl: './room-canvas.scss',
   host: { '(window:keydown)': 'preventScroll($event)' },
@@ -43,7 +44,12 @@ export class RoomCanvas {
   readonly interactionsEnabled = input(false);
   readonly reactionsEnabled = input(false);
   readonly reacted = output<RoomReactionId>();
-  protected readonly reactions = ROOM_REACTIONS;
+  protected readonly reactionEntries: readonly MenuEntry<RoomReactionId>[] =
+    ROOM_REACTIONS.map((reaction) => ({
+      kind: 'item',
+      value: reaction.id,
+      label: `${reaction.icon} ${reaction.label}`,
+    }));
   readonly invitation = input<RoomInvitationView | null>(null);
   readonly gestureNotice = input('');
   readonly moved = output<RoomMovement>();
@@ -61,14 +67,14 @@ export class RoomCanvas {
   private readonly mount =
     viewChild.required<ElementRef<HTMLDivElement>>('mount');
   private scene?: RoomRenderer;
+  private screenElement: HTMLElement | null = null;
+  attachScreen(element: HTMLElement | null): void {
+    this.screenElement = element;
+    this.scene?.setScreen(element);
+  }
   private chairPointer?: { id: number; x: number; y: number };
-  protected chooseReaction(
-    reaction: RoomReactionId,
-    picker: HTMLDetailsElement,
-  ): void {
+  protected chooseReaction(reaction: RoomReactionId): void {
     this.reacted.emit(reaction);
-    picker.removeAttribute('open');
-    picker.querySelector('summary')?.focus();
   }
 
   constructor() {
@@ -106,6 +112,7 @@ export class RoomCanvas {
       );
       scene.setPortrait(this.portrait());
       this.scene = scene;
+      scene.setScreen(this.screenElement);
       this.ready.emit(true);
       return () => {
         scene.destroy();
@@ -120,7 +127,12 @@ export class RoomCanvas {
     }
   }
   protected focus(event: PointerEvent): void {
-    if ((event.target as HTMLElement).closest('button, summary')) return;
+    if (
+      (event.target as HTMLElement).closest(
+        'button, summary, [data-room-screen]',
+      )
+    )
+      return;
     if (
       event.button === 0 &&
       event.target instanceof HTMLCanvasElement &&
@@ -175,6 +187,7 @@ export class RoomCanvas {
     const target = event.target as HTMLElement;
     if (
       this.view().online &&
+      !target.closest('[data-room-screen]') &&
       target.closest('app-room-canvas') &&
       event.key.startsWith('Arrow')
     )

@@ -1,4 +1,8 @@
 import * as THREE from 'three';
+import {
+  CSS3DObject,
+  CSS3DRenderer,
+} from 'three/addons/renderers/CSS3DRenderer.js';
 import type { RoomFacing, RoomMap, RoomMovement } from '@lms/contracts';
 import type { RoomCanvasState } from '../../../data-access/chat-room.model';
 import {
@@ -14,6 +18,9 @@ import { RoomWorld3D, WORLD_SCALE } from './room-world-3d';
 /** Third-person room renderer with server-authoritative approaches and seating. */
 export class RoomOrbit {
   private readonly scene = new THREE.Scene();
+  private readonly screenScene = new THREE.Scene();
+  private readonly screenRenderer = new CSS3DRenderer();
+  private screenObject?: CSS3DObject;
   private readonly camera = new THREE.PerspectiveCamera(47, 1, 0.04, 70);
   private readonly renderer = new THREE.WebGLRenderer({
     antialias: true,
@@ -93,6 +100,13 @@ export class RoomOrbit {
     canvas.style.cursor = 'grab';
     canvas.setAttribute('aria-hidden', 'true');
     this.mount.appendChild(canvas);
+    Object.assign(this.screenRenderer.domElement.style, {
+      position: 'absolute',
+      inset: '0',
+      pointerEvents: 'none',
+      zIndex: '0',
+    });
+    this.mount.appendChild(this.screenRenderer.domElement);
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(mount);
     this.resize();
@@ -111,6 +125,27 @@ export class RoomOrbit {
 
   setTouch(x: number, y: number): void {
     this.touch = { x, y };
+  }
+  setScreen(element: HTMLElement | null): void {
+    if (this.screenObject?.element === element) return;
+    if (this.screenObject) {
+      this.screenScene.remove(this.screenObject);
+      this.screenObject.element.remove();
+      this.screenObject = undefined;
+    }
+    const board =
+      this.map.presentation && this.map.objects[this.map.presentation.board];
+    if (!element || !board) return;
+    const width = board.w / WORLD_SCALE - 0.14;
+    const object = new CSS3DObject(element);
+    object.scale.setScalar(width / 960);
+    object.position.set(
+      (board.x + board.w / 2) / WORLD_SCALE,
+      1.1 + (width * 9) / 32,
+      (board.y + board.h / 2) / WORLD_SCALE + 0.14,
+    );
+    this.screenScene.add(object);
+    this.screenObject = object;
   }
 
   chairAt(clientX: number, clientY: number): number | undefined {
@@ -167,9 +202,16 @@ export class RoomOrbit {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
+    this.screenRenderer.setSize(width, height);
   }
   private readonly keyDown = (event: KeyboardEvent): void => {
     const target = event.target as HTMLElement;
+    if (
+      target.closest?.('[role="menu"], [role="menuitem"], [data-room-screen]')
+    ) {
+      this.keys.clear();
+      return;
+    }
     if (
       !this.view().online ||
       this.view().chatting ||
@@ -392,6 +434,7 @@ export class RoomOrbit {
         : this.position;
     this.placeCamera(delta, focus);
     this.renderer.render(this.scene, this.camera);
+    this.screenRenderer.render(this.screenScene, this.camera);
   };
 
   private placeCamera(delta: number, focus: { x: number; y: number }): void {
@@ -449,6 +492,8 @@ export class RoomOrbit {
     this.sun.shadow.dispose();
     this.renderer.dispose();
     this.renderer.forceContextLoss();
+    this.setScreen(null);
+    this.screenRenderer.domElement.remove();
     canvas.remove();
     this.scene.clear();
   }

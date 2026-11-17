@@ -40,6 +40,7 @@ import type {
 } from './chat-room.model';
 import { inRoomArea } from './chat-room.model';
 import { RoomGamesStore } from './room-games.store';
+import { RoomMediaStore } from './room-media.store';
 import { copyText } from '../../../core/browser/secure-context';
 
 type ConnectionStatus =
@@ -58,6 +59,7 @@ export class ChatRoomStore {
   private readonly destroyRef = inject(DestroyRef);
   private readonly session = inject(SessionStore);
   readonly games = inject(RoomGamesStore);
+  readonly media = inject(RoomMediaStore);
 
   // Socket events are continuous server values; serverData owns the finite HTTP map request.
   private readonly state = {
@@ -86,6 +88,7 @@ export class ChatRoomStore {
     gamesIssue: signal(''),
     copied: signal(false),
     sending: signal(false),
+    challengeDice: signal(false),
     renderError: signal(''),
   };
   private readonly mapData = serverData(() =>
@@ -213,6 +216,7 @@ export class ChatRoomStore {
 
   constructor() {
     this.games.connect((command) => this.socket?.send(command));
+    this.media.connect((command) => this.socket?.send(command));
     this.destroyRef.onDestroy(() => {
       this.leave();
       clearTimeout(this.copyTimer);
@@ -296,6 +300,7 @@ export class ChatRoomStore {
     this.setChatOpen(false);
   }
   move(position: RoomMovement): void {
+    this.setChallengeDice(false);
     if (this.online$()) this.socket?.send({ type: 'move', ...position });
   }
   performGesture(kind: RoomGestureKind): void {
@@ -313,6 +318,7 @@ export class ChatRoomStore {
     }
   }
   cancelApproach(): void {
+    this.setChallengeDice(false);
     if (this.self$()?.approaching)
       this.socket?.send({ type: 'approach-cancel' });
   }
@@ -326,6 +332,73 @@ export class ChatRoomStore {
     this.closeChat();
     this.cancelApproach();
     this.games.open(panel);
+  }
+  private setChallengeDice(value: boolean): void {
+    this.state.challengeDice.set(value);
+  }
+  choosePresentation(): void {
+    if (this.media.controller$()) {
+      this.media.setControls(!this.media.controls$());
+      return;
+    }
+    const chair = this.map$()?.presentation?.chair;
+    if (!this.online$() || chair === undefined) return;
+    this.games.close();
+    this.closeChat();
+    this.cancelApproach();
+    if (this.self$()?.seat !== undefined)
+      this.interact({ type: 'seat', action: 'stand' });
+    this.interact({ type: 'seat', action: 'sit', chair });
+  }
+  chooseChallenge(choice: string): void {
+    const map = this.map$();
+    if (!map || !this.online$()) return;
+    this.closeChat();
+    this.cancelApproach();
+    if (choice === 'dice') {
+      if (this.self$()?.seat !== undefined)
+        this.interact({ type: 'seat', action: 'stand' });
+      if (this.nearDice$()) this.openGame('dice');
+      else {
+        this.games.close();
+        this.setChallengeDice(true);
+        this.socket?.send({ type: 'dice-approach' });
+      }
+      return;
+    }
+    if (choice.startsWith('caro:')) {
+      const index = Number(choice.slice(5));
+      const table = map.caroTables?.[index];
+      if (!table || !Number.isInteger(index)) return;
+      if (this.games.caroTable$()?.table === index + 1) {
+        this.openGame('caro');
+        return;
+      }
+      const occupied = new Set(
+        this.players$()
+          .filter((player) => player.id !== this.me$())
+          .map((player) => player.seat),
+      );
+      const self = this.self$();
+      const chair = table.chairs
+        .filter((chair) => !occupied.has(chair))
+        .sort((a, b) => {
+          const left = map.objects[a],
+            right = map.objects[b];
+          return (
+            Math.hypot(left.x - (self?.x ?? 0), left.y - (self?.y ?? 0)) -
+            Math.hypot(right.x - (self?.x ?? 0), right.y - (self?.y ?? 0))
+          );
+        })[0];
+      if (chair !== undefined) {
+        if (self?.seat !== undefined)
+          this.interact({ type: 'seat', action: 'stand' });
+        this.interact({ type: 'seat', action: 'sit', chair });
+      }
+      return;
+    }
+    if (map.boardTables.some((table) => table.id === choice))
+      this.games.watchBoard(choice);
   }
   send(text: string): void {
     if (!this.online$() || this.sending$() || !text.trim()) return;
@@ -383,7 +456,7 @@ export class ChatRoomStore {
             interactions: true,
             reactions: true,
             boardGames: true,
-            floorGame: true,
+            presentation: true,
           });
       },
       message: (event) => {
@@ -398,6 +471,7 @@ export class ChatRoomStore {
   private receive(event: RoomEvent): void {
     switch (event.type) {
       case 'welcome':
+        this.media.identify(event.id);
         clearTimeout(this.timeout);
         this.setStatus('online');
         this.setError('');
@@ -424,6 +498,7 @@ export class ChatRoomStore {
           this.setPlayers([...this.players$(), event.player]);
         break;
       case 'left':
+        this.media.left(event.id);
         this.clearReaction(event.id);
         this.setPlayers(this.players$().filter((p) => p.id !== event.id));
         if (!this.invitation$()) this.clearInvitation();
@@ -458,10 +533,24 @@ export class ChatRoomStore {
         );
         if (
           event.id === this.me$() &&
+          this.state.challengeDice() &&
+          this.nearDice$()
+        ) {
+          this.setChallengeDice(false);
+          this.openGame('dice');
+        }
+        if (
+          event.id === this.me$() &&
           this.games.panel$() === 'dice' &&
           !this.nearDice$()
         )
           this.games.close();
+        break;
+      case 'media-state':
+      case 'media-peer':
+      case 'media-signal':
+      case 'media-error':
+        this.media.receive(event);
         break;
       case 'correction':
         this.setCorrection({ x: event.x, y: event.y });
@@ -545,6 +634,7 @@ export class ChatRoomStore {
     }
   }
   private disconnected(failure: SocketFailure): void {
+    this.setChallengeDice(false);
     const wasOnline = this.online$();
     const wasJoining = this.status$() === 'joining';
     this.stopSocket();
@@ -611,6 +701,8 @@ export class ChatRoomStore {
     this.setStatus('offline');
   }
   private stopSocket(): void {
+    this.media.reset();
+    this.setChallengeDice(false);
     this.generation++;
     clearTimeout(this.timeout);
     clearTimeout(this.retryTimer);

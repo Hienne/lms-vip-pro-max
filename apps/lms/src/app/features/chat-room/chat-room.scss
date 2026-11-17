@@ -117,19 +117,26 @@
       top: ui.space(2);
       max-height: calc(100% - 2 * ui.space(2));
     }
+    &--board,
     &--caro {
       top: ui.space(2);
-      max-height: calc(100% - 2 * ui.space(2));
-      width: min(
-        max(ui.layout(panel), calc(52dvh + 2 * ui.space(6))),
-        calc(100% - 2 * ui.space(3))
-      );
+      height: calc(100% - 2 * ui.space(2));
+      max-height: none;
+      width: min(3 * ui.layout(panel), calc(100% - 2 * ui.space(3)));
+      overflow: hidden;
       @include ui.bp-below(sm) {
         position: fixed;
         z-index: ui.z(modal);
-        inset: ui.space(2) ui.space(2) auto;
+        inset: ui.space(2);
+        height: auto;
         width: auto;
-        max-height: calc(100dvh - 2 * ui.space(2));
+      }
+      @media (max-height: 480px) {
+        position: fixed;
+        z-index: ui.z(modal);
+        inset: ui.space(2);
+        height: auto;
+        width: auto;
       }
     }
   }

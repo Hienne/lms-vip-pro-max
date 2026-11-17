@@ -117,6 +117,13 @@ export const RoomMapSchema = z.object({
     )
     .optional(),
   playgroundArea: RoomAreaSchema.nullish(),
+  presentation: z
+    .object({
+      board: z.int().nonnegative(),
+      desk: z.int().nonnegative(),
+      chair: z.int().nonnegative(),
+    })
+    .optional(),
   boardTables: z
     .array(
       z.object({
@@ -352,6 +359,41 @@ const ColorFloorStateSchema = z.object({
 });
 export type RoomColorFloorState = z.infer<typeof ColorFloorStateSchema>;
 
+const MediaSourceSchema = z.enum([
+  'idle',
+  'video',
+  'image',
+  'screen',
+  'youtube',
+]);
+const MediaStateSchema = z.object({
+  type: z.literal('media-state'),
+  id: z.uuid(),
+  controller: z.string(),
+  name: z.string(),
+  source: MediaSourceSchema,
+  title: z.string().max(100),
+  videoId: z.string(),
+  paused: z.boolean(),
+  position: z.number().nonnegative(),
+  updatedAt: z.number(),
+  serverTime: z.number(),
+  iceServers: z.array(
+    z.object({
+      urls: z.string(),
+      username: z.string().optional(),
+      credential: z.string().optional(),
+    }),
+  ),
+});
+export type RoomMediaState = z.infer<typeof MediaStateSchema>;
+const MediaSignalSchema = z.object({
+  id: z.uuid(),
+  connection: z.uuid(),
+  kind: z.enum(['offer', 'answer', 'ice']),
+  payload: z.string().max(20000),
+});
+
 export const RoomCommandSchema = z.discriminatedUnion('type', [
   RoomIdentitySchema.extend({
     type: z.literal('join'),
@@ -361,6 +403,7 @@ export const RoomCommandSchema = z.discriminatedUnion('type', [
     reactions: z.literal(true).optional(),
     boardGames: z.literal(true).optional(),
     floorGame: z.literal(true).optional(),
+    presentation: z.literal(true).optional(),
   }),
   RoomMovementSchema.extend({ type: z.literal('move') }),
   z.object({
@@ -368,6 +411,7 @@ export const RoomCommandSchema = z.discriminatedUnion('type', [
     text: z.string().trim().min(1).max(280),
   }),
   z.object({ type: z.literal('dice-open') }),
+  z.object({ type: z.literal('dice-approach') }),
   z.object({ type: z.literal('dice-close') }),
   RoomDiceBetSchema.extend({
     type: z.literal('dice-bet'),
@@ -399,6 +443,26 @@ export const RoomCommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('gesture'), kind: RoomGestureKindSchema }),
   z.object({ type: z.literal('reaction'), reaction: RoomReactionIdSchema }),
   z.object({ type: z.literal('floor-join') }),
+  z.object({
+    type: z.literal('media-start'),
+    id: z.uuid(),
+    source: MediaSourceSchema.exclude(['idle']),
+    title: z.string().max(100),
+    videoId: z.string().optional(),
+  }),
+  z.object({ type: z.literal('media-stop') }),
+  z.object({
+    type: z.literal('media-control'),
+    id: z.uuid(),
+    paused: z.boolean(),
+    position: z.number().min(0).max(864000),
+  }),
+  z.object({
+    type: z.literal('media-watch'),
+    id: z.uuid(),
+    connection: z.uuid(),
+  }),
+  MediaSignalSchema.extend({ type: z.literal('media-signal'), to: z.string() }),
   z.object({ type: z.literal('board-watch'), table: z.string() }),
   z.object({
     type: z.literal('board-ready'),
@@ -427,6 +491,18 @@ export const RoomCommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ping') }),
 ]);
 export const RoomEventSchema = z.discriminatedUnion('type', [
+  MediaStateSchema,
+  MediaSignalSchema.extend({
+    type: z.literal('media-signal'),
+    from: z.string(),
+  }),
+  z.object({
+    type: z.literal('media-peer'),
+    id: z.uuid(),
+    peer: z.string(),
+    connection: z.uuid(),
+  }),
+  z.object({ type: z.literal('media-error'), message: z.string() }),
   z.object({
     type: z.literal('welcome'),
     id: z.string(),
