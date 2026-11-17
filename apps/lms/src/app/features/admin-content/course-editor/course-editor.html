@@ -122,10 +122,15 @@
 </ui-alert>
 } @if (store.step$() === 1) {
 <app-course-ai-status [unsaved]="dirty()" />
+} @if (fill.attached$()) {
+<app-drafting-bar />
 }
 
 <form id="course-editor-form" [formRoot]="courseForm">
-  <fieldset class="course-editor__body" [disabled]="!store.isDraft$()">
+  <fieldset
+    class="course-editor__body"
+    [disabled]="!store.isDraft$() || fill.locked$()"
+  >
     <legend class="sr-only">{{ steps[store.step$()].label }}</legend>
     @switch (store.step$()) { @case (0) {
     <app-course-info
@@ -137,6 +142,8 @@
       [programs]="store.programs$()"
       [modules]="store.modules$()"
       [ai]="showAi()"
+      [suggested]="fill.marks$()"
+      [hints]="fill.hints$()"
       [coverAssetId]="draftValue().coverAssetId"
       (programPicked)="store.pickProgram($event)"
       (coverRemoved)="removeCover()"
@@ -180,7 +187,7 @@
     uiButton
     type="submit"
     form="course-editor-form"
-    [disabled]="store.isSaving$() || store.pendingUploads$() > 0 || (store.isCreate$() && !store.ownerOrgId$())"
+    [disabled]="store.isSaving$() || store.pendingUploads$() > 0 || (store.isCreate$() && !store.ownerOrgId$()) || fill.locked$()"
   >
     <ui-icon name="archive" size="sm" />Lưu nháp
   </button>
@@ -188,7 +195,7 @@
   <button
     uiButton
     variant="primary"
-    [disabled]="continueBlocked() || store.isSaving$() || (store.isCreate$() && !store.ownerOrgId$())"
+    [disabled]="continueBlocked() || store.isSaving$() || (store.isCreate$() && !store.ownerOrgId$()) || fill.locked$()"
     (click)="continue()"
   >
     Tiếp theo<ui-icon name="chevron-right" size="sm" />
@@ -197,7 +204,7 @@
   <button
     uiButton
     variant="primary"
-    [disabled]="store.isSaving$() || store.pendingUploads$() > 0 || (store.isCreate$() && !store.ownerOrgId$())"
+    [disabled]="store.isSaving$() || store.pendingUploads$() > 0 || (store.isCreate$() && !store.ownerOrgId$()) || fill.locked$()"
     (click)="publish()"
   >
     <ui-icon name="check" size="sm" />{{ store.publishRows$().length ? 'Xuất bản

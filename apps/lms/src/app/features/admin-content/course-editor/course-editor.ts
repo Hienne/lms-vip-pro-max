@@ -40,6 +40,7 @@ import { CatalogStatus } from '../../../shared/status/catalog-status';
 import { StartCourseStore } from '../ai-course/ai-course-section/data-access/start-course.store';
 import { firstValueFrom } from 'rxjs';
 import { CourseAiStatus } from './components/course-ai-status/course-ai-status';
+import { DraftingBar } from './components/drafting-bar/drafting-bar';
 import { CourseInfo } from './components/course-info/course-info';
 import { CourseOutline } from './components/course-outline/course-outline';
 import { CourseReview } from './components/course-review/course-review';
@@ -57,6 +58,7 @@ import {
 } from './course-draft';
 import { courseCodeSchema, courseDraftSchema } from './course-draft.schema';
 import { CourseAiJobStore } from './data-access/course-ai-job.store';
+import { DraftingFillStore } from './data-access/drafting-fill.store';
 import {
   COVER_KEY,
   CourseEditorStore,
@@ -91,6 +93,7 @@ const fingerprint = (value: CourseDraftValue) =>
     CourseOutline,
     CourseReview,
     CourseRules,
+    DraftingBar,
     DrawerOutlet,
     ErrorState,
     FormActions,
@@ -103,7 +106,12 @@ const fingerprint = (value: CourseDraftValue) =>
     Stepper,
     Switch,
   ],
-  providers: [CourseEditorStore, CourseAiJobStore, StartCourseStore],
+  providers: [
+    CourseEditorStore,
+    CourseAiJobStore,
+    StartCourseStore,
+    DraftingFillStore,
+  ],
   templateUrl: './course-editor.html',
   styleUrl: './course-editor.scss',
 })
@@ -119,6 +127,8 @@ export class CourseEditor implements HasUnsavedChanges {
     false,
   ]);
   protected readonly ai = inject(CourseAiJobStore);
+  /** The assistant's proposal written into the form, on a course drafted with it. */
+  protected readonly fill = inject(DraftingFillStore);
   private readonly starter = inject(StartCourseStore);
   private readonly chatPrefill = inject(CourseFormPrefillStore);
   private readonly keptDrafts = inject(KeptDrafts);
@@ -354,6 +364,7 @@ export class CourseEditor implements HasUnsavedChanges {
   constructor() {
     this.keepDraftWhenTheSessionEnds();
     this.applyChatPrefill();
+    this.fill.attach(this.model);
     this.store.registerBlockPositions(this.blockPositions);
     this.store.registerAssetAttacher((blockKey, asset) =>
       this.model.update((value) => ({

@@ -1,0 +1,16 @@
+@if (fill.working$()) {
+<ui-alert tone="info" heading="Trợ lý đang soạn…" class="drafting-bar">
+  Các trường lần lượt được điền từ tài liệu của bạn. Bạn sửa được khi trợ lý
+  điền xong hoặc khi bấm Dừng.
+  <button
+    uiButton
+    uiAlertAction
+    type="button"
+    size="sm"
+    [disabled]="drafting.isStopping$()"
+    (click)="fill.stop()"
+  >
+    Dừng
+  </button>
+</ui-alert>
+}
