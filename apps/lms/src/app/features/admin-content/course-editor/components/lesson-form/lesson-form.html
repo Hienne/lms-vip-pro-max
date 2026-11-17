@@ -365,8 +365,16 @@
       </ui-field>
 
       } @case ('process') {
-      <ui-field label="Các bước (mỗi dòng: Tiêu đề | Mô tả)">
-        <textarea uiTextarea rows="5" [formField]="block.stepsText"></textarea>
+      <ui-field
+        label="Các bước (mỗi dòng: Tiêu đề | Mô tả)"
+        hint="Mỗi dòng là một bước, học viên thấy các bước đánh số theo thứ tự. Phần mô tả sau dấu | có thể bỏ trống."
+      >
+        <textarea
+          uiTextarea
+          rows="5"
+          [formField]="block.stepsText"
+          [placeholder]="processExample"
+        ></textarea>
       </ui-field>
       } @case ('image') {
       <ui-field label="Chú thích hình">

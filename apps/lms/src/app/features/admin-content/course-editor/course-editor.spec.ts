@@ -8,6 +8,7 @@ import {
   courseJobEndpoints,
   knowledgeEndpoints,
   programAssessmentEndpoints,
+  trainingCatalogEndpoints,
   MEDIA_PROCESSING_UNAVAILABLE_CODE,
   type AnyEndpoint,
   type CreateCourseCommand,
@@ -536,6 +537,42 @@ describe('CourseEditor', () => {
       body: '<p>Nội dung Văn bản A</p>',
       bodyFormat: 'html',
     });
+  });
+
+  it('links the program select to the catalogue in a new tab and reloads the list', async () => {
+    await screen.open('/admin/courses/new');
+    const manage = Array.from(
+      screen.el.querySelectorAll<HTMLAnchorElement>('a'),
+    ).find((a) => a.textContent?.trim() === 'Quản lý chương trình');
+    expect(manage?.getAttribute('href')).toBe('/admin/catalog');
+    expect(manage?.target).toBe('_blank');
+
+    const before = screen.callsTo(trainingCatalogEndpoints.listPrograms);
+    await screen.click(screen.button('Tải lại danh sách'));
+    expect(screen.callsTo(trainingCatalogEndpoints.listPrograms)).toBe(
+      before + 1,
+    );
+  });
+
+  it('explains the step-by-step block with a hint and two sample lines', async () => {
+    await screen.open('/admin/courses/6/edit');
+    await step('Nội dung khóa học');
+    await screen.click(screen.button('Thêm chương'));
+    const addLesson = Array.from(
+      screen.el.querySelectorAll<HTMLButtonElement>('button'),
+    ).filter((b) => b.textContent?.includes('Thêm bài học'));
+    await screen.click(addLesson[1]);
+    const drawer = screen.drawer()!;
+    await screen.click(screen.button('Quy trình từng bước', drawer));
+
+    const steps = screen.field(
+      'Các bước (mỗi dòng: Tiêu đề | Mô tả)',
+      drawer,
+    ) as HTMLTextAreaElement;
+    expect(screen.text(drawer)).toContain(
+      'học viên thấy các bước đánh số theo thứ tự',
+    );
+    expect(steps.placeholder.split('\n')).toHaveLength(2);
   });
 
   it('adds a chapter and a lesson with a text block, then saves them', async () => {

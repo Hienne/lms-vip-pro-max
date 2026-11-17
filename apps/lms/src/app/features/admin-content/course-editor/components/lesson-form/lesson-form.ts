@@ -181,6 +181,9 @@ export class LessonForm {
   protected readonly isCancellable = isCancellable;
   protected readonly isBusy = isBusy;
   protected readonly blockTypes = BLOCK_TYPES;
+  /** Two sample lines for an empty "Quy trình từng bước" block, so the format reads at a glance. */
+  protected readonly processExample =
+    'Kiểm tra hồ sơ | Đối chiếu giấy tờ tùy thân với thông tin trên hệ thống\nDuyệt giao dịch | Kiểm soát viên phê duyệt trên màn hình chờ duyệt';
   protected readonly addable = BlockTypeSchema.options;
   protected readonly mediaBlocks = [
     'image',

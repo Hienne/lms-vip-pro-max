@@ -45,6 +45,24 @@
         <span class="course-info__note"
           >Đơn vị chưa có chương trình đào tạo để chọn.</span
         >
+        } @if (!draft().programId().disabled() && !store.programsError$()) {
+        <div class="course-info__links">
+          <a
+            uiLinkButton
+            routerLink="/admin/catalog"
+            target="_blank"
+            rel="noopener"
+            >Quản lý chương trình</a
+          >
+          <button
+            uiLinkButton
+            type="button"
+            [disabled]="store.programsLoading$()"
+            (click)="store.retryPrograms()"
+          >
+            Tải lại danh sách
+          </button>
+        </div>
         }
       </ui-field>
       <ui-field
