@@ -22,6 +22,10 @@
     }
   }
 
+  &__links {
+    @include ui.row(3);
+  }
+
   &__ai {
     margin-block-start: ui.space(6);
   }

@@ -1,5 +1,6 @@
 import { Component, computed, inject, input, output } from '@angular/core';
 import { FormField, type FieldTree } from '@angular/forms/signals';
+import { RouterLink } from '@angular/router';
 import type {
   BusinessModule,
   LibraryAsset,
@@ -60,6 +61,7 @@ import { AiCourseSection } from '../../../ai-course/ai-course-section/ai-course-
     Input,
     LinkButton,
     OptionCard,
+    RouterLink,
     Select,
     Textarea,
     UploadItem,
