@@ -103,6 +103,7 @@ import {
   type CourseOwnership,
 } from '../assessment/authoring.mock';
 import { CourseJobMock } from '../assistant-course/course-job.mock';
+import { DraftingSessionMock } from '../assistant-drafting/drafting-session.mock';
 import { LearnerQuizMock } from '../assessment/learner-quiz.mock';
 import { learningReportHandlers } from '../reports/learning-report.handlers';
 import {
@@ -200,6 +201,9 @@ const ACTION_TTL_MS = 10 * 60_000;
 /** The roles that may generate a course; the others are refused like the real server does. */
 const COURSE_JOB_ROLES = ['INSTRUCTOR', 'ADMIN', 'SUPER_ADMIN'];
 
+/** The owner of drafting sessions started by a dev build signed in to the real backend. */
+const DRAFTING_DEV_OWNER = 'dev';
+
 interface PendingProposal {
   readonly userId: string;
   readonly action: PendingAction;
@@ -250,6 +254,8 @@ export class FakeBackend {
   );
   private readonly learnerQuiz = new LearnerQuizMock();
   private readonly courseJobs = new CourseJobMock();
+  /** Public so a spec can turn its knobs (`failNext`, `takeCodeOnConfirm`, `pollsBeforeProposal`). */
+  readonly draftingSessions = new DraftingSessionMock();
   private orgs: Mutable<SeedOrg>[] = SEED_ORGS.map((o) => ({ ...o }));
   private teams: Mutable<SeedTeam>[] = SEED_TEAMS.map((t) => ({ ...t }));
   private users: DbUser[] = SEED_USERS.map((u, index) => ({
@@ -397,6 +403,7 @@ export class FakeBackend {
       this.assessment.answers(endpoint) ||
       this.learnerQuiz.answers(endpoint) ||
       this.courseJobs.answers(endpoint) ||
+      this.draftingSessions.answers(endpoint) ||
       learningReportHandlers.has(endpoint)
     );
   }
@@ -421,6 +428,27 @@ export class FakeBackend {
           return refuse('accessDenied');
         }
         return this.courseJobs.handle(endpoint, request, user.userId);
+      } catch (error) {
+        if (error instanceof Refused) return error.reply;
+        throw error;
+      }
+    }
+    if (this.draftingSessions.answers(endpoint)) {
+      try {
+        // `served: 'mock'`: a dev build sends a token the real backend issued, which this database
+        // does not know, so such a call is answered for one shared owner without the role check.
+        if (!request.token || !this.tokens.has(request.token)) {
+          return this.draftingSessions.handle(
+            endpoint,
+            request,
+            DRAFTING_DEV_OWNER,
+          );
+        }
+        const user = this.caller(request);
+        if (!this.hasRole(user.userId, COURSE_JOB_ROLES)) {
+          return refuse('accessDenied');
+        }
+        return this.draftingSessions.handle(endpoint, request, user.userId);
       } catch (error) {
         if (error instanceof Refused) return error.reply;
         throw error;
