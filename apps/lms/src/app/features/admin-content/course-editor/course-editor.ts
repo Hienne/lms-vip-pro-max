@@ -28,6 +28,7 @@ import {
   Spinner,
   Stepper,
   PageHeader,
+  Switch,
   Toaster,
 } from '@lms/ui';
 import { CourseFormPrefillStore } from '../../../core/assistant/course-form-prefill.store';
@@ -99,6 +100,7 @@ const fingerprint = (value: CourseDraftValue) =>
     RouterLink,
     Spinner,
     Stepper,
+    Switch,
   ],
   providers: [CourseEditorStore, CourseAiJobStore, StartCourseStore],
   templateUrl: './course-editor.html',
@@ -123,6 +125,19 @@ export class CourseEditor implements HasUnsavedChanges {
   /** "Tạo bằng AI" is offered to instructors and admins on a new course only. */
   protected readonly canGenerate = inject(CourseJobAccess).canGenerate$;
   protected readonly generating = this.starter.isStarting$;
+  /**
+   * The author's choice to write the new course with AI. Off by default: a course is typed by
+   * hand unless the author turns it on (or the chat opened the form to generate one).
+   */
+  protected readonly aiEnabled = signal(false);
+  /** The "Tạo bằng AI" section and button are shown: a new course, a role that may generate, switched on. */
+  protected readonly showAi = computed(
+    () => !this.store.course$() && this.canGenerate() && this.aiEnabled(),
+  );
+
+  protected toggleAi(event: Event): void {
+    this.aiEnabled.set((event.target as HTMLInputElement).checked);
+  }
 
   /**
    * Why "Tạo bằng AI" is not available yet: step 1's own fields first, then the AI section's.
@@ -140,7 +155,7 @@ export class CourseEditor implements HasUnsavedChanges {
    * to step 2 of that course, where the outline appears as it is written.
    */
   protected generateWithAi(): void {
-    if (this.aiProblem() !== null) return;
+    if (!this.showAi() || this.aiProblem() !== null) return;
     const value = this.draftValue();
     this.starter.start(
       {
@@ -224,6 +239,7 @@ export class CourseEditor implements HasUnsavedChanges {
   private applyChatPrefill(): void {
     const prefill = this.chatPrefill.take();
     if (!prefill || !this.store.isCreate$() || !this.canGenerate()) return;
+    this.aiEnabled.set(true);
     const title = prefill.fields.title?.trim();
     if (title) this.model.update((value) => ({ ...value, title }));
     this.starter.applyPrefill(prefill.fields, prefill.file);

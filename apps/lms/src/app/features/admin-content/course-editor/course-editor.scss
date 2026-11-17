@@ -21,6 +21,12 @@
     @include ui.row(3);
   }
 
+  &__ai-toggle {
+    @include ui.row(2);
+    @include ui.text(sm);
+    cursor: pointer;
+  }
+
   &__ai-problem {
     @include ui.text(sm, muted);
   }
