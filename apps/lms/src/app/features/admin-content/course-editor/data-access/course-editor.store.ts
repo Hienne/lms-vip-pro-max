@@ -109,6 +109,7 @@ import {
   isCancellable,
   MISMATCH_MESSAGE,
   PROCESSING_STATUS,
+  convertingStatus,
   sendingStatus,
   STALLED_MESSAGE,
   WAITING_STATUS,
@@ -1524,8 +1525,12 @@ export class CourseEditorStore {
         this.patchUpload(blockKey, {
           state: 'processing',
           uploadId: event.uploadId,
-          percent: undefined,
-          status: event.retryMessage ?? PROCESSING_STATUS,
+          percent: event.percent,
+          status:
+            event.retryMessage ??
+            (event.percent === undefined
+              ? PROCESSING_STATUS
+              : convertingStatus(event.percent)),
         });
         return;
       case 'stalled':

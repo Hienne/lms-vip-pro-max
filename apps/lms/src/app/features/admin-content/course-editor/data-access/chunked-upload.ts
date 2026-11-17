@@ -23,7 +23,10 @@ import type { HashEvent, Hasher } from './sha256-hasher';
 
 /** How often the server is asked whether it finished processing a file. */
 export const POLL_MS = 3_000;
-/** How long the app keeps asking before it says the server is slow. */
+/**
+ * How long the app keeps asking, with no progress reported, before it says the server is slow. A
+ * conversion whose percent still rises is not slow: each rise starts the wait again.
+ */
 export const POLL_LIMIT_MS = 15 * 60_000;
 /** The pause before a part or a poll is tried again after a server error. */
 export const SERVER_RETRY_MS = 5_000;
@@ -62,6 +65,8 @@ export type UploadProgress =
       readonly type: 'processing';
       readonly uploadId: string;
       readonly retryMessage?: string;
+      /** How far the server's video conversion is, 0–99, once it has started one. */
+      readonly percent?: number;
     }
   /** The server did not finish in `POLL_LIMIT_MS`: "Kiểm tra lại" asks again. */
   | { readonly type: 'stalled'; readonly uploadId: string }
@@ -409,9 +414,14 @@ class Flow {
 
   /** Asks until the server has an end state, or `POLL_LIMIT_MS` passed. */
   async settle(first: Upload): Promise<void> {
-    const startedAt = Date.now();
+    let startedAt = Date.now();
+    let percent = -1;
     let upload = first;
     for (;;) {
+      if ((upload.processingPercent ?? -1) > percent) {
+        percent = upload.processingPercent ?? -1;
+        startedAt = Date.now();
+      }
       switch (upload.status) {
         case 'ready':
           this.run.emit({ type: 'ready', upload });
@@ -440,6 +450,9 @@ class Flow {
           this.run.emit({
             type: 'processing',
             uploadId: upload.uploadId,
+            ...(upload.processingPercent != null
+              ? { percent: upload.processingPercent }
+              : {}),
             ...(upload.errorCode === MEDIA_PROCESSING_UNAVAILABLE_CODE &&
             upload.errorMessage
               ? { retryMessage: upload.errorMessage }

@@ -14,8 +14,8 @@ function formatBytes(bytes: number): string {
 
 /**
  * One file in an upload list (the mockup's `.upload-item`): icon, name, size and, while
- * `uploading`, a progress bar. `processing` is the wait after the last byte, when there is nothing
- * to measure, so it has no bar. `status` is one line of text on what is happening. In the `error`
+ * `uploading`, a progress bar. `processing` is the wait after the last byte: it has a bar only when
+ * the server reports a `progress` (a video conversion), and none while there is nothing to measure. `status` is one line of text on what is happening. In the `error`
  * state it is an alert and the projected content is the message; the error icon has a name so the
  * failure is never colour alone.
  */
@@ -50,6 +50,12 @@ function formatBytes(bytes: number): string {
           [value]="progress() ?? 0"
           [label]="progressLabel()"
         />
+      } @else if (state() === 'processing' && progress() !== undefined) {
+        <ui-progress
+          size="sm"
+          [value]="progress() ?? 0"
+          [label]="processingLabel()"
+        />
       }
     </div>
   `,
@@ -61,10 +67,11 @@ export class UploadItem {
   readonly state = input<UploadState>('done');
   /** What the item is doing, as one line of text under the name. */
   readonly status = input<string>();
-  /** Percentage while uploading. */
+  /** Percentage while uploading, or while processing once the server measures it (a video conversion). */
   readonly progress = input<number>();
   readonly icon = input<IconName>('file-text');
   readonly progressLabel = input('Tiến trình tải lên');
+  readonly processingLabel = input('Tiến trình xử lý');
   readonly errorLabel = input('Lỗi');
 
   protected readonly sizeText = computed(() => {

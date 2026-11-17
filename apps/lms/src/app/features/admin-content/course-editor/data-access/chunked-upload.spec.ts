@@ -437,6 +437,30 @@ describe('chunkedUpload', () => {
       await run(pollUpload(client, uploadId), POLL_MS);
       expect(last()).toMatchObject({ type: 'ready' });
     });
+
+    it('passes on the conversion percent and keeps asking past 15 minutes while it rises', async () => {
+      let percent = 0;
+      handle.mockImplementation((endpoint, request) => {
+        const reply = original(endpoint, request) as FakeReply;
+        const data = reply.body.data as { status?: string } | null;
+        if (endpoint !== assetEndpoints.uploadStatus || !data?.status)
+          return reply;
+        percent = Math.min(99, percent + 1);
+        return {
+          ...reply,
+          body: {
+            ...reply.body,
+            data: { ...data, status: 'processing', processingPercent: percent },
+          },
+        };
+      });
+      await run(
+        upload(fileOf(100, 'a.mp4', 'video/mp4')),
+        POLL_LIMIT_MS + POLL_MS,
+      );
+      expect(last()).toMatchObject({ type: 'processing', percent });
+      expect(outcome.done).toBeUndefined();
+    });
   });
 
   describe('resuming', () => {

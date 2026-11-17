@@ -104,5 +104,7 @@ export const UploadSchema = z.object({
   durationSeconds: z.number().nullish(),
   pageCount: z.number().int().nullish(),
   mediaCheckedAt: BackendDateTimeSchema.nullish(),
+  /** How far the video conversion is (0–99) while `processing`; absent before it starts or when none is needed. */
+  processingPercent: z.number().int().min(0).max(100).nullish(),
 });
 export type Upload = z.infer<typeof UploadSchema>;

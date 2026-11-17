@@ -45,6 +45,9 @@ export const sendingStatus = (sent: number, total: number): string =>
 
 export const WAITING_STATUS = 'Mất kết nối, sẽ tiếp tục khi có mạng.';
 export const PROCESSING_STATUS = 'Đang xử lý tệp…';
+
+export const convertingStatus = (percent: number): string =>
+  `Đang chuyển đổi video… ${percent}%`;
 export const STALLED_MESSAGE = 'Máy chủ chưa xử lý xong. Kiểm tra lại sau.';
 /** Added to a delete confirmation when the deleted blocks have files still uploading. */
 export const UPLOADS_CANCELLED = 'Tệp đang tải sẽ bị hủy.';

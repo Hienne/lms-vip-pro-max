@@ -73,7 +73,9 @@ describe('UploadItem', () => {
     );
     expect(root.querySelector('ui-progress')).not.toBeNull();
 
+    // Nothing measured yet: the server is reading the file, not converting it.
     host.state.set('processing');
+    host.progress.set(undefined);
     host.status.set('Đang xử lý tệp…');
     fixture.detectChanges();
     expect(text(root.querySelector('.upload-item__status'))).toBe(
@@ -81,6 +83,18 @@ describe('UploadItem', () => {
     );
     expect(root.querySelector('ui-progress')).toBeNull();
     expect(root.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('shows a processing bar once the server reports how far the conversion is', () => {
+    const { host, fixture, root } = render();
+    host.state.set('processing');
+    host.progress.set(37);
+    host.status.set('Đang chuyển đổi video… 37%');
+    fixture.detectChanges();
+    expect(root.querySelector('ui-progress')).not.toBeNull();
+    expect(text(root.querySelector('.upload-item__status'))).toBe(
+      'Đang chuyển đổi video… 37%',
+    );
   });
 
   it('shows no status line when none is given', () => {
