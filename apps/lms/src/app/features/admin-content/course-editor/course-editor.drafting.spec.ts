@@ -11,6 +11,7 @@ import {
   type DraftingStep,
 } from '@lms/contracts';
 import {
+  audienceProposalFixture,
   backendRefusal,
   basicsProposalFixture,
   draftingSessionFixture,
@@ -446,6 +447,7 @@ describe('CourseEditor confirming a drafting step', () => {
    */
   async function openDraftAtStepTwo(
     at: (courseId: number, revisionId: number) => DraftingSession = atStepTwo,
+    chapters: unknown[] = [],
   ): Promise<number> {
     await open('/admin/courses/new');
     // A request the page sent while signed in, so the course is made as its author.
@@ -464,7 +466,7 @@ describe('CourseEditor confirming a drafting step', () => {
           level: 'basic',
           defaultRequirement: 'mandatory',
           objectives: [...basicsProposalFixture.objectives],
-          chapters: [],
+          chapters,
           rewardPoints: 0,
         },
       },
@@ -857,6 +859,147 @@ describe('CourseEditor confirming a drafting step', () => {
       expect(screen.callsTo(assessmentV1Endpoints.createQuestion)).toBe(0);
       expect(legend()).toContain('Đối tượng');
       expect(questions()).toHaveLength(0);
+    });
+  });
+
+  describe('step 4, the audience and the publish check', () => {
+    const audience = audienceProposalFixture;
+    /** One empty lesson from the outline, as steps 2 and 3 left the draft. */
+    const outline = [
+      {
+        title: 'Đối soát cuối ngày',
+        lessons: [
+          {
+            title: 'Các bước đối soát',
+            lessonType: 'content',
+            estimatedDurationSeconds: 600,
+            isRequired: true,
+            blocks: [],
+          },
+        ],
+      },
+    ];
+
+    /** Steps 1 to 3 confirmed: the audience is being proposed. */
+    const atStepFour = (
+      courseId: number,
+      revisionId: number,
+    ): DraftingSession => ({
+      ...session,
+      courseId,
+      revisionId,
+      currentStep: 4,
+      steps: [
+        { ...session.steps[0], state: 'confirmed' } as DraftingStep,
+        draftingStepFixture(2, 'confirmed'),
+        draftingStepFixture(3, 'confirmed'),
+        draftingStepFixture(4, 'proposing'),
+      ],
+    });
+
+    let courseId = 0;
+
+    beforeEach(() => {
+      const base = screen.calls.getMockImplementation();
+      screen.calls.mockImplementation((endpoint, request) => {
+        // The server's step 4 confirm stores nothing on the course: it only ends the session.
+        if (
+          endpoint === draftingSessionEndpoints.confirm &&
+          (request as { params: Record<string, string> }).params['step'] === '4'
+        ) {
+          session = {
+            ...session,
+            status: 'finished',
+            steps: session.steps.map((step) =>
+              step.step === 4
+                ? ({ ...step, state: 'confirmed' } as DraftingStep)
+                : step,
+            ),
+          };
+          return ok(session);
+        }
+        const reply = base?.(endpoint, request) as FakeReply;
+        // Steps 2 and 3 held proposals, so the server marked the draft as AI made.
+        if (
+          endpoint === courseEndpoints.getCourse &&
+          (request as { params: Record<string, string> }).params['courseId'] ===
+            String(courseId) &&
+          reply.body.status === 'SUCCESS'
+        ) {
+          const body = structuredClone(reply.body) as {
+            data: { revision: Record<string, unknown> };
+          };
+          body.data.revision['aiGenerated'] = true;
+          return { ...reply, body } as FakeReply;
+        }
+        return reply;
+      });
+    });
+
+    /** The server finishes the audience; the page sees it at its next look. */
+    const proposeAudience = async () => {
+      session = {
+        ...session,
+        steps: [
+          ...session.steps.slice(0, 3),
+          draftingStepFixture(4, 'proposed'),
+        ],
+      };
+      await advance(DRAFTING_POLL_INTERVAL_MS);
+      await advance(DRAFTING_FIELD_DELAY_MS * (audience.targets.length + 1));
+    };
+
+    const atStepFourFilled = async () => {
+      courseId = await openDraftAtStepTwo(atStepFour, outline);
+      expect(legend()).toContain('Đối tượng');
+      await proposeAudience();
+    };
+
+    it('fills the assign form with the proposed targets and saves nothing', async () => {
+      await atStepFourFilled();
+
+      expect(screen.text()).toContain(audience.targets[0].label);
+      expect(screen.text()).toContain('Xuất bản và giao khóa học');
+      // The page's own pre-publish check says what the chat lists: the empty lesson.
+      expect(screen.text()).toContain(
+        'Mọi bài học có nội dung, đủ tệp hoặc đã chọn bài kiểm tra',
+      );
+      expect(screen.callsTo(courseEndpoints.publish)).toBe(0);
+      expect(confirmButton()?.disabled).toBe(false);
+    });
+
+    it('"Đã chốt" ends the flow without assigning, sharing or publishing', async () => {
+      await atStepFourFilled();
+      const saves = screen.callsTo(courseEndpoints.saveDraft);
+
+      await press(confirmButton());
+
+      const sent = screen.lastCall(draftingSessionEndpoints.confirm) as {
+        params: Record<string, unknown>;
+        body: unknown;
+      };
+      expect(sent.params).toMatchObject({ step: '4' });
+      expect(sent.body).toEqual({});
+      expect(screen.callsTo(courseEndpoints.publish)).toBe(0);
+      expect(screen.callsTo(courseEndpoints.saveDraft)).toBe(saves);
+      expect(confirmButton()).toBeUndefined();
+      // The rows stay on the page for the author's own "Xuất bản".
+      expect(screen.text()).toContain(audience.targets[0].label);
+      expect(legend()).toContain('Đối tượng');
+    });
+
+    it('publishing the drafted course stays manual and asks "Tôi đã rà soát nội dung"', async () => {
+      await atStepFourFilled();
+      await press(confirmButton());
+
+      await press(screen.button('Xuất bản và giao khóa học'));
+
+      const dialog = screen.alertDialog();
+      expect(dialog?.textContent).toContain('Tôi đã rà soát nội dung');
+      expect(screen.button('Xuất bản', dialog ?? undefined)?.disabled).toBe(
+        true,
+      );
+      expect(screen.callsTo(courseEndpoints.publish)).toBe(0);
     });
   });
 });

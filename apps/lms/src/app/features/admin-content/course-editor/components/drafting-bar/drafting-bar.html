@@ -41,10 +41,13 @@
   </button>
   } @else if (problem(); as reason) {
   <span>{{ reason }}</span>
-  } @else { Xem lại và sửa nếu cần. @if (step === 2) { Nội dung từng bài để
-  trống để bạn tự viết; bài chưa có nội dung không chặn bước này. } @if (step
-  === 3) { Các câu hỏi được giữ lại thành bài kiểm tra cuối khóa mới, được chọn
-  để xét hoàn thành. } Bấm Đã chốt để lưu và để trợ lý sang bước tiếp theo. }
+  } @else if (step === 4) { Trợ lý đã điền đối tượng được giao; trợ lý không
+  giao, không chia sẻ và không xuất bản khóa học. Bấm Đã chốt để kết thúc phần
+  của trợ lý, rồi tự Xuất bản khi đã sẵn sàng. } @else { Xem lại và sửa nếu cần.
+  @if (step === 2) { Nội dung từng bài để trống để bạn tự viết; bài chưa có nội
+  dung không chặn bước này. } @if (step === 3) { Các câu hỏi được giữ lại thành
+  bài kiểm tra cuối khóa mới, được chọn để xét hoàn thành. } Bấm Đã chốt để lưu
+  và để trợ lý sang bước tiếp theo. }
   <button
     uiButton
     uiAlertAction

@@ -103,7 +103,11 @@ export const audienceProposalFixture: AudienceProposal = {
       label: 'Khối Vận hành',
     },
   ],
-  publishBlockers: ['Chưa có ảnh bìa', '4 bài chưa có nội dung'],
+  // What the server's pre-publish check lists: the page's draftChecks labels and a lesson count.
+  publishBlockers: [
+    'Mọi bài học có nội dung, đủ tệp hoặc đã chọn bài kiểm tra',
+    '4 bài chưa có nội dung',
+  ],
 };
 
 /** One reached step with the given state; a `proposing` step has no proposal yet. */

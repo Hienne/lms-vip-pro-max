@@ -490,7 +490,8 @@ export class CourseEditor implements HasUnsavedChanges {
    * "Đã chốt" on the bar or on the chat's card: the step is confirmed with what the page holds
    * now. Step 1 sends the create command, so the server makes the draft course from it; step 2
    * the whole draft, as "Lưu nháp" saves it (lessons without content do not stop it); step 3 the
-   * draft with the kept questions and their competency, which become a new final exam.
+   * draft with the kept questions and their competency, which become a new final exam. Step 4
+   * sends nothing: it ends the flow, and the assign rows wait for the author's own "Xuất bản".
    */
   protected confirmDraftingStep(step: DraftingStepNumber): void {
     if (this.store.step$() !== step - 1 || this.draftingProblem() !== null) {
@@ -519,6 +520,7 @@ export class CourseEditor implements HasUnsavedChanges {
         ...rules,
       });
     }
+    if (step === 4) this.fill.confirm(step, {});
   }
 
   /** "Tiếp theo": when the step stays because of an error, the first one gets focus. */

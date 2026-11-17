@@ -5,7 +5,12 @@ import type {
   RulesProposal,
 } from '@lms/contracts';
 import { emptyDraftValue, type CourseDraftValue } from '../course-draft';
-import { fillSteps, type FillPatch, type RulesPatch } from './drafting-fill';
+import {
+  fillSteps,
+  type AudiencePatch,
+  type FillPatch,
+  type RulesPatch,
+} from './drafting-fill';
 import { emptyRules, type DraftRulesValue } from './drafting-rules';
 
 const proposal: BasicsProposal = {
@@ -284,6 +289,62 @@ describe('fillSteps', () => {
         'competencyId',
       );
       expect(rulesFrames(step).at(-1)?.competencyId).toBe('');
+    });
+  });
+
+  describe('step 4, the audience', () => {
+    const stepFour: Extract<DraftingStep, { step: 4 }> = {
+      step: 4,
+      state: 'proposed',
+      proposal: {
+        targets: [
+          {
+            targetType: 'org',
+            orgId: 2,
+            includeDescendants: true,
+            label: 'Khối Vận hành',
+          },
+          {
+            targetType: 'team',
+            teamId: 5,
+            includeDescendants: false,
+            label: 'Tổ giao dịch viên',
+          },
+        ],
+        publishBlockers: ['2 bài chưa có nội dung'],
+      },
+      notes: [],
+      error: null,
+      updateTime: '2026-11-17T09:20:00+07:00',
+    };
+
+    it('writes the assign rows one target at a time and nothing into the draft', () => {
+      const patches = fillSteps(stepFour);
+
+      expect(patches.map((patch) => patch.field)).toEqual([
+        'targets',
+        'targets',
+      ]);
+      expect(patches.every((patch) => 'picks' in patch)).toBe(true);
+      const picks = (patches as AudiencePatch[]).map((patch) =>
+        patch.picks.map((pick) => pick.label),
+      );
+      expect(picks).toEqual([
+        ['Khối Vận hành'],
+        ['Khối Vận hành', 'Tổ giao dịch viên'],
+      ]);
+      expect((patches.at(-1) as AudiencePatch).picks[0]).toEqual(
+        stepFour.proposal?.targets[0],
+      );
+    });
+
+    it('writes nothing when the assistant proposed no target', () => {
+      expect(
+        fillSteps({
+          ...stepFour,
+          proposal: { targets: [], publishBlockers: [] },
+        }),
+      ).toEqual([]);
     });
   });
 });

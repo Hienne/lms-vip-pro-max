@@ -1,9 +1,11 @@
 import type {
+  AudienceProposal,
   BasicsProposal,
   DraftingStep,
   OutlineProposal,
   RulesProposal,
 } from '@lms/contracts';
+import type { TargetPick } from '../../../../shared/assignment-target/target-labels';
 import {
   newChapter,
   newLesson,
@@ -33,7 +35,16 @@ export interface RulesPatch {
   readonly rules: (value: DraftRulesValue) => DraftRulesValue;
 }
 
-export type DraftingPatch = FillPatch | RulesPatch;
+/**
+ * One write into step 4's assign rows: the targets picked so far. The rows are the page's publish
+ * targets, saved only when the author publishes.
+ */
+export interface AudiencePatch {
+  readonly field: 'targets';
+  readonly picks: readonly TargetPick[];
+}
+
+export type DraftingPatch = FillPatch | RulesPatch | AudiencePatch;
 
 const set = <K extends FillField>(
   field: K,
@@ -120,6 +131,18 @@ function rulesPatches(proposal: RulesProposal): DraftingPatch[] {
 }
 
 /**
+ * Step 4: the proposed targets one at a time, as rows of the assign form. Nothing is assigned,
+ * shared or published: the rows wait for the author's own "Xuất bản".
+ */
+function audiencePatches(proposal: AudienceProposal): AudiencePatch[] {
+  const picks: TargetPick[] = proposal.targets.map((target) => ({ ...target }));
+  return picks.map((_, index) => ({
+    field: 'targets',
+    picks: picks.slice(0, index + 1),
+  }));
+}
+
+/**
  * The writes that put a step's proposal into the editor's form, one per field (lists one item per
  * write). A step without a proposal, or one the page does not fill yet, writes nothing.
  */
@@ -127,5 +150,6 @@ export function fillSteps(step: DraftingStep): readonly DraftingPatch[] {
   if (step.step === 1 && step.proposal) return basicsPatches(step.proposal);
   if (step.step === 2 && step.proposal) return outlinePatches(step.proposal);
   if (step.step === 3 && step.proposal) return rulesPatches(step.proposal);
+  if (step.step === 4 && step.proposal) return audiencePatches(step.proposal);
   return [];
 }

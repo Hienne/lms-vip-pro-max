@@ -47,8 +47,8 @@ const EMPTY_HINTS = {
 
 export type DraftingHints = Partial<Record<keyof typeof EMPTY_HINTS, string>>;
 
-/** The steps the page confirms with "Đã chốt" so far; the later tickets add theirs. */
-const CONFIRMABLE_STEPS: readonly DraftingStepNumber[] = [1, 2, 3];
+/** The steps the page confirms with "Đã chốt". */
+const CONFIRMABLE_STEPS: readonly DraftingStepNumber[] = [1, 2, 3, 4];
 
 /**
  * What the outline shows under a lesson the assistant proposed: what it teaches and the part of
@@ -558,6 +558,11 @@ export class DraftingFillStore {
   }
 
   private write(patch: DraftingPatch): void {
+    if ('picks' in patch) {
+      // Step 4 fills the assign rows only: they are saved when the author publishes.
+      this.editor.setPublishPicks(patch.picks);
+      return;
+    }
     if ('rules' in patch) {
       const rules = patch.rules(this.state.rules());
       this.setRules(rules);

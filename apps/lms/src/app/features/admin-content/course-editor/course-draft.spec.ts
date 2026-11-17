@@ -226,6 +226,24 @@ describe('course draft', () => {
     );
   });
 
+  // The drafting assistant's step 4 lists the failing required checks in the chat; the server
+  // (corebanking-academy DraftingPublishCheck, pinned by DraftingPublishCheckTest) copies these
+  // labels. Change both sides together.
+  it('keeps the required check labels the drafting assistant copies on the server', () => {
+    const quiz = { id: 2, status: 'CLOSED' as const, selectionMode: 'FIXED' };
+    const checks = draftChecks({ ...toDraftValue(eod), finalQuizId: '2' }, [
+      quiz,
+    ]);
+
+    expect(checks.filter((c) => !c.optional).map((c) => c.label)).toEqual([
+      'Có tên khóa học và chương trình',
+      'Có ít nhất 1 bài học',
+      'Mọi bài học có nội dung, đủ tệp hoặc đã chọn bài kiểm tra',
+      'Bài kiểm tra cuối khóa đã xuất bản',
+      'Đã chọn mức độ khóa học',
+    ]);
+  });
+
   it('round-trips the cover image, left out when there is none', () => {
     const value = toDraftValue({
       ...eod,
