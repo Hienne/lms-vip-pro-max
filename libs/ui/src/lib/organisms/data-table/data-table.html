@@ -1,81 +1,83 @@
 @if (total() === 0) {
 <ng-content select="[slot=empty]" />
 } @else {
-<div uiTableWrap>
-  <table
-    uiTable
-    responsive
-    [fixed]="fixed()"
-    [style.--table-min-width]="minWidth()"
-  >
-    <caption class="sr-only">
-      {{ caption() }}
-    </caption>
-    @if (fixed()) {
-    <colgroup>
-      @for (column of columns(); track column.key) { @if (column.width) {
-      <col uiTableCol [width]="column.width" />
-      } @else {
-      <col />
-      } }
-    </colgroup>
-    }
-    <thead>
-      <tr>
-        @for (column of columns(); track column.key) {
-        <th
-          scope="col"
-          uiTableCell
-          [nowrap]="column.nowrap === true"
-          [class.col-actions]="column.kind === 'actions'"
-          [attr.aria-sort]="ariaSort(column.key)"
-        >
-          @if (headerTemplates().get(column.key); as header) {
-          <ng-container [ngTemplateOutlet]="header" />
-          } @else if (column.sortable === false || column.kind === 'actions') {
-          {{ column.label }} } @else {
-          <button type="button" (click)="toggle(column.key)">
-            {{ column.label }} @if (sort()?.key === column.key) {
-            <ui-icon
-              size="sm"
-              [name]="sort()?.dir === 'asc' ? 'chevron-up' : 'chevron-down'"
-            />
-            }
-          </button>
-          }
-        </th>
-        }
-      </tr>
-    </thead>
-    <tbody>
-      @for (row of rows(); track row.id) {
-      <tr>
-        @for (column of columns(); track column.key) {
-        <td
-          uiTableCell
-          [nowrap]="column.nowrap === true"
-          [class.col-actions]="column.kind === 'actions'"
-          [attr.data-label]="column.label"
-        >
-          @if (templates().get(column.key); as template) {
-          <ng-container
-            [ngTemplateOutlet]="template"
-            [ngTemplateOutletContext]="{ $implicit: row }"
-          />
-          } @else { {{ valueOf(row, column.key) }} }
-        </td>
-        }
-      </tr>
+<div class="data-table">
+  <div uiTableWrap>
+    <table
+      uiTable
+      responsive
+      [fixed]="fixed()"
+      [style.--table-min-width]="minWidth()"
+    >
+      <caption class="sr-only">
+        {{ caption() }}
+      </caption>
+      @if (fixed()) {
+      <colgroup>
+        @for (column of columns(); track column.key) { @if (column.width) {
+        <col uiTableCol [width]="column.width" />
+        } @else {
+        <col />
+        } }
+      </colgroup>
       }
-    </tbody>
-  </table>
+      <thead>
+        <tr>
+          @for (column of columns(); track column.key) {
+          <th
+            scope="col"
+            uiTableCell
+            [nowrap]="column.nowrap === true"
+            [class.col-actions]="column.kind === 'actions'"
+            [attr.aria-sort]="ariaSort(column.key)"
+          >
+            @if (headerTemplates().get(column.key); as header) {
+            <ng-container [ngTemplateOutlet]="header" />
+            } @else if (column.sortable === false || column.kind === 'actions')
+            { {{ column.label }} } @else {
+            <button type="button" (click)="toggle(column.key)">
+              {{ column.label }} @if (sort()?.key === column.key) {
+              <ui-icon
+                size="sm"
+                [name]="sort()?.dir === 'asc' ? 'chevron-up' : 'chevron-down'"
+              />
+              }
+            </button>
+            }
+          </th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows(); track row.id) {
+        <tr>
+          @for (column of columns(); track column.key) {
+          <td
+            uiTableCell
+            [nowrap]="column.nowrap === true"
+            [class.col-actions]="column.kind === 'actions'"
+            [attr.data-label]="column.label"
+          >
+            @if (templates().get(column.key); as template) {
+            <ng-container
+              [ngTemplateOutlet]="template"
+              [ngTemplateOutletContext]="{ $implicit: row }"
+            />
+            } @else { {{ valueOf(row, column.key) }} }
+          </td>
+          }
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <ui-pagination
+    [total]="total()"
+    [page]="page()"
+    [pageSize]="pageSize()"
+    [pageSizeOptions]="pageSizeOptions()"
+    (pageChange)="pageChange.emit($event)"
+    (pageSizeChange)="pageSizeChange.emit($event)"
+  />
 </div>
-<ui-pagination
-  [total]="total()"
-  [page]="page()"
-  [pageSize]="pageSize()"
-  [pageSizeOptions]="pageSizeOptions()"
-  (pageChange)="pageChange.emit($event)"
-  (pageSizeChange)="pageSizeChange.emit($event)"
-/>
 }

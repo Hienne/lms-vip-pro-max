@@ -16,17 +16,12 @@ import {
   FmtRelativePipe,
   Icon,
   PageHeader,
-  Pagination,
   Progress,
   Search,
   Select,
   Segmented,
   Skeleton,
-  Table,
-  TableCell,
-  TableCol,
   TablePrimary,
-  TableWrap,
   TabPanel,
   Tabs,
   type SegmentedOption,
@@ -40,8 +35,6 @@ import {
 } from '../../../shared/learning/progress-counts/progress-counts';
 import { CourseStatus } from '../../../shared/status/course-status';
 import {
-  EXAM_HISTORY_SIZE,
-  PROGRESS_PAGE_SIZE,
   ProgressStore,
   type ProgressStatusFilter,
 } from './data-access/progress.store';
@@ -67,7 +60,6 @@ import {
     FmtRelativePipe,
     Icon,
     PageHeader,
-    Pagination,
     Progress,
     ProgressCounts,
     RouterLink,
@@ -75,11 +67,7 @@ import {
     Select,
     Segmented,
     Skeleton,
-    Table,
-    TableCell,
-    TableCol,
     TablePrimary,
-    TableWrap,
     TabPanel,
     Tabs,
   ],
@@ -98,8 +86,6 @@ export class LearningProgress {
       return filters.learningStatus;
     },
   );
-  protected readonly pageSize = PROGRESS_PAGE_SIZE;
-  protected readonly historyPageSize = EXAM_HISTORY_SIZE;
   /** The graded attempts as table rows; the server sorts and pages them. */
   protected readonly historyRows$ = computed(() =>
     this.store.filteredAttempts$().map((a) => ({ ...a, id: a.attemptId })),
@@ -134,25 +120,21 @@ export class LearningProgress {
       { value: 'in_progress', label: 'Đang học' },
       { value: 'completed', label: 'Hoàn thành' },
     ];
-  protected readonly columns: readonly {
-    key: string;
-    label: string;
-    sortable?: boolean;
-    numeric?: boolean;
-  }[] = [
-    { key: 'title', label: 'Khóa học' },
-    { key: 'progress', label: 'Nội dung đã học' },
+  protected readonly columns: readonly DataTableColumn[] = [
+    { key: 'title', label: 'Khóa học', width: '22%' },
+    { key: 'progress', label: 'Nội dung đã học', width: '17%' },
+    { key: 'score', label: 'Điểm thi cao nhất', sortable: false, width: '9%' },
     {
-      key: 'score',
-      label: 'Điểm thi cao nhất',
+      key: 'status',
+      label: 'Trạng thái',
       sortable: false,
-      numeric: true,
+      width: '13%',
+      nowrap: true,
     },
-    { key: 'status', label: 'Trạng thái', sortable: false },
-    { key: 'dueAt', label: 'Hạn hoàn thành' },
-    { key: 'startedAt', label: 'Bắt đầu' },
-    { key: 'completedAt', label: 'Hoàn thành' },
-    { key: 'lastAccessAt', label: 'Truy cập gần nhất' },
+    { key: 'dueAt', label: 'Hạn hoàn thành', width: '9%', nowrap: true },
+    { key: 'startedAt', label: 'Bắt đầu', width: '9%', nowrap: true },
+    { key: 'completedAt', label: 'Hoàn thành', width: '10%' },
+    { key: 'lastAccessAt', label: 'Truy cập gần nhất', width: '11%' },
   ];
   protected readonly sortOptions = [
     { value: 'lastAccessAt,desc', label: 'Truy cập gần nhất' },

@@ -206,6 +206,7 @@ export { NOW } from './lib/atoms/format/now';
 export { Pagination } from './lib/molecules/pagination/pagination';
 export {
   DataTable,
+  PAGE_SIZE_OPTIONS,
   type DataTableColumn,
   type DataTableSort,
 } from './lib/organisms/data-table/data-table';

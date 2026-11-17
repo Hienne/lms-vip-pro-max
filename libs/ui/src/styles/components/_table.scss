@@ -11,6 +11,14 @@
     border-radius: inherit;
   }
 
+  // `ui-data-table`: the table and its pagination share one white card.
+  .data-table {
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: ui.radius(card);
+    background: var(--color-surface);
+  }
+
   .table {
     width: 100%;
     font-size: var(--text-sm);

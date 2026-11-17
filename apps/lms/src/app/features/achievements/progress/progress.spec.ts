@@ -69,7 +69,7 @@ describe('LearningProgress', () => {
 
   const text = () => el.textContent?.replace(/\s+/g, ' ') ?? '';
   const rows = () =>
-    Array.from(el.querySelectorAll('.learning-progress__course-row'));
+    Array.from(el.querySelectorAll('.learning-progress__table tbody tr'));
   const calls = (endpoint: unknown) =>
     handle.mock.calls.filter(([e]) => e === endpoint);
   const lastQuery = (endpoint: unknown) =>
@@ -195,12 +195,26 @@ describe('LearningProgress', () => {
       expect(badge?.classList.contains('badge--danger')).toBe(true);
     });
 
-    it('asks the server for 20 rows, newest access first, and reads the counts once', () => {
+    it('asks the server for 10 rows, newest access first, and reads the counts once', () => {
       expect(lastQuery(learnerEndpoints.myCourses)).toMatchObject({
         page: '0',
-        size: '5',
+        size: '10',
         sort: 'lastAccessAt,desc',
       });
+    });
+
+    it('offers a page size, asks the server for it, starts at page 1 and keeps it in the URL', async () => {
+      const select = el.querySelector<HTMLSelectElement>(
+        'section[aria-label="Danh sách khóa học"] select[aria-label="Số dòng mỗi trang"]',
+      )!;
+      select.value = '20';
+      select.dispatchEvent(new Event('change'));
+      await settle();
+      expect(lastQuery(learnerEndpoints.myCourses)).toMatchObject({
+        page: '0',
+        size: '20',
+      });
+      expect(TestBed.inject(Router).url).toContain('size=20');
     });
 
     it('sorts on the server when a header is chosen and keeps it in the URL', async () => {

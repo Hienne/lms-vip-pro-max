@@ -130,130 +130,81 @@
       class="learning-progress__table-placeholder"
     ></div>
     } @else if (store.rows$().length) {
-    <div uiTableWrap class="learning-progress__table-wrap">
-      <table uiTable responsive fixed class="learning-progress__courses">
-        <caption class="sr-only">
-          Tiến độ từng khóa học
-        </caption>
-        <colgroup>
-          <col uiTableCol width="24%" />
-          <col uiTableCol width="17%" />
-          <col uiTableCol width="9%" />
-          <col uiTableCol width="14%" />
-          <col uiTableCol width="9%" />
-          <col uiTableCol width="9%" />
-          <col uiTableCol width="9%" />
-          <col uiTableCol width="9%" />
-        </colgroup>
-        <thead>
-          <tr>
-            @for (column of columns; track column.key) {
-            <th
-              scope="col"
-              uiTableCell
-              [numeric]="column.numeric === true"
-              [attr.aria-sort]="
-                store.sort$().key === column.key
-                  ? (store.sort$().dir === 'asc' ? 'ascending' : 'descending')
-                  : null
-              "
-            >
-              @if (column.sortable === false) { {{ column.label }} } @else {
-              <button type="button" (click)="store.toggleSort(column.key)">
-                {{ column.label }} @if (store.sort$().key === column.key) {
-                <ui-icon
-                  size="sm"
-                  [name]="
-                    store.sort$().dir === 'asc' ? 'chevron-up' : 'chevron-down'
-                  "
-                />
-                }
-              </button>
-              }
-            </th>
-            }
-          </tr>
-        </thead>
-        <tbody>
-          @for (row of store.rows$(); track row.id) {
-          <tr class="learning-progress__course-row">
-            <td data-label="Khóa học">
-              <div class="learning-progress__course-name">
-                <a
-                  uiTablePrimary
-                  class="learning-progress__title"
-                  [routerLink]="row.link"
-                  [title]="row.title"
-                  >{{ row.title }}</a
-                >
-                <span class="learning-progress__code">{{ row.card.code }}</span>
-              </div>
-            </td>
-            <td data-label="Tiến độ học" uiTableCell nowrap>
-              <div class="learning-progress__progress">
-                <div class="learning-progress__pct">
-                  <span class="learning-progress__num">{{ row.pct }}%</span>
-                  <ui-progress
-                    size="sm"
-                    [value]="row.pct"
-                    [label]="'Tiến độ ' + row.title"
-                  />
-                </div>
-                <span class="learning-progress__muted">
-                  {{ row.requiredDone }} bài bắt buộc hoàn thành
-                </span>
-              </div>
-            </td>
-            <td data-label="Điểm thi cao nhất" uiTableCell numeric>
-              <span class="learning-progress__cell-value">
-                @if (row.bestScore !== null) {
-                <span>{{ row.bestScore | fmtPct: 2 }}</span>
-                @if (row.card.failed) {
-                <span class="learning-progress__fail learning-progress__sub"
-                  >Chưa đạt</span
-                >
-                } } @else {
-                <span title="Chưa có điểm" aria-label="Chưa có điểm">—</span> }
-              </span>
-            </td>
-            <td data-label="Trạng thái" uiTableCell nowrap>
-              <app-course-status
-                dot
-                [status]="row.status"
-                [overdue]="row.overdue"
-              />
-            </td>
-            <td data-label="Hạn hoàn thành" uiTableCell nowrap>
-              <span [class.learning-progress__fail]="row.overdue">
-                {{ row.card.dueAt | fmtDate }}
-              </span>
-            </td>
-            <td data-label="Bắt đầu" uiTableCell nowrap>
-              {{ row.card.startedAt | fmtDate }}
-            </td>
-            <td data-label="Hoàn thành">
-              <span class="learning-progress__cell-value">
-                {{ row.card.completedAt | fmtDate }} @if (row.completedLate) {
-                <span class="learning-progress__muted learning-progress__sub"
-                  >Trễ hạn</span
-                >
-                }
-              </span>
-            </td>
-            <td data-label="Truy cập gần nhất">
-              {{ row.card.lastAccessAt | fmtRelative }}
-            </td>
-          </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-    <ui-pagination
+    <ui-data-table
+      caption="Tiến độ từng khóa học"
+      [columns]="columns"
+      [rows]="store.rows$()"
       [total]="store.total$()"
+      [sort]="store.sort$()"
       [page]="store.page$()"
-      [pageSize]="pageSize"
+      [pageSize]="store.pageSize$()"
+      (sortChange)="store.sortBy($event)"
       (pageChange)="store.goToPage($event)"
-    />
+      (pageSizeChange)="store.changePageSize($event)"
+    >
+      <ng-template uiDataTableCell="title" [of]="store.rows$()" let-row>
+        <div class="learning-progress__course-name">
+          <a
+            uiTablePrimary
+            class="learning-progress__title"
+            [routerLink]="row.link"
+            [title]="row.title"
+            >{{ row.title }}</a
+          >
+          <span class="learning-progress__code">{{ row.card.code }}</span>
+        </div>
+      </ng-template>
+      <ng-template uiDataTableCell="progress" [of]="store.rows$()" let-row>
+        <div class="learning-progress__progress">
+          <div class="learning-progress__pct">
+            <span class="learning-progress__num">{{ row.pct }}%</span>
+            <ui-progress
+              size="sm"
+              [value]="row.pct"
+              [label]="'Tiến độ ' + row.title"
+            />
+          </div>
+          <span class="learning-progress__muted">
+            {{ row.requiredDone }} bài bắt buộc hoàn thành
+          </span>
+        </div>
+      </ng-template>
+      <ng-template uiDataTableCell="score" [of]="store.rows$()" let-row>
+        <span class="learning-progress__cell-value">
+          @if (row.bestScore !== null) {
+          <span>{{ row.bestScore | fmtPct: 2 }}</span>
+          @if (row.card.failed) {
+          <span class="learning-progress__fail learning-progress__sub"
+            >Chưa đạt</span
+          >
+          } } @else {
+          <span title="Chưa có điểm" aria-label="Chưa có điểm">—</span> }
+        </span>
+      </ng-template>
+      <ng-template uiDataTableCell="status" [of]="store.rows$()" let-row>
+        <app-course-status dot [status]="row.status" [overdue]="row.overdue" />
+      </ng-template>
+      <ng-template uiDataTableCell="dueAt" [of]="store.rows$()" let-row>
+        <span [class.learning-progress__fail]="row.overdue">
+          {{ row.card.dueAt | fmtDate }}
+        </span>
+      </ng-template>
+      <ng-template uiDataTableCell="startedAt" [of]="store.rows$()" let-row>
+        {{ row.card.startedAt | fmtDate }}
+      </ng-template>
+      <ng-template uiDataTableCell="completedAt" [of]="store.rows$()" let-row>
+        <span class="learning-progress__cell-value">
+          {{ row.card.completedAt | fmtDate }} @if (row.completedLate) {
+          <span class="learning-progress__muted learning-progress__sub"
+            >Trễ hạn</span
+          >
+          }
+        </span>
+      </ng-template>
+      <ng-template uiDataTableCell="lastAccessAt" [of]="store.rows$()" let-row>
+        {{ row.card.lastAccessAt | fmtRelative }}
+      </ng-template>
+    </ui-data-table>
     } @else {
     <p class="learning-progress__muted">Không có khóa học phù hợp bộ lọc.</p>
     }
@@ -440,9 +391,9 @@
         [rows]="historyRows$()"
         [total]="store.historyTotal$()"
         [page]="store.historyPage$()"
-        [pageSize]="historyPageSize"
-        [pageSizeOptions]="[]"
+        [pageSize]="store.historyPageSize$()"
         (pageChange)="store.goToHistoryPage($event)"
+        (pageSizeChange)="store.changeHistoryPageSize($event)"
       >
         <ui-empty
           slot="empty"

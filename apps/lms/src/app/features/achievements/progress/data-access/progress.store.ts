@@ -18,7 +18,7 @@ import {
   type Page,
   type ProgressExportQuery,
 } from '@lms/contracts';
-import { NOW, type DataTableSort } from '@lms/ui';
+import { NOW, PAGE_SIZE_OPTIONS, type DataTableSort } from '@lms/ui';
 import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { FileSaver } from '../../../../core/files/file-saver';
@@ -26,13 +26,19 @@ import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { toCourseStatus } from '../../../../shared/course/course-labels';
 import { isAssessmentAvailable } from '../../../../shared/learning/assessment-overview';
 
-export const PROGRESS_PAGE_SIZE = 5;
+export const PROGRESS_PAGE_SIZE = 10;
 
 /** Number of graded attempts requested per history page. */
 export const EXAM_HISTORY_SIZE = 10;
 
 export type ProgressStatusFilter = 'all' | LearningStatus;
 export type ProgressTab = 'courses' | 'competency' | 'history';
+
+/** A page size the table offers; anything else falls back to the default. */
+function pageSizeFrom(value: unknown): number {
+  const size = Number(value);
+  return PAGE_SIZE_OPTIONS.includes(size) ? size : PROGRESS_PAGE_SIZE;
+}
 
 function tabFrom(value: unknown): ProgressTab {
   return value === 'competency' || value === 'history' ? value : 'courses';
@@ -110,6 +116,7 @@ export class ProgressStore {
     filters: signal<ProgressFilters>(filtersFrom(this.initial)),
     sort: signal<DataTableSort>(sortFrom(this.initial['sort'])),
     page: signal(Math.max(1, Number(this.initial['page']) || 1)),
+    pageSize: signal(pageSizeFrom(this.initial['size'])),
     /** The last page the server sent: the table stays while the next one loads. */
     shown: linkedSignal<
       Page<CourseCard> | undefined,
@@ -135,7 +142,7 @@ export class ProgressStore {
     (): MyCoursesQuery => ({
       ...this.filterQuery(),
       page: this.state.page() - 1,
-      size: PROGRESS_PAGE_SIZE,
+      size: this.state.pageSize(),
     }),
   );
 
@@ -171,6 +178,8 @@ export class ProgressStore {
   private readonly historySearch = signal('');
   private readonly historyResult = signal('all');
   private readonly historyPage = signal(1);
+  private readonly historyPageSize = signal(EXAM_HISTORY_SIZE);
+  readonly historyPageSize$ = this.historyPageSize.asReadonly();
   readonly historySearch$ = this.historySearch.asReadonly();
   readonly historyResult$ = this.historyResult.asReadonly();
   readonly historyPage$ = this.historyPage.asReadonly();
@@ -187,7 +196,7 @@ export class ProgressStore {
       graded: true,
       sort: 'submittedAt,desc',
       page: this.historyPage() - 1,
-      size: EXAM_HISTORY_SIZE,
+      size: this.historyPageSize(),
       ...(this.historySearch().trim()
         ? { q: this.historySearch().trim().slice(0, 100) }
         : {}),
@@ -211,6 +220,13 @@ export class ProgressStore {
   }
   goToHistoryPage(page: number): void {
     this.historyPage.set(page);
+  }
+  /** A new page size starts again at the first page. */
+  changeHistoryPageSize(size: number): void {
+    this.historyPageSize.set(
+      PAGE_SIZE_OPTIONS.includes(size) ? size : EXAM_HISTORY_SIZE,
+    );
+    this.historyPage.set(1);
   }
   readonly historyTotal$ = computed(
     () => this.attemptsData.value()?.totalElements ?? 0,
@@ -238,6 +254,7 @@ export class ProgressStore {
   readonly sort$ = this.state.sort.asReadonly();
   readonly sortValue$ = computed(() => sortParam(this.state.sort()));
   readonly page$ = this.state.page.asReadonly();
+  readonly pageSize$ = this.state.pageSize.asReadonly();
 
   readonly streak$ = this.streakData.value;
   readonly streakError$ = this.streakData.error;
@@ -370,6 +387,13 @@ export class ProgressStore {
     this.syncUrl();
   }
 
+  /** A new page size starts again at the first page. */
+  changePageSize(size: number): void {
+    this.state.pageSize.set(pageSizeFrom(size));
+    this.setPage(1);
+    this.syncUrl();
+  }
+
   exportCsv(): void {
     this.exports.run(this.filterQuery());
   }
@@ -413,6 +437,10 @@ export class ProgressStore {
       overdue: f.overdueOnly ? 'true' : null,
       sort: isDefaultSort ? null : sortParam(sort),
       page: this.state.page() > 1 ? this.state.page() : null,
+      size:
+        this.state.pageSize() === PROGRESS_PAGE_SIZE
+          ? null
+          : this.state.pageSize(),
     };
     void this.router.navigate([], {
       relativeTo: this.route,
