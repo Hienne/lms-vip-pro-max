@@ -25,10 +25,21 @@
     overscroll-behavior: contain;
     pointer-events: auto;
   }
+  &__controls,
+  &__playback {
+    display: grid;
+    gap: ui.space(3);
+    button {
+      width: 100%;
+      min-height: ui.layout(control);
+    }
+    p {
+      margin: 0;
+    }
+  }
   &__form {
     display: grid;
     gap: ui.space(2);
-    padding-block: ui.space(2);
   }
   &__surface {
     position: absolute;

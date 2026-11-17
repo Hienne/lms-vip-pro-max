@@ -1,5 +1,5 @@
 @if(board(); as table) {
-<ui-section-card [title]="table.name" fill flush>
+<ui-section-card [title]="table.name" [fill]="!!match() && !preparing()" flush>
   <div slot="action" class="row row--gap-1">
     @if(table.seated) {
     <button

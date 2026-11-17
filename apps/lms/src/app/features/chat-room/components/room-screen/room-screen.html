@@ -20,59 +20,55 @@
     <button slot="action" uiButton size="sm" (click)="media.setControls(false)">
       Đóng
     </button>
-    <p>Phát từ máy của bạn. Tệp không được lưu lên máy chủ.</p>
-    <ui-field label="Chọn ảnh hoặc video"
-      ><input
-        uiInput
-        type="file"
-        accept="video/*,image/jpeg,image/png,image/webp,image/gif"
-        [disabled]="media.busy$()"
-        (change)="fileChanged($event)"
-    /></ui-field>
-    <form [formRoot]="linkForm" class="screen__form">
-      <ui-field label="Link YouTube" required
+    <div class="screen__controls">
+      <p>Phát từ máy của bạn. Tệp không được lưu lên máy chủ.</p>
+      <ui-field label="Chọn ảnh hoặc video"
         ><input
           uiInput
-          type="url"
-          placeholder="https://www.youtube.com/watch?v=…"
-          [formField]="linkForm.url"
+          type="file"
+          accept="video/*,image/jpeg,image/png,image/webp,image/gif"
+          [disabled]="media.busy$()"
+          (change)="fileChanged($event)"
       /></ui-field>
-      <button uiButton type="submit" [disabled]="media.busy$()">
-        Phát YouTube
+      <form [formRoot]="linkForm" class="screen__form">
+        <ui-field label="Link YouTube" required
+          ><input
+            uiInput
+            type="url"
+            placeholder="https://www.youtube.com/watch?v=…"
+            [formField]="linkForm.url"
+        /></ui-field>
+        <button uiButton type="submit" [disabled]="media.busy$()">
+          Phát YouTube
+        </button>
+      </form>
+      <button uiButton [disabled]="media.busy$()" (click)="media.shareScreen()">
+        Chia sẻ màn hình
       </button>
-    </form>
-    <button uiButton [disabled]="media.busy$()" (click)="media.shareScreen()">
-      Chia sẻ màn hình
-    </button>
-    @if(screen.source === 'youtube' || screen.source === 'video') {
-    <div class="row row--gap-2">
-      <button uiButton size="sm" (click)="media.control(true)">Tạm dừng</button
-      ><button uiButton size="sm" (click)="media.control(false)">
-        Tiếp tục
+      @if(screen.source === 'youtube' || screen.source === 'video') {
+      <div class="screen__playback">
+        <button uiButton (click)="media.control(true)">Tạm dừng</button
+        ><button uiButton (click)="media.control(false)">Tiếp tục</button>
+      </div>
+      } @if(screen.source === 'youtube') {
+      <form [formRoot]="seekForm" class="screen__form">
+        <ui-field label="Giây phát" required
+          ><input
+            uiInput
+            type="number"
+            step="1"
+            [formField]="seekForm.seconds" /></ui-field
+        ><button uiButton type="submit">Đến thời điểm</button>
+      </form>
+      } @if(screen.source !== 'idle') {<button uiButton (click)="media.stop()">
+        Dừng trình chiếu</button
+      >} @if(media.busy$()){
+      <p role="status">Đang mở nội dung…</p>
+      }
+      <button uiButton (click)="room.interact({type:'seat',action:'stand'})">
+        Đứng dậy
       </button>
     </div>
-    } @if(screen.source === 'youtube') {
-    <form [formRoot]="seekForm" class="screen__form">
-      <ui-field label="Giây phát" required
-        ><input
-          uiInput
-          type="number"
-          step="1"
-          [formField]="seekForm.seconds" /></ui-field
-      ><button uiButton size="sm" type="submit">Đến thời điểm</button>
-    </form>
-    } @if(screen.source !== 'idle') {<button uiButton (click)="media.stop()">
-      Dừng trình chiếu</button
-    >} @if(media.busy$()){
-    <p role="status">Đang mở nội dung…</p>
-    }
-    <button
-      uiButton
-      size="sm"
-      (click)="room.interact({type:'seat',action:'stand'})"
-    >
-      Đứng dậy
-    </button>
   </ui-section-card>
 </aside>
 } @if(media.error$()){

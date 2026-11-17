@@ -96,6 +96,7 @@ match.timeout === 'away') {
     aria-label="Trò chơi trong phòng"
     [class.chat-room__game--caro]="panel === 'caro'"
     [class.chat-room__game--board]="panel === 'board'"
+    [class.chat-room__game--waiting]="(panel === 'board' && (!games.board$()?.match || games.boardPreparing$())) || (panel === 'caro' && !games.visibleCaro$())"
   >
     @switch (panel) { @case ('dice') {
     <app-room-dice

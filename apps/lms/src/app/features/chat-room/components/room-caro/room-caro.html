@@ -1,4 +1,4 @@
-<ui-section-card [title]="'Bàn Caro ' + table().table" fill flush>
+<ui-section-card [title]="'Bàn Caro ' + table().table" [fill]="!!state()" flush>
   <div slot="action" class="row row--gap-1">
     <button uiButton size="sm" (click)="stood.emit()">Đứng dậy</button>
     <button uiButton size="sm" variant="ghost" (click)="closed.emit()">

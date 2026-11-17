@@ -283,8 +283,6 @@ export class RoomOrbit {
     const previous = this.previousView;
     this.previousView = view;
     if (view.dice !== previous?.dice) this.world.showDice(view.dice?.dice);
-    if (view.boardTables !== previous?.boardTables)
-      this.world.showBoardTables(view.boardTables ?? []);
     if (view.floorTarget !== previous?.floorTarget)
       this.world.showFloorTarget(view.floorTarget ?? '');
     if (view.chatting || (previous?.online && !view.online)) {
