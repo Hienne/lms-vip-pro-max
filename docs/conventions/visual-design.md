@@ -126,11 +126,13 @@ These are still in the code. Do not copy or extend them. Fix one only when the t
 then delete its row here and, for a guarded item, its entry in `KNOWN_VIOLATIONS` in
 `apps/lms/src/app/template-scan.spec.ts` (the spec fails while a fixed entry is still listed).
 
-| Pattern                | Where                                                                                                                    |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Glass                  | `layout/header/header.scss` (`backdrop-filter`)                                                                          |
-| Badges for attributes  | `features/account/profile` (staff code and account type as outline badges)                                               |
-| Two inline row actions | `features/admin-org/users` (edit and lock inline)                                                                        |
-| Tokens                 | the `hero-*` colour tokens (`hero-muted`, `hero-subtle`, `hero-accent`) and `ui.weight(bold)`, kept for the sign-in page |
-| Copy                   | the sign-in slogan and "Chào mừng trở lại"; the sign-in page's feature list and decorative watermark                     |
-| Entrance motion token  | the `enter` keyframe moves 8px over `base` (the change to 4px and `fast` is central: do not override it per component)   |
+| Pattern                | Where                                                                                                                                                                                               |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Glass                  | `layout/header/header.scss` (`backdrop-filter`)                                                                                                                                                     |
+| Badges for attributes  | `features/account/profile` (staff code and account type as outline badges)                                                                                                                          |
+| Two inline row actions | `features/admin-org/users` (edit and lock inline)                                                                                                                                                   |
+| Tokens                 | the `hero-*` colour tokens (`hero-muted`, `hero-subtle`, `hero-accent`), kept for the sign-in page                                                                                                  |
+| Copy                   | the sign-in motto and "Chào mừng trở lại"; the sign-in page's CHAN pillar list (GLOSSARY.md → CHAN Academy)                                                                                         |
+| Decorative picture     | `features/auth/login` (the `chan-network` picture of the name and the large faint hoa mai watermark; owner-approved, sign-in only)                                                                  |
+| Looping decoration     | `features/auth/login` (the drifting dot backdrop and the network's flow, twinkle, rings and breathing flower, the slowly turning watermark; off under reduced motion; owner-approved, sign-in only) |
+| Entrance motion token  | the `enter` keyframe moves 8px over `base` (the change to 4px and `fast` is central: do not override it per component)                                                                              |

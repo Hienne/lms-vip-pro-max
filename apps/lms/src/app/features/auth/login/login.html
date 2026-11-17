@@ -1,29 +1,71 @@
 <div class="login">
   <section class="login__brand" aria-label="Giới thiệu">
-    <ui-mai class="login__watermark" [size]="420" petal="white" core="white" />
+    <!-- A field of knowledge points drifting slowly behind the panel. -->
+    <svg class="login__backdrop" aria-hidden="true" focusable="false">
+      <defs>
+        <pattern
+          id="login-dots"
+          width="28"
+          height="28"
+          patternUnits="userSpaceOnUse"
+        >
+          <circle cx="2" cy="2" r="1.3" />
+        </pattern>
+      </defs>
+      <rect
+        class="login__dots"
+        x="-28"
+        y="-28"
+        width="110%"
+        height="110%"
+        fill="url(#login-dots)"
+      />
+    </svg>
+    <!-- The brand mark (the favicon's hoa mai), large and faint, turning slowly. -->
+    <ui-mai
+      class="login__mark"
+      [size]="560"
+      petal="white"
+      core="primary-strong"
+    />
     <div class="login__lockup">
       <ui-mai [size]="40" />
       <div>
-        <div class="login__name">Core Banking Academy</div>
+        <div class="login__name">CHAN Academy</div>
         <div class="login__org">Ban QL&amp;PT Core Banking</div>
       </div>
     </div>
     <div class="login__pitch">
-      <h1 class="login__headline">
-        Học đúng việc, đúng lúc — ngay trên một nền tảng.
-      </h1>
-      <p class="login__lede">
-        Đào tạo hội nhập, nghiệp vụ Core Banking, vận hành và kiểm tra năng lực
-        cho cán bộ mới, cán bộ luân chuyển và cán bộ hiện hữu.
-      </p>
-      <ul class="login__points">
-        @for (point of brandPoints; track point.icon) {
-        <li>
-          <ui-icon [name]="point.icon" />
-          <span>{{ point.text }}</span>
-        </li>
+      <app-chan-network
+        [letters]="letters"
+        [active]="activePillar()"
+        (activeChange)="activePillar.set($event)"
+      />
+      <div class="login__motto">
+        <h1 class="login__headline">Kết nối tri thức. Bứt phá năng lực.</h1>
+        <p class="login__motto-en" lang="en">
+          Connecting Knowledge. Accelerating Excellence.
+        </p>
+      </div>
+      <!-- The first letters spell the name; pointing at one lights its node in the picture. -->
+      <dl class="login__pillars">
+        @for (pillar of pillars; track pillar.word; let i = $index) {
+        <div
+          class="login__pillar"
+          [class.login__pillar--active]="activePillar() === i"
+          (mouseenter)="activePillar.set(i)"
+          (mouseleave)="activePillar.set(null)"
+        >
+          <dt>
+            <span class="login__letter" aria-hidden="true"
+              >{{ pillar.word[0] }}</span
+            >
+            <span class="login__word" lang="en">{{ pillar.word }}</span>
+          </dt>
+          <dd>{{ pillar.meaning }}</dd>
+        </div>
         }
-      </ul>
+      </dl>
     </div>
     @if (showNote) {
     <p class="login__note">

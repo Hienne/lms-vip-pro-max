@@ -450,7 +450,7 @@ export class RoomWorld3D {
       ctx.font = '64px sans-serif';
       ctx.fillText('Giờ ra chơi', 512, 122);
       ctx.font = '25px sans-serif';
-      ctx.fillText('Core Banking Academy', 512, 174);
+      ctx.fillText('CHAN Academy', 512, 174);
       const texture = new THREE.CanvasTexture(canvas);
       texture.colorSpace = THREE.SRGBColorSpace;
       this.textures.push(texture);

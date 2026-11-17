@@ -2,9 +2,9 @@ import { inject, Injectable } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { type RouterStateSnapshot, TitleStrategy } from '@angular/router';
 
-export const APP_NAME = 'Core Banking Academy';
+export const APP_NAME = 'CHAN Academy';
 
-/** "<page> · Core Banking Academy", or just the app name for a route without a title. */
+/** "<page> · CHAN Academy", or just the app name for a route without a title. */
 @Injectable({ providedIn: 'root' })
 export class AppTitleStrategy extends TitleStrategy {
   private readonly title = inject(Title);

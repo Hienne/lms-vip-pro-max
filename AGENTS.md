@@ -1,4 +1,4 @@
-# Core Banking Academy — Angular LMS
+# CHAN Academy — Angular LMS
 
 Internal training LMS for Ban QL&PT Core Banking, rebuilt in Angular from the
 HTML/JS mockup in `lms-mockup/` (read-only spec; its README maps checklist

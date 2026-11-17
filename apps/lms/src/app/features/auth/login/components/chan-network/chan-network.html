@@ -1,0 +1,79 @@
+<svg class="chan-network__svg" viewBox="0 0 520 200" focusable="false">
+  @for (link of links; track $index) {
+  <line
+    class="chan-network__link"
+    [attr.x1]="link[0].x"
+    [attr.y1]="link[0].y"
+    [attr.x2]="link[1].x"
+    [attr.y2]="link[1].y"
+  />
+  }
+  <line
+    class="chan-network__spine"
+    [attr.x1]="pillarX[0]"
+    [attr.y1]="lineY"
+    [attr.x2]="goal.x"
+    [attr.y2]="lineY"
+  />
+  <!-- Motion: knowledge runs along each link toward the line, then along the line to the flower. -->
+  <g class="chan-network__motion">
+    @for (link of links; track $index; let i = $index) {
+    <line
+      class="chan-network__flow"
+      pathLength="100"
+      [style.animation-delay]="flowDelay(i)"
+      [attr.x1]="link[0].x"
+      [attr.y1]="link[0].y"
+      [attr.x2]="link[1].x"
+      [attr.y2]="link[1].y"
+    />
+    }
+    <line
+      class="chan-network__comet"
+      pathLength="100"
+      [attr.x1]="pillarX[0]"
+      [attr.y1]="lineY"
+      [attr.x2]="goal.x"
+      [attr.y2]="lineY"
+    />
+  </g>
+  @for (node of nodes; track $index; let i = $index) {
+  <circle
+    class="chan-network__node"
+    [style.animation-delay]="twinkleDelay(i)"
+    [attr.cx]="node.x"
+    [attr.cy]="node.y"
+    r="4"
+  />
+  } @for (letter of letters(); track $index; let i = $index) {
+  <g
+    class="chan-network__pillar"
+    [class.chan-network__pillar--active]="active() === i"
+    (mouseenter)="activeChange.emit(i)"
+    (mouseleave)="activeChange.emit(null)"
+  >
+    <circle
+      class="chan-network__ring"
+      [style.animation-delay]="ringDelay(i)"
+      [attr.cx]="pillarX[i]"
+      [attr.cy]="lineY"
+      r="26"
+    />
+    <circle
+      class="chan-network__disc"
+      [attr.cx]="pillarX[i]"
+      [attr.cy]="lineY"
+      r="26"
+    />
+    <text
+      [attr.x]="pillarX[i]"
+      [attr.y]="lineY"
+      dy="0.35em"
+      text-anchor="middle"
+    >
+      {{ letter }}
+    </text>
+  </g>
+  }
+</svg>
+<ui-mai class="chan-network__goal" [size]="52" [style.left]="goalLeft" />

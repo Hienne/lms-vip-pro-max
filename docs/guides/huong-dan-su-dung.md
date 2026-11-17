@@ -1,8 +1,8 @@
-# Hướng dẫn sử dụng Core Banking Academy
+# Hướng dẫn sử dụng CHAN Academy
 
 ## Hướng dẫn tương tác lần đầu
 
-Sau khi đăng nhập lần đầu, khung **Làm quen với Core Banking Academy** xuất hiện. Nếu có nhiều vai trò,
+Sau khi đăng nhập lần đầu, khung **Làm quen với CHAN Academy** xuất hiện. Nếu có nhiều vai trò,
 chọn **Quản trị viên**, **Học viên** hoặc **Giảng viên**, rồi bấm **Bắt đầu hướng dẫn**. Mỗi bước mở trang liên quan, đánh dấu
 vùng cần chú ý và giải thích thao tác. Dùng **Quay lại**, **Tiếp theo**, **Hoàn tất** hoặc **Bỏ qua**.
 Bạn có thể bấm **X** hoặc phím **Esc** để bỏ qua.

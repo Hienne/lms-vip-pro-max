@@ -126,7 +126,26 @@ describe('Login', () => {
 
   it('shows the heading and a username or staff code field, with no demo block', async () => {
     await openLogin();
-    expect(el.querySelector('h1')?.textContent).toContain('Học đúng việc');
+    expect(el.querySelector('h1')?.textContent).toContain('Kết nối tri thức');
+    const letters = [...el.querySelectorAll('.login__letter')].map((letter) =>
+      letter.textContent?.trim(),
+    );
+    expect(letters.join('')).toBe('CHAN');
+  });
+
+  it('lights a pillar in the picture while the pointer is on its row', async () => {
+    await openLogin();
+    const row = el.querySelectorAll('.login__pillar')[2];
+    const lit = () =>
+      [...el.querySelectorAll('.chan-network__pillar')].map((node) =>
+        node.classList.contains('chan-network__pillar--active'),
+      );
+    row.dispatchEvent(new MouseEvent('mouseenter'));
+    await settle();
+    expect(lit()).toEqual([false, false, true, false]);
+    row.dispatchEvent(new MouseEvent('mouseleave'));
+    await settle();
+    expect(lit()).toEqual([false, false, false, false]);
     expect(el.querySelector('h2')?.textContent).toContain('Chào mừng trở lại');
     expect(el.textContent).toContain('Tên đăng nhập hoặc mã cán bộ');
     expect(field('username').getAttribute('autocomplete')).toBe('username');

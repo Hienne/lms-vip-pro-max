@@ -1,0 +1,168 @@
+@use 'ui';
+
+// Drawn on the sign-in brand panel (primary-strong), so every colour is an on-dark one.
+//
+// Motion (sign-in only, visual-design.md → Known violations): pulses run along the links into the
+// line and along the line into the flower, the small nodes twinkle, a ring goes out from C, H, A
+// and N in turn, and the flower breathes on the beat after N. All of it is gone under reduced
+// motion, which leaves the still picture.
+
+// One beat of the picture; `FLOW_SECONDS` in chan-network.ts uses the same length.
+$beat: 3.2s;
+
+:host {
+  position: relative;
+  display: block;
+}
+
+.chan-network {
+  &__svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  &__link {
+    stroke: ui.color(white);
+    stroke-opacity: 0.18;
+    stroke-width: 1;
+  }
+
+  &__spine {
+    stroke: ui.color(hero-subtle);
+    stroke-width: 2;
+  }
+
+  // A short bright dash that runs from a link's first end to its second (pathLength is 100).
+  &__flow {
+    stroke: ui.color(white);
+    stroke-opacity: 0.85;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-dasharray: 8 92;
+    stroke-dashoffset: 8;
+    animation: chan-flow $beat linear infinite;
+  }
+
+  // The longer gold pulse along the line, timed to reach the flower as it breathes.
+  &__comet {
+    stroke: ui.color(hero-accent);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 12 88;
+    stroke-dashoffset: 12;
+    animation: chan-flow $beat ui.ease(out) infinite;
+  }
+
+  &__node {
+    fill: ui.color(hero-subtle);
+    animation: chan-twinkle 3s ease-in-out infinite alternate;
+  }
+
+  &__pillar {
+    text {
+      fill: ui.color(white);
+      font-size: 22px;
+      font-weight: ui.weight(semibold);
+      transition: fill ui.duration(fast) ui.ease(out);
+    }
+
+    &--active {
+      .chan-network__disc {
+        fill: ui.color(white);
+      }
+
+      text {
+        fill: ui.color(primary-strong);
+      }
+    }
+  }
+
+  &__disc {
+    fill: ui.color(primary-strong);
+    stroke: ui.color(white);
+    stroke-width: 1.5;
+    transition: fill ui.duration(fast) ui.ease(out);
+  }
+
+  // A ring that grows out of the disc and fades.
+  &__ring {
+    fill: none;
+    stroke: ui.color(white);
+    stroke-width: 1;
+    opacity: 0;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: chan-ring $beat ui.ease(out) infinite;
+  }
+
+  // The hoa mai over the end of the line; the negative margins centre it on that point.
+  &__goal {
+    position: absolute;
+    top: 50%;
+    margin-top: -26px;
+    margin-left: -26px;
+    animation: chan-breathe $beat ease-in-out 2s infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &__motion,
+    &__ring {
+      display: none;
+    }
+
+    &__node,
+    &__goal {
+      animation: none;
+    }
+  }
+}
+
+@keyframes chan-flow {
+  from {
+    stroke-dashoffset: 8;
+  }
+
+  to {
+    stroke-dashoffset: -92;
+  }
+}
+
+@keyframes chan-twinkle {
+  from {
+    opacity: 0.35;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes chan-ring {
+  0% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+
+  40% {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+
+@keyframes chan-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  20% {
+    transform: scale(1.12);
+  }
+}

@@ -164,7 +164,7 @@ describe('Certificate', () => {
         document().querySelectorAll('p, h2, dt, dd'),
       ).map((node) => text(node));
       expect(blocks).toEqual([
-        'Core Banking Academy',
+        'CHAN Academy',
         'Ban QL&PT Core Banking',
         'Chứng nhận hoàn thành',
         'Trao cho',

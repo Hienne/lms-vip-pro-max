@@ -24,11 +24,11 @@ describe('AppTitleStrategy', () => {
 
   it('appends the app name to the route title', async () => {
     await navigate('/catalog');
-    expect(document.title).toBe('Danh mục khóa học · Core Banking Academy');
+    expect(document.title).toBe('Danh mục khóa học · CHAN Academy');
   });
 
   it('falls back to the app name for a route without a title', async () => {
     await navigate('/plain');
-    expect(document.title).toBe('Core Banking Academy');
+    expect(document.title).toBe('CHAN Academy');
   });
 });

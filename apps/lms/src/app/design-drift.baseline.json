@@ -84,8 +84,7 @@
   },
   "apps/lms/src/app/features/auth/login/login.scss": {
     "text-xs": 1,
-    "transform-move": 1,
-    "weight-bold": 1
+    "transform-move": 1
   },
   "apps/lms/src/app/features/auth/register/register.html": {
     "own-h1": 2
