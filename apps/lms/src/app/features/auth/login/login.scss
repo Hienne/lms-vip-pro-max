@@ -20,7 +20,7 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    gap: ui.space(6);
     padding: ui.space(12);
     background: ui.color(primary-strong);
     color: ui.color(hero-muted);
@@ -93,10 +93,11 @@
   &__pitch {
     display: flex;
     flex-direction: column;
-    gap: ui.space(8);
+    gap: ui.space(6);
     width: 100%;
     max-width: 540px;
-    margin-inline: auto;
+    // Centred both ways in the space under the lockup, on any screen height.
+    margin: auto;
   }
 
   // The motto sits centred under the picture, on the same axis as the line C → H → A → N.

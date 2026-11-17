@@ -14,6 +14,19 @@ const LINE_Y = 100;
 const PILLAR_X = [70, 180, 290, 400] as const;
 /** Where the line ends: the hoa mai, standing for excellence. */
 const GOAL: Point = { x: 490, y: LINE_Y };
+/**
+ * Half the flower's width in viewBox units (52px drawn over a picture about 4% wider than its
+ * viewBox). Lines into the flower stop this far from its centre, so they touch its edge.
+ */
+const GOAL_RADIUS = 25;
+
+/** The point on the way from `from` to the goal where it meets the flower's edge. */
+const goalEdge = (from: Point): Point => {
+  const dx = GOAL.x - from.x;
+  const dy = GOAL.y - from.y;
+  const scale = 1 - GOAL_RADIUS / Math.hypot(dx, dy);
+  return { x: from.x + dx * scale, y: from.y + dy * scale };
+};
 
 /** Scattered knowledge: small nodes around the line, linked to each other and into it. */
 const NODES: readonly Point[] = [
@@ -52,8 +65,8 @@ const LINKS: readonly (readonly [Point, Point])[] = [
   [NODES[7], pillar(3)],
   [NODES[6], NODES[8]],
   [NODES[7], NODES[9]],
-  [NODES[8], GOAL],
-  [NODES[9], GOAL],
+  [NODES[8], goalEdge(NODES[8])],
+  [NODES[9], goalEdge(NODES[9])],
 ];
 
 /**
@@ -78,7 +91,8 @@ export class ChanNetwork {
 
   protected readonly lineY = LINE_Y;
   protected readonly pillarX = PILLAR_X;
-  protected readonly goal = GOAL;
+  /** Where the line meets the flower's left edge. */
+  protected readonly lineEnd = GOAL.x - GOAL_RADIUS;
   protected readonly nodes = NODES;
   protected readonly links = LINKS;
   /** The goal's place as a share of the picture, for the flower laid over it. */
