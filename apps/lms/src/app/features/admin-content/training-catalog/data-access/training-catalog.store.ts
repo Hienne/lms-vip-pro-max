@@ -14,9 +14,11 @@ import {
   type CatalogTreeField,
   type CatalogTreeProgram,
   type SaveCatalogItemCommand,
+  type SaveTrainingFieldCommand,
+  type BusinessModule,
 } from '@lms/contracts';
 import { confirm, type IconName, type TreeNode } from '@lms/ui';
-import { filter, type Observable } from 'rxjs';
+import { EMPTY, expand, filter, reduce, type Observable } from 'rxjs';
 import { invalidation } from '../../../../core/data-access/invalidation';
 import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
@@ -48,7 +50,7 @@ export type CatalogEditing =
     };
 
 /** What the drawer form hands back: everything but the owner org, which the store adds. */
-export type SaveCatalogItem = Omit<SaveCatalogItemCommand, 'ownerOrgId'>;
+export type SaveCatalogItem = Omit<SaveTrainingFieldCommand, 'ownerOrgId'>;
 
 /** A field or a program, which share the shape of what a PUT needs. */
 type Editable = CatalogTreeField | CatalogTreeProgram;
@@ -87,6 +89,7 @@ export class TrainingCatalogStore {
     /** Ids of the nodes opened by hand. */
     expanded: signal<readonly string[]>([]),
     selectedId: signal<string | undefined>(undefined),
+    coursePage: signal(1),
     search: signal(''),
     editing: signal<CatalogEditing | null>(null),
   };
@@ -122,6 +125,46 @@ export class TrainingCatalogStore {
         }
       },
       invalidates: this.changes,
+    },
+  );
+
+  private loadModules(id: number): Observable<BusinessModule[]> {
+    return this.client
+      .call(trainingCatalogEndpoints.listModules, {
+        query: { fieldId: id, page: 0, size: 100 },
+      })
+      .pipe(
+        expand((page, index) => {
+          if (page.page !== index)
+            throw new Error('Không thể tải đủ phân hệ. Vui lòng tải lại.');
+          return page.page + 1 < page.totalPages
+            ? this.client.call(trainingCatalogEndpoints.listModules, {
+                query: { fieldId: id, page: page.page + 1, size: 100 },
+              })
+            : EMPTY;
+        }),
+        reduce((all, page) => [...all, ...page.items], [] as BusinessModule[]),
+      );
+  }
+
+  private readonly modulesData = serverData(
+    (id: number) => this.loadModules(id),
+    {
+      params: () => {
+        const editing = this.state.editing();
+        return editing?.kind === 'field' ? editing.item?.id : undefined;
+      },
+    },
+  );
+
+  private readonly selectedModulesData = serverData(
+    (id: number) => this.loadModules(id),
+    {
+      params: () => {
+        const node = this.selected$();
+        return node?.kind === 'field' ? node.field.id : undefined;
+      },
+      reloadOn: this.changes,
     },
   );
 
@@ -176,6 +219,14 @@ export class TrainingCatalogStore {
       this.deleteMutation.isPending(),
   );
   readonly isSaving$ = this.saveMutation.isPending;
+  readonly editingModules$ = computed(() => this.modulesData.value() ?? []);
+  readonly modulesLoading$ = this.modulesData.isLoading;
+  readonly modulesError$ = this.modulesData.error;
+  readonly selectedModules$ = computed(
+    () => this.selectedModulesData.value() ?? [],
+  );
+  readonly selectedModulesLoading$ = this.selectedModulesData.isLoading;
+  readonly selectedModulesError$ = this.selectedModulesData.error;
 
   /** Every node by id, to find the selected one and the ancestors of a match. */
   private readonly index = computed(() => {
@@ -256,6 +307,25 @@ export class TrainingCatalogStore {
     return id === undefined ? undefined : this.index().get(id);
   });
 
+  readonly coursePageSize = 10;
+  readonly coursePage$ = computed(() => {
+    const node = this.selected$();
+    const total = node?.kind === 'program' ? node.program.courses.length : 0;
+    return Math.min(
+      this.state.coursePage(),
+      Math.max(1, Math.ceil(total / this.coursePageSize)),
+    );
+  });
+  readonly visibleCourses$ = computed(() => {
+    const node = this.selected$();
+    if (node?.kind !== 'program') return [];
+    const start = (this.coursePage$() - 1) * this.coursePageSize;
+    return node.program.courses.slice(start, start + this.coursePageSize);
+  });
+  goToCoursePage(page: number): void {
+    this.state.coursePage.set(Math.max(1, page));
+  }
+
   readonly editorTitle$ = computed(() => {
     const editing = this.state.editing();
     if (!editing) return '';
@@ -270,6 +340,7 @@ export class TrainingCatalogStore {
   }
 
   private setSelectedId(id: string | undefined): void {
+    if (this.state.selectedId() !== id) this.state.coursePage.set(1);
     this.state.selectedId.set(id);
   }
 
@@ -320,7 +391,13 @@ export class TrainingCatalogStore {
 
   save(command: SaveCatalogItem): void {
     const editing = this.state.editing();
-    if (!editing) return;
+    if (
+      !editing ||
+      this.modulesLoading$() ||
+      this.modulesError$() ||
+      this.isSaving$()
+    )
+      return;
     this.saveMutation.run({ editing, command });
   }
 
@@ -360,24 +437,39 @@ export class TrainingCatalogStore {
     this.treeData.reload();
   }
 
+  retrySelectedModules(): void {
+    this.selectedModulesData.reload();
+  }
+
+  retryModules(): void {
+    this.modulesData.reload();
+  }
+
   private send(
     editing: CatalogEditing,
     command: SaveCatalogItem,
   ): Observable<{ readonly id: number }> {
+    const { modules: moduleChanges, ...catalog } = command;
     const body: SaveCatalogItemCommand = {
-      ...command,
+      ...catalog,
       ownerOrgId: this.orgId() ?? 0,
       ...(editing.kind === 'program' ? { fieldId: editing.fieldId } : {}),
       ...(editing.item?.sortNo != null ? { sortNo: editing.item.sortNo } : {}),
     };
     if (editing.kind === 'field') {
+      const fieldBody = {
+        ...body,
+        ...(moduleChanges ? { modules: moduleChanges } : {}),
+      };
       return editing.item
         ? this.client.call(trainingCatalogEndpoints.updateField, {
             params: { id: editing.item.id },
             query: { expectedVersion: editing.item.rowVersion },
-            body,
+            body: fieldBody,
           })
-        : this.client.call(trainingCatalogEndpoints.createField, { body });
+        : this.client.call(trainingCatalogEndpoints.createField, {
+            body: fieldBody,
+          });
     }
     return editing.item
       ? this.client.call(trainingCatalogEndpoints.updateProgram, {
@@ -446,7 +538,8 @@ const STATUS_CONFIRM: Record<
 > = {
   draft: {
     verb: 'Chuyển về nháp',
-    message: 'Mục này không còn dùng được để xếp khóa học mới.',
+    message:
+      'Chuyển về nháp sẽ chặn học và làm bài kiểm tra của các khóa thuộc danh mục này, kể cả học viên đã được giao khóa. Tiến độ và lịch sử được giữ nguyên.',
   },
   published: {
     verb: 'Xuất bản',
@@ -456,12 +549,12 @@ const STATUS_CONFIRM: Record<
   paused: {
     verb: 'Tạm dừng',
     message:
-      'Không dùng cho khóa mới, khóa đang có giữ nguyên và học viên giữ tiến độ.',
+      'Tạm dừng sẽ chặn học và làm bài kiểm tra của các khóa thuộc danh mục này, kể cả học viên đang học. Tiến độ được giữ nguyên; xuất bản lại danh mục để mở học.',
   },
   archived: {
     verb: 'Lưu trữ',
     message:
-      'Ngừng hẳn, chỉ quản trị viên xem được; lịch sử học được giữ nguyên.',
+      'Lưu trữ sẽ chặn học và làm bài kiểm tra của các khóa thuộc danh mục này, kể cả học viên đang học. Tiến độ và lịch sử được giữ nguyên; xuất bản lại danh mục để mở học.',
   },
 };
 

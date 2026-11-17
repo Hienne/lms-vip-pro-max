@@ -69,15 +69,20 @@ describe('ShellStore: the bell count', () => {
   }
 
   describe('while navCounts is served (the mock API is on)', () => {
-    it('is the nav counts and never asks for reminders', async () => {
+    it('ignores fixed nav counts and uses real unread rows even in development', async () => {
       configure(true);
       const store = await start('000004');
-      expect(pending(REMINDERS)).toHaveLength(0);
-      pending(NAV_COUNTS).forEach((r) =>
-        r.flush(envelopeOk({ notifications: 2, inbox: 0 })),
+      expect(pending(NAV_COUNTS)).toHaveLength(0);
+      pending(REMINDERS).forEach((r) =>
+        r.flush(
+          envelopeOk([
+            { ...reminder(1), status: 'read' },
+            { ...reminder(2), status: 'cancelled' },
+          ]),
+        ),
       );
       await settle();
-      expect(store.unread$()).toBe(2);
+      expect(store.unread$()).toBe(0);
     });
   });
 

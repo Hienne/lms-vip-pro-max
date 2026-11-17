@@ -1,3 +1,4 @@
+import { AgentChatStore } from '../../../core/assistant/agent-chat.store';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
@@ -8,6 +9,7 @@ import {
   learnerEndpoints,
   learnerQuizEndpoints,
   personalEndpoints,
+  scormEndpoints,
   type EnrollmentDetail,
   type LearnerCourse,
 } from '@lms/contracts';
@@ -146,15 +148,198 @@ describe('Lesson', () => {
   const calls = (endpoint: unknown) =>
     handle.mock.calls.filter(([e]) => e === endpoint);
 
+  it.each([
+    { rule: 'completed_or_passed', restartStatus: 'failed' },
+    { rule: 'passed', restartStatus: 'completed' },
+  ] as const)(
+    'embeds SCORM with $rule, refreshes without relaunching and restarts $restartStatus',
+    async ({ rule, restartStatus }) => {
+      const lesson = lessons()[2];
+      lesson.lesson.lessonType = 'scorm';
+      lesson.lesson.scormPackageId = 42;
+      lesson.lesson.scormCompletionRule = rule;
+      lesson.blocks = [];
+      let score: number | null = null;
+      let failed = false;
+      let restarted = false;
+      const progress = () => ({
+        lessonStatus: restarted
+          ? 'not attempted'
+          : failed
+            ? restartStatus
+            : score === null
+              ? 'incomplete'
+              : 'passed',
+        scoreRaw: score,
+        scoreMin: 0,
+        scoreMax: 100,
+        lessonLocation: 'page-4',
+        resumable: true,
+        updateTime: '2026-11-13T10:00:00Z',
+      });
+      const launchUrl =
+        'https://scorm.example.test/scorm-player/' + 'a'.repeat(43) + '/launch';
+      handle.mockImplementation((endpoint, request) => {
+        if (endpoint === learnerEndpoints.course) {
+          const reply = real()(endpoint, request);
+          const data = (reply?.body as { data: LearnerCourse }).data;
+          return {
+            status: 200,
+            body: envelopeOk({ ...data, content: detail.content }),
+          };
+        }
+        if (endpoint === learnerEndpoints.enrollment)
+          return { status: 200, body: envelopeOk(detail) };
+        if (endpoint === scormEndpoints.progress)
+          return { status: 200, body: envelopeOk(progress()) };
+        if (endpoint === scormEndpoints.launch) {
+          if ((request.body as { restart?: boolean }).restart) {
+            restarted = true;
+            failed = false;
+            score = null;
+          }
+          return {
+            status: 200,
+            body: envelopeOk({
+              launchUrl,
+              preview: false,
+              expiresAt: new Date(Date.now() + 3600000).toISOString(),
+              progress: progress(),
+            }),
+          };
+        }
+        return real()(endpoint, request);
+      });
+      await open(lessonUrl(2));
+      const iframe = el.querySelector<HTMLIFrameElement>(
+        'iframe[title="Nội dung bài giảng SCORM"]',
+      );
+      if (!iframe) throw new Error('Embedded SCORM iframe missing: ' + text());
+      expect(iframe.getAttribute('src')).toBe(launchUrl);
+      expect(el.querySelector('app-lesson-outline')).not.toBeNull();
+      expect(el.querySelector('a[href^="/scorm/"]')).toBeNull();
+      expect(calls(scormEndpoints.launch)).toHaveLength(1);
+      expect(calls(scormEndpoints.launch)[0][1].body).toMatchObject({
+        preview: false,
+        lessonId: lesson.lesson.id,
+        enrollmentId: detail.enrollment.id,
+      });
+      const before = calls(scormEndpoints.progress).length;
+      const notify = (origin: string) =>
+        window.dispatchEvent(
+          new MessageEvent('message', {
+            origin,
+            source: iframe.contentWindow,
+            data: {
+              type: 'scorm:state',
+              state: 'saved',
+              progress: { scoreRaw: 999 },
+            },
+          }),
+        );
+      notify('https://untrusted.example.test');
+      await settle();
+      expect(calls(scormEndpoints.progress)).toHaveLength(before);
+      score = 85;
+      notify('https://scorm.example.test');
+      await settle();
+      expect(text()).toContain('Điểm 85');
+      expect(text()).not.toContain('999');
+      expect(calls(scormEndpoints.launch)).toHaveLength(1);
+      expect(el.querySelector('iframe[title="Nội dung bài giảng SCORM"]')).toBe(
+        iframe,
+      );
+      await settle();
+      expect(calls(scormEndpoints.launch)).toHaveLength(1);
+      failed = true;
+      score = 73;
+      notify('https://scorm.example.test');
+      await settle();
+      button('Học lại')!.click();
+      await settle();
+      const dialog = document.querySelector('[role="alertdialog"]')!;
+      Array.from(dialog.querySelectorAll('button'))
+        .find((node) => node.textContent?.includes('Học lại'))!
+        .click();
+      await settle();
+      expect(calls(scormEndpoints.launch)).toHaveLength(2);
+      expect(calls(scormEndpoints.launch)[1][1].body).toMatchObject({
+        restart: true,
+        preview: false,
+        enrollmentId: detail.enrollment.id,
+        lessonId: lesson.lesson.id,
+      });
+      expect(el.querySelector('app-lesson-outline')).not.toBeNull();
+      expect(text()).not.toContain('Điểm 73');
+    },
+  );
+
   describe('a text lesson', () => {
     beforeEach(() => open(lessonUrl(2)));
 
-    it('names the lesson position in the bar for a phone, beside the course and chapter', () => {
+    it('names the course in the bar, the chapter beside it from md, and the position under the title only', () => {
+      const where = el.querySelector('.lesson__where');
+      expect(where?.textContent).toContain('Phân hệ Thanh toán liên ngân hàng');
       expect(
-        el.querySelector('.lesson__where-short')?.textContent?.trim(),
-      ).toBe('Bài 3/3');
-      expect(el.querySelector('.lesson__where-full')?.textContent).toContain(
-        'Phân hệ Thanh toán liên ngân hàng',
+        where?.querySelector('.lesson__where-chapter')?.textContent,
+      ).toContain('Thanh toán và đối soát');
+      expect(el.querySelector('.lesson__bar')?.textContent).not.toContain(
+        'Bài 3/3',
+      );
+      expect(el.querySelector('ui-page-header')?.textContent).toContain(
+        'Bài 3/3',
+      );
+    });
+
+    it('offers one way out per width: an icon with its name on a phone, a labelled button from md', () => {
+      const exits = Array.from(
+        el.querySelectorAll<HTMLAnchorElement>('.lesson__exit'),
+      );
+      expect(exits.map((a) => a.getAttribute('href'))).toEqual([
+        `/course/${COURSE}`,
+        `/course/${COURSE}`,
+      ]);
+      expect(
+        el.querySelector('.lesson__exit--compact')?.getAttribute('aria-label'),
+      ).toBe('Thoát');
+      expect(el.querySelector('.lesson__exit--full')?.textContent).toContain(
+        'Thoát',
+      );
+    });
+
+    it('offers to ask the assistant about this lesson or to summarise it from one menu, naming the lesson to the store', async () => {
+      const ask = vi
+        .spyOn(TestBed.inject(AgentChatStore), 'askAboutLesson')
+        .mockImplementation(() => undefined);
+      const lesson = {
+        courseId: COURSE,
+        revisionId: detail.content.revision.id,
+        lessonId: lessons()[2].lesson.id,
+        label: expect.stringContaining('Tổng kết') as unknown as string,
+      };
+      const choose = async (label: string) => {
+        el.querySelector<HTMLButtonElement>(
+          '.lesson__assist--full button',
+        )!.click();
+        await settle();
+        Array.from(
+          document.body.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+        )
+          .find((item) => item.textContent?.includes(label))!
+          .click();
+        await settle();
+      };
+
+      expect(button('Hỏi về bài này')).toBeUndefined();
+      await choose('Hỏi về bài này');
+      await choose('Tóm tắt bài này');
+
+      expect(ask).toHaveBeenNthCalledWith(1, lesson, 'Bài này nói gì?');
+      expect(ask).toHaveBeenNthCalledWith(
+        2,
+        lesson,
+        'Tóm tắt bài này',
+        'tom_tat_bai',
       );
     });
 
@@ -182,11 +367,11 @@ describe('Lesson', () => {
       expect(el.querySelector('app-block-list')).toBeNull();
     });
 
-    it('saves the open, and says so once the server accepted it', () => {
+    it('saves the open silently once the server accepted it', () => {
       expect(calls(learnerEndpoints.saveProgress).length).toBe(1);
-      expect(el.querySelector('[aria-live="polite"]')?.textContent).toContain(
-        'Đã lưu tiến độ',
-      );
+      expect(text()).not.toContain('Đã lưu tiến độ');
+      expect(text()).not.toContain('Đang lưu tiến độ');
+      expect(el.querySelector('.lesson__save')).toBeNull();
     });
 
     it('completes the last text lesson when returning to the course', async () => {
@@ -245,12 +430,75 @@ describe('Lesson', () => {
       expect(primaries()).toEqual(['Về khóa học']);
     });
 
+    it('says what completes the block at the top of its card, and names it to the step bar', () => {
+      const block = el.querySelector('.lesson__block')!;
+      const state = block.querySelector('.lesson__block-head .lesson__state');
+      expect(state?.id).toBe('lesson-block-state');
+      expect(state?.getAttribute('aria-live')).toBe('polite');
+      expect(
+        el.querySelector('.lesson__advance')?.getAttribute('aria-describedby'),
+      ).toBe('lesson-block-state');
+      expect(el.querySelector('.lesson__stepbar .lesson__state')).toBeNull();
+    });
+
     it('offers the previous lesson and no next one at the last lesson', () => {
-      const previous = button('Bài trước') as HTMLAnchorElement;
+      const previous =
+        el.querySelector<HTMLAnchorElement>('.lesson__stepbar a')!;
+      expect(previous.textContent).toContain('Quay lại');
       expect(previous.getAttribute('href')).toBe(
         `/lesson/${COURSE}/${lessons()[1].lesson.id}`,
       );
-      expect(button('Bài tiếp theo')).toBeUndefined();
+      expect(button('Tiếp theo')).toBeUndefined();
+    });
+
+    it('falls back to the course percentage when the server sent no completion evaluation', () => {
+      const line = el
+        .querySelector('.lesson__course-line')
+        ?.textContent?.replace(/\s+/g, ' ');
+      expect(line).toMatch(/Tiến độ khóa học \d+%/);
+      expect(el.querySelector('ui-stat-strip')).toBeNull();
+    });
+  });
+
+  describe('what the course still needs', () => {
+    it('counts the required lessons and names the final exam, under the title and in the side panel', async () => {
+      handle.mockImplementation((endpoint, request) => {
+        const reply = real()(endpoint, request);
+        if (endpoint !== learnerEndpoints.enrollment || !reply) return reply;
+        const body = reply.body as { data: EnrollmentDetail };
+        return {
+          ...reply,
+          body: {
+            ...body,
+            data: {
+              ...body.data,
+              completion: {
+                completedRequiredLessons: 1,
+                requiredLessons: 3,
+                lessonsSatisfied: false,
+                finalQuizId: 2,
+                finalExamStatus: 'NOT_TAKEN',
+                allSatisfied: false,
+              },
+            },
+          },
+        } as FakeReply;
+      });
+      await open(lessonUrl(2));
+
+      expect(
+        el
+          .querySelector('.lesson__course-line')
+          ?.textContent?.replace(/\s+/g, ' ')
+          .trim(),
+      ).toBe('Khóa học: 1/3 bài bắt buộc đã xong · Bài thi cuối: Chưa thi');
+      const stats = Array.from(
+        el.querySelectorAll('.lesson__side ui-stat'),
+      ).map((s) => s.textContent?.replace(/\s+/g, ' ').trim());
+      expect(stats).toEqual([
+        expect.stringContaining('1/3'),
+        expect.stringContaining('Chưa thi'),
+      ]);
     });
   });
 
@@ -275,6 +523,16 @@ describe('Lesson', () => {
       );
       expect(player()?.autoplay).toBe(false);
       expect(text()).toMatch(/Đã xem \d+% · cần \d+%/);
+    });
+
+    it('shows how far a video is watched, as the server measured it, until it completes', () => {
+      const head = el.querySelector('.lesson__block-head')!;
+      expect(head.querySelector('.lesson__state')?.textContent).toMatch(
+        /Đã xem \d+%/,
+      );
+      expect(
+        head.querySelector('ui-progress')?.getAttribute('aria-label'),
+      ).toMatch(/^Đã xem \d+% video$/);
     });
 
     it('sends PLAY when the learner plays and PAUSE when they pause', async () => {
@@ -362,7 +620,7 @@ describe('Lesson', () => {
         '0:00 · Giới thiệu',
         '0:12 · Khái niệm chính',
       ]);
-      expect(text()).toContain('Transcript (2 đoạn)');
+      expect(text()).toContain('Lời thoại (2 đoạn)');
 
       expect(
         el.querySelector('button.chapters__item, button.transcript__line'),
@@ -416,20 +674,20 @@ describe('Lesson', () => {
       expect(side().classList).not.toContain('lesson__side--hidden');
     });
 
-    it('remembers the choice in this browser', async () => {
+    it('keeps the focus choice in this page without persisting it', async () => {
       await open(lessonUrl(2));
       toggle().click();
-      expect(localStorage.getItem(LESSON_FOCUS_KEY)).toBe('true');
+      expect(localStorage.getItem(LESSON_FOCUS_KEY)).toBeNull();
       toggle().click();
-      expect(localStorage.getItem(LESSON_FOCUS_KEY)).toBe('false');
+      expect(localStorage.getItem(LESSON_FOCUS_KEY)).toBeNull();
     });
 
-    it('starts on when the browser remembers it', async () => {
+    it('shows the course tree on entry even with an old stored focus preference', async () => {
       localStorage.setItem(LESSON_FOCUS_KEY, 'true');
       await open(lessonUrl(2));
-      expect(toggle().getAttribute('aria-pressed')).toBe('true');
-      expect(toggle().textContent?.trim()).toBe('Hiện mục lục');
-      expect(side().classList).toContain('lesson__side--hidden');
+      expect(toggle().getAttribute('aria-pressed')).toBe('false');
+      expect(toggle().textContent?.trim()).toBe('Chế độ tập trung');
+      expect(side().classList).not.toContain('lesson__side--hidden');
     });
 
     it('still works when storage throws, for this page view', async () => {
@@ -558,7 +816,7 @@ describe('Lesson', () => {
       const primaries = Array.from(
         el.querySelectorAll('.lesson__stepbar .btn--primary'),
       ).map((b) => b.textContent?.trim());
-      expect(primaries).toEqual(['Nội dung tiếp theo']);
+      expect(primaries).toEqual(['Tiếp theo']);
     });
 
     it('says nothing about completion on a block that completes on open', async () => {
@@ -594,15 +852,21 @@ describe('Lesson', () => {
       ).toEqual(['CLOSE', 'OPEN']);
     });
 
-    it('goes through the blocks with "Nội dung tiếp theo" and "Nội dung trước", then on to the next lesson', async () => {
-      expect(button('Nội dung trước')).toBeUndefined();
+    it('goes through the blocks with "Tiếp theo" and "Quay lại", then on to the next lesson', async () => {
+      const back = () =>
+        el.querySelector<HTMLElement>(
+          '.lesson__stepbar button:not(.lesson__advance)',
+        );
+      const advance = () =>
+        el.querySelector<HTMLButtonElement>('.lesson__advance')!;
+      expect(back()).toBeNull();
       for (let i = 0; i < 3; i++) {
-        button('Nội dung tiếp theo')!.click();
+        advance().click();
         await settle();
       }
-      expect(button('Nội dung tiếp theo')).toBeUndefined();
-      expect(button('Nội dung trước')).toBeTruthy();
-      button('Bài tiếp theo')!.click();
+      expect(back()?.textContent).toContain('Quay lại');
+      expect(el.querySelector('#lesson-block-select')).not.toBeNull();
+      advance().click();
       await settle();
       expect(TestBed.inject(Router).url).toMatch(
         new RegExp(`^/lesson/${COURSE}/${lessons()[2].lesson.id}(?:\\?|$)`),
@@ -626,6 +890,11 @@ describe('Lesson', () => {
 
       expect(text()).toContain('Bài học đang mở ở nơi khác');
       expect(calls(learnerEndpoints.saveProgress).length).toBe(0);
+      expect(
+        Array.from(el.querySelectorAll('.btn--primary')).map((b) =>
+          b.textContent?.trim(),
+        ),
+      ).toEqual(['Học trên thiết bị này']);
 
       button('Học trên thiết bị này')!.click();
       await settle();
@@ -651,7 +920,8 @@ describe('Lesson', () => {
       handle.mockImplementation(real());
       button('Thử lại')!.click();
       await settle();
-      expect(text()).toContain('Đã lưu tiến độ');
+      expect(text()).not.toContain('Đã lưu tiến độ');
+      expect(text()).not.toContain('Chưa lưu được tiến độ');
       expect(text()).toContain('Đã hoàn thành');
     });
   });
@@ -691,9 +961,9 @@ describe('Lesson', () => {
       ).toBe('/quiz/2');
       const primary = Array.from(el.querySelectorAll('.btn--primary'));
       expect(primary.map((b) => b.textContent?.trim())).toEqual(['Làm bài']);
-      expect(
-        button('Bài tiếp theo')?.classList.contains('btn--primary'),
-      ).not.toBe(true);
+      expect(button('Tiếp theo')?.classList.contains('btn--primary')).not.toBe(
+        true,
+      );
       expect(button('Mục lục')).toBeTruthy();
       expect(calls(learnerEndpoints.openSession).length).toBe(0);
       expect(calls(learnerQuizEndpoints.courseQuizzes).length).toBe(1);
@@ -701,7 +971,7 @@ describe('Lesson', () => {
 
     it('lets the learner move on to the lessons around a quiz lesson', async () => {
       await open(`/lesson/1/${quizLesson().lesson.id}`);
-      expect(button('Bài trước')?.getAttribute('href')).toMatch(
+      expect(button('Quay lại')?.getAttribute('href')).toMatch(
         /^\/lesson\/1\/\d+$/,
       );
     });

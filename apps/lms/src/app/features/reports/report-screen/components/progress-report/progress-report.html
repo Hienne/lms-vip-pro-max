@@ -1,4 +1,10 @@
-@if (store.learning$(); as summary) {<ui-stat-strip
+@if (store.learningLoading$()) {
+<p class="row" role="status">
+  <span uiSpinner></span>Đang tải tổng hợp học tập…
+</p>
+} @else if (store.learningError$(); as error) {
+<ui-error-state [message]="error.message" (retry)="store.retryLearning()" />
+} @else if (store.learning$(); as summary) {<ui-stat-strip
   ><ui-stat
     label="Nhóm có dữ liệu"
     [value]="report.total$() | fmtNum" /><ui-stat
@@ -42,14 +48,14 @@
   <div slot="action">
     <label class="row row--gap-2"
       >Nhóm báo cáo
-      <select
-        uiSelect
-        #group
-        [value]="report.view$()"
-        (change)="store.selectProgressView(group.value)"
-      >
+      <select uiSelect #group (change)="store.selectProgressView(group.value)">
         @for (option of views; track option.value) {
-        <option [value]="option.value">{{option.label}}</option>
+        <option
+          [value]="option.value"
+          [selected]="option.value === report.view$()"
+        >
+          {{option.label}}
+        </option>
         }
       </select>
     </label>

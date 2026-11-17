@@ -79,6 +79,7 @@ export function navFor(
 ): readonly NavSection[] {
   return groupBySection([
     ...functions.flatMap((fn): MenuItem[] => {
+      if (menuGroup(fn.code).nav.hidden) return [];
       if (fn.code === 'COMMUNITY') {
         return (
           [
@@ -112,7 +113,8 @@ export function navFor(
           code: fn.code,
           href: entryHref(fn.code),
           icon: nav.icon,
-          label: fn.name,
+          label:
+            fn.code === 'LESSON_MANAGEMENT' ? 'Thư viện bài giảng' : fn.name,
           section: nav.section,
           upcoming: isUpcoming(fn.code),
         },
@@ -139,7 +141,10 @@ export function navFor(
  */
 export function homePathFor(functions: readonly KnownFunction[]): string {
   const first = functions.find(
-    (fn) => fn.code !== 'PROFILE' && !isUpcoming(fn.code),
+    (fn) =>
+      fn.code !== 'PROFILE' &&
+      !menuGroup(fn.code).nav.hidden &&
+      !isUpcoming(fn.code),
   );
   return first ? entryHref(first.code) : '/profile';
 }

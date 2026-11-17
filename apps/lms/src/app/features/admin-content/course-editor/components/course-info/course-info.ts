@@ -1,5 +1,6 @@
 import { Component, computed, inject, input, output } from '@angular/core';
 import { FormField, type FieldTree } from '@angular/forms/signals';
+import { RouterLink } from '@angular/router';
 import type {
   BusinessModule,
   LibraryAsset,
@@ -35,6 +36,7 @@ import {
 import { isCancellable, itemState } from '../../data-access/upload-entry';
 import { AssetLibrary } from '../asset-library/asset-library';
 import { AssetLibraryStore } from '../asset-library/data-access/asset-library.store';
+import { AiCourseSection } from '../../../ai-course/ai-course-section/ai-course-section';
 
 /**
  * Step 1 of the editor: the course's name, place in the catalogue, level, kind, summary and
@@ -46,6 +48,7 @@ import { AssetLibraryStore } from '../asset-library/data-access/asset-library.st
 @Component({
   selector: 'app-course-info',
   imports: [
+    AiCourseSection,
     AssetLibrary,
     Button,
     CourseCard,
@@ -58,6 +61,7 @@ import { AssetLibraryStore } from '../asset-library/data-access/asset-library.st
     Input,
     LinkButton,
     OptionCard,
+    RouterLink,
     Select,
     Textarea,
     UploadItem,
@@ -70,9 +74,12 @@ export class CourseInfo {
   readonly draft = input.required<FieldTree<CourseDraftValue>>();
   /** A course being created: its code is typed here, and the owner is shown beside it. */
   readonly create = input(false);
+  readonly showErrors = input(false);
   /** False on a published revision: the objectives cannot be added or removed. */
   readonly editable = input(true);
   readonly ownerName = input('');
+  /** Shows the "Tạo bằng AI" section: a new course, for a role that may generate. */
+  readonly ai = input(false);
   readonly programs = input.required<readonly TrainingProgram[]>();
   readonly modules = input.required<readonly BusinessModule[]>();
   /** The cover the draft will be saved with: the stored one, or the one chosen in this page. */
@@ -90,6 +97,19 @@ export class CourseInfo {
   protected readonly programLockedHint = PROGRAM_LOCKED_HINT;
   protected readonly itemState = itemState;
   protected readonly isCancellable = isCancellable;
+
+  protected pickProgram(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    const fieldId = this.programs().find(
+      (program) => String(program.id) === value,
+    )?.fieldId;
+    const module = this.modules().find(
+      (item) => String(item.id) === this.draft().moduleId().value(),
+    );
+    if (!module || module.fieldId !== fieldId)
+      this.draft().moduleId().value.set('');
+    this.programPicked.emit(value);
+  }
 
   protected readonly cover = this.store.coverPreview(() => this.coverAssetId());
   protected readonly coverSrc = computed(() => coverSrc(this.cover()));

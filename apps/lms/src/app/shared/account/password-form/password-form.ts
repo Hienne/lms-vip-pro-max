@@ -7,7 +7,6 @@ import {
 } from '@angular/forms/signals';
 import {
   type ChangePasswordV1Command,
-  PASSWORD_MAX_BYTES,
   PASSWORD_MIN_LENGTH,
 } from '@lms/contracts';
 import { Button, Field, Input } from '@lms/ui';
@@ -32,7 +31,7 @@ export class PasswordForm {
   readonly busy = input(false);
   readonly submitted = output<ChangePasswordV1Command>();
 
-  protected readonly rules = `Tối thiểu ${PASSWORD_MIN_LENGTH} ký tự, tối đa ${PASSWORD_MAX_BYTES} byte và khác mật khẩu hiện tại.`;
+  protected readonly rules = `Ít nhất ${PASSWORD_MIN_LENGTH} ký tự, không chỉ gồm khoảng trắng và khác mật khẩu hiện tại.`;
 
   private readonly model = signal<PasswordFormValue>({
     ...EMPTY_PASSWORD_FORM,

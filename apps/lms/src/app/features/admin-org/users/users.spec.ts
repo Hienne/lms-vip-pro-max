@@ -321,6 +321,26 @@ describe('Users', () => {
     expect(dialog()).toBeNull();
   });
 
+  it('includes the selected role when saving without pressing Add', async () => {
+    await open('super.admin', '000001');
+    button(el, 'Thêm người dùng').click();
+    await settle();
+    await type(inputOf('Mã cán bộ'), '000096');
+    await type(inputOf('Tên đăng nhập'), 'hocvien.moi');
+    await type(inputOf('Họ và tên'), 'Học viên Mới');
+    await type(inputOf('Mật khẩu tạm'), 'Tam@12345');
+    const role = field('Vai trò').querySelector('select') as HTMLSelectElement;
+    const learner = Array.from(role.options).find((o) =>
+      o.textContent?.includes('Học viên'),
+    ) as HTMLOptionElement;
+    await choose(role, learner.value);
+    button(dialog() as HTMLElement, 'Lưu').click();
+    await settle();
+    expect(calls(identityEndpoints.createUser)[0][1].body).toMatchObject({
+      initialRoleGrants: [{ roleId: Number(learner.value), scope: 'OWN' }],
+    });
+  });
+
   it('keeps the drawer and its input open and toasts the backend message when the username is taken', async () => {
     await open('super.admin', '000001');
     button(el, 'Thêm người dùng').click();

@@ -29,21 +29,16 @@
     overflow-wrap: anywhere;
   }
 
-  &__text,
-  &__run {
+  &__text {
     white-space: pre-wrap;
   }
 
   &__answer {
-    line-height: ui.leading(relaxed);
+    display: block;
   }
 
-  // Sources of an answer that marks none: the same badges in a row, no heading.
-  &__sources {
-    @include ui.row(1);
-    margin: ui.space(1) 0 0;
-    padding: 0;
-    list-style: none;
+  &__answer {
+    line-height: ui.leading(relaxed);
   }
 
   &__progress {
@@ -59,5 +54,42 @@
     &--error {
       color: ui.color(danger);
     }
+  }
+}
+
+// The sources of a finished answer: one row per citation, numbered like the markers in the text.
+.sources {
+  margin-block-start: ui.space(2);
+}
+
+.source {
+  width: 100%;
+  text-align: start;
+
+  &__n {
+    flex: none;
+  }
+
+  &__text {
+    @include ui.grow;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 ui.space(2);
+    min-width: 0;
+  }
+
+  &__file {
+    font-weight: ui.weight(medium);
+    overflow-wrap: anywhere;
+  }
+
+  &__where {
+    @include ui.num;
+    @include ui.text(sm, muted);
+  }
+
+  &__go {
+    flex: none;
+    color: ui.color(text-muted);
   }
 }

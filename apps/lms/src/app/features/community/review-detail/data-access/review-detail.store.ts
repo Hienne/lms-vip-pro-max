@@ -23,6 +23,7 @@ import {
   askReviewAction,
   type ReviewActionDraft,
 } from '../components/review-action-dialog/review-action-dialog';
+import { randomId } from '../../../../core/browser/secure-context';
 
 type Tab = 'design' | 'invitations' | 'conclusion';
 type Command =
@@ -56,7 +57,7 @@ export class ReviewDetailStore {
     threadPage: signal(1),
     invitationPage: signal(1),
     historyPage: signal(1),
-    requestId: signal(crypto.randomUUID()),
+    requestId: signal(randomId()),
     posted: signal(0),
   };
   readonly id$ = toSignal(
@@ -181,7 +182,7 @@ export class ReviewDetailStore {
       invalidates: [this.refresh, this.changes.contents],
       onSuccess: () => {
         this.setPosted(this.state.posted() + 1);
-        this.setRequestId(crypto.randomUUID());
+        this.setRequestId(randomId());
       },
     },
   );
@@ -284,7 +285,7 @@ export class ReviewDetailStore {
   private setPosted(value: number): void {
     this.state.posted.set(value);
   }
-  private setRequestId(value: ReturnType<typeof crypto.randomUUID>): void {
+  private setRequestId(value: string): void {
     this.state.requestId.set(value);
   }
   showTab(value: Tab): void {
@@ -330,7 +331,7 @@ export class ReviewDetailStore {
     this.setThreadPage(1);
     this.setInvitationPage(1);
     this.setHistoryPage(1);
-    this.setRequestId(crypto.randomUUID());
+    this.setRequestId(randomId());
     this.setPosted(0);
   }
   private requireId(): number {

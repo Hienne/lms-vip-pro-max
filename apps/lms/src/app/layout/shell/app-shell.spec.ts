@@ -39,6 +39,11 @@ describe('AppShell', () => {
   let storage: Map<string, string>;
 
   beforeEach(() => {
+    // The learner home behind /learn is a page of tabs, and @angular/aria warns in dev mode with
+    // `console.warn('%o', element)` for each panel. Node's util.inspect throws on a jsdom element
+    // there, and Angular's error handler logs that throw again in a loop until the test times out.
+    // No test here is about the tab panels, so the warning is dropped.
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     storage = new Map();
     TestBed.configureTestingModule({
       providers: [
@@ -71,14 +76,26 @@ describe('AppShell', () => {
 
   type Counts = { notifications: number; inbox: number };
 
-  /** Answers the requests the shell makes once a user is signed in: nav counts and the owl's tracker. */
+  /** Answers the real reminder feed used by the bell; the other page requests are unrelated here. */
   function flushCounts(counts: Counts = { notifications: 0, inbox: 0 }) {
     TestBed.tick();
     const backend = TestBed.inject(HttpTestingController);
     backend
-      .match('/api/me/nav-counts')
+      .match('/api/v1/me/learning/reminders')
       .filter((r) => !r.cancelled)
-      .forEach((r) => r.flush(envelopeOk(counts)));
+      .forEach((r) =>
+        r.flush(
+          envelopeOk(
+            Array.from({ length: counts.notifications }, (_, index) => ({
+              id: index + 1,
+              recipientId: index + 1,
+              status: 'pending',
+              kind: 'DEADLINE',
+              rowVersion: 0,
+            })),
+          ),
+        ),
+      );
     // The learner home behind /learn reads the progress, the course lists and the competencies, the reports
     // page its overview, and /flashcards the learner's own decks; no test here is about them.
     backend
@@ -89,6 +106,7 @@ describe('AppShell', () => {
           r.url === '/api/v1/me/flashcard-decks' ||
           r.url === '/api/v1/training-catalog/programs' ||
           r.url === '/api/v1/orgs' ||
+          r.url === '/api/v1/competencies' ||
           r.url.startsWith('/api/v1/reports/assessment/'),
       )
       .filter((r) => !r.cancelled)
@@ -98,6 +116,26 @@ describe('AppShell', () => {
       .match((r) => r.url === '/api/v1/instructor/feedback/summary')
       .filter((r) => !r.cancelled)
       .forEach((r) => r.flush(envelopeOk({ newCount: 0 })));
+    // The assistant screen lists the user's saved conversations beside the chat; there are none.
+    backend
+      .match((r) => r.url === '/api/v1/assistant/conversations')
+      .filter((r) => !r.cancelled)
+      .forEach((r) =>
+        r.flush(
+          envelopeOk({
+            items: [],
+            page: 0,
+            size: 50,
+            totalElements: 0,
+            totalPages: 0,
+          }),
+        ),
+      );
+    // The assistant screen also lists the user's duplicate documents; there are none.
+    backend
+      .match((r) => r.url === '/api/v1/knowledge/documents/duplicates')
+      .filter((r) => !r.cancelled)
+      .forEach((r) => r.flush(envelopeOk([])));
     // The owl's tracker asks for the user's unfinished uploads; there are none.
     backend
       .match((r) => r.url === '/api/v1/knowledge/documents')
@@ -113,6 +151,15 @@ describe('AppShell', () => {
           }),
         ),
       );
+    // An instructor's or admin's tracker asks for their course generations; there are none.
+    backend
+      .match(
+        (r) =>
+          r.url === '/api/v1/assistant/course-jobs' ||
+          r.url === '/api/v1/assistant/course-jobs/active',
+      )
+      .filter((r) => !r.cancelled)
+      .forEach((r) => r.flush(envelopeOk([])));
   }
 
   async function open(url: string, counts?: Counts) {
@@ -144,9 +191,7 @@ describe('AppShell', () => {
         '/admin/questions',
         '/admin/quizzes',
         '/reports',
-        '/knowledge',
         '/assistant',
-        '/issues',
         '/community/questions',
         '/community/articles',
         '/community/reviews',
@@ -187,7 +232,7 @@ describe('AppShell', () => {
       const roomLink = el.querySelector(
         'app-sidebar ul[aria-label="Cộng đồng"] a[href="/chat-room"]',
       );
-      expect(roomLink?.textContent?.trim()).toBe('Giải trí');
+      expect(roomLink?.textContent?.trim()).toBe('Giờ ra chơi');
       expect(
         el.querySelectorAll('app-sidebar a[href="/chat-room"]'),
       ).toHaveLength(1);
@@ -240,7 +285,7 @@ describe('AppShell', () => {
       el
         .querySelector('#learner-nav-community a[href="/chat-room"]')
         ?.textContent?.trim(),
-    ).toBe('Giải trí');
+    ).toBe('Giờ ra chơi');
     expect(nav?.querySelector('a[href="/profile"]')).toBeNull();
   });
 
@@ -409,11 +454,21 @@ describe('AppShell', () => {
       expect(panel(el)).toBeNull();
     });
 
-    it('is not on focus or bare routes', async () => {
+    it('opens on a focus route (a lesson) without the owl', async () => {
       signInAs('learner');
       TestBed.inject(AgentChatStore).open();
       const focus = await open('/lesson/c1/l1');
-      expect(focus.querySelector('app-chat-widget')).toBeNull();
+      expect(panel(focus)).not.toBeNull();
+      expect(focus.querySelector('app-owl')).toBeNull();
+    });
+
+    it('stays closed on a focus route until a lesson button opens it', async () => {
+      signInAs('learner');
+      const focus = await open('/lesson/c1/l1');
+      expect(panel(focus)).toBeNull();
+      TestBed.inject(AgentChatStore).open();
+      TestBed.tick();
+      expect(panel(focus)).not.toBeNull();
     });
 
     it('opens and closes from the owl, and Escape hands focus back to it', async () => {
@@ -513,7 +568,7 @@ describe('AppShell', () => {
       const el = await open('/learn');
       toggle(el)?.click();
       TestBed.tick();
-      expect(hrefs(el)).toHaveLength(17);
+      expect(hrefs(el)).toHaveLength(15);
       expect(
         el.querySelector('nav a[href="/progress"]')?.textContent?.trim(),
       ).toBe('Tiến độ học tập');
@@ -558,12 +613,12 @@ describe('AppShell', () => {
       expect(button?.getAttribute('aria-expanded')).toBe('false');
 
       await openDrawer(el);
-      expect(dialog()?.querySelectorAll('nav a')).toHaveLength(17);
+      expect(dialog()?.querySelectorAll('nav a')).toHaveLength(15);
       expect(
         dialog()
           ?.querySelector('ul[aria-label="Cộng đồng"] a[href="/chat-room"]')
           ?.textContent?.trim(),
-      ).toBe('Giải trí');
+      ).toBe('Giờ ra chơi');
       expect(dialog()?.querySelector('.sidebar__toggle')).toBeNull();
       expect(button?.getAttribute('aria-expanded')).toBe('true');
     });
@@ -706,16 +761,52 @@ describe('AppShell', () => {
       expect(document.querySelector('.bell__list')).not.toBeNull();
     });
 
+    it('closes the bell when opening the course named by a deadline reminder', async () => {
+      signInAs('learner');
+      const el = await open('/learn');
+      el.querySelector<HTMLButtonElement>(
+        'app-notification-bell button',
+      )!.click();
+      TestBed.tick();
+      TestBed.inject(HttpTestingController)
+        .expectOne('/api/v1/me/learning/reminders/inbox')
+        .flush(
+          envelopeOk([
+            {
+              id: 71,
+              rowVersion: 0,
+              recipientId: 81,
+              kind: 'DEADLINE',
+              status: 'pending',
+              courseId: 42,
+              courseTitle: 'Tín dụng doanh nghiệp',
+              enrollmentId: 90,
+              courseAvailable: true,
+            },
+          ]),
+        );
+      TestBed.tick();
+      const link = document.querySelector<HTMLAnchorElement>(
+        '.bell__list a[href="/course/42"]',
+      );
+      expect(link?.closest('li')?.textContent).toContain(
+        'Tín dụng doanh nghiệp',
+      );
+      link!.click();
+      await vi.waitFor(() => expect(router.url).toBe('/course/42'));
+      expect(document.querySelector('.bell__list')).toBeNull();
+    });
+
     it('reloads the counts after a navigation', async () => {
       signInAs('learner');
       await open('/learn', { notifications: 2, inbox: 0 });
       await router.navigateByUrl('/catalog');
       TestBed.tick();
       const reload = backend
-        .match('/api/me/nav-counts')
+        .match('/api/v1/me/learning/reminders')
         .filter((r) => !r.cancelled);
       expect(reload).toHaveLength(1);
-      reload[0].flush(envelopeOk({ notifications: 0, inbox: 0 }));
+      reload[0].flush(envelopeOk([]));
     });
 
     describe('user menu', () => {
@@ -752,6 +843,8 @@ describe('AppShell', () => {
         expect(menu()?.textContent).toContain('Vai trò: Học viên');
         expect(items().map((item) => item.textContent?.trim())).toEqual([
           'Hồ sơ cá nhân',
+          'Hướng dẫn màn này',
+          'Hướng dẫn sử dụng',
           'Thông báo',
           'Đăng xuất',
         ]);
@@ -774,7 +867,9 @@ describe('AppShell', () => {
         signInAs('learner');
         const el = await open('/learn');
         await openMenu(el);
-        items()[2].click();
+        items()
+          .find((item) => item.textContent?.trim() === 'Đăng xuất')!
+          .click();
         await vi.waitFor(() =>
           expect(
             document.querySelector('[role="alertdialog"]')?.textContent,
@@ -799,7 +894,9 @@ describe('AppShell', () => {
         signInAs('learner');
         const el = await open('/learn');
         await openMenu(el);
-        items()[2].click();
+        items()
+          .find((item) => item.textContent?.trim() === 'Đăng xuất')!
+          .click();
         await vi.waitFor(() =>
           expect(document.querySelector('[role="alertdialog"]')).not.toBeNull(),
         );

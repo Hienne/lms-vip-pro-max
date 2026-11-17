@@ -1,9 +1,16 @@
+import { CourseJobAccess } from '../../core/course-jobs/course-job-access';
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
+import type { ConversationSummary, ConversationContext } from '@lms/contracts';
 import { AgentChatStore } from '../../core/assistant/agent-chat.store';
+import { ConversationsStore } from '../../core/assistant/conversations.store';
 import { AGENT_LAUNCHER_ID } from '../../core/assistant/agent-launcher';
 import type { AgentTurn } from '../../core/assistant/agent-chat.model';
+import {
+  BackgroundJobsStore,
+  type BackgroundNotice,
+} from '../../core/background/background-jobs.store';
 import { ChatWidget } from './chat-widget';
 
 const turn = (id: number, text: string): AgentTurn => ({
@@ -27,8 +34,14 @@ function fakeStore() {
   const turns = signal<readonly AgentTurn[]>([]);
   const answering = signal(false);
   const docked = signal(false);
+  const historyOpen = signal(false);
+  const lesson = signal<ConversationContext | null>(null);
+  const items = signal<readonly ConversationSummary[]>([]);
   return {
     docked,
+    historyOpen,
+    lesson,
+    items,
     available,
     open,
     turns,
@@ -41,7 +54,17 @@ function fakeStore() {
       isAnswering$: answering.asReadonly(),
       isOffline$: signal(false).asReadonly(),
       isConfirming$: signal(false).asReadonly(),
+      ratingId$: signal<number | null>(null).asReadonly(),
+      ratingFailedId$: signal<number | null>(null).asReadonly(),
       announcement$: signal('').asReadonly(),
+      isHistoryOpen$: historyOpen.asReadonly(),
+      isOpening$: signal(false).asReadonly(),
+      openError$: signal<string | null>(null).asReadonly(),
+      conversationId$: signal<number | null>(null).asReadonly(),
+      lesson$: lesson.asReadonly(),
+      showHistory: vi.fn(() => historyOpen.set(true)),
+      hideHistory: vi.fn(() => historyOpen.set(false)),
+      openConversation: vi.fn(),
       close: vi.fn(() => open.set(false)),
       clear: vi.fn(() => turns.set([])),
       ask: vi.fn(),
@@ -49,6 +72,20 @@ function fakeStore() {
       toggleDocked: vi.fn(() => docked.update((value) => !value)),
       confirm: vi.fn(),
       cancel: vi.fn(),
+      retry: vi.fn(),
+      rate: vi.fn(),
+    },
+    history: {
+      items$: items.asReadonly(),
+      isLoading$: signal(false).asReadonly(),
+      loadError$: signal(undefined).asReadonly(),
+      query$: signal('').asReadonly(),
+      isChanging$: signal(false).asReadonly(),
+      setQuery: vi.fn(),
+      rename: vi.fn(),
+      remove: vi.fn(),
+      removeAll: vi.fn(),
+      retryLoad: vi.fn(),
     },
   };
 }
@@ -61,13 +98,24 @@ function fakeStore() {
 })
 class Host {}
 
+@Component({ selector: 'app-blank', template: '' })
+class Blank {}
+
 describe('ChatWidget', () => {
+  const notice = signal<BackgroundNotice | null>(null);
+  const background = { notice$: notice, dismiss: vi.fn() };
+
   async function render() {
+    notice.set(null);
+    background.dismiss.mockClear();
     const fake = fakeStore();
     TestBed.configureTestingModule({
       providers: [
-        provideRouter([]),
+        provideRouter([{ path: '**', component: Blank }]),
         { provide: AgentChatStore, useValue: fake.store },
+        { provide: CourseJobAccess, useValue: { canGenerate$: signal(false) } },
+        { provide: ConversationsStore, useValue: fake.history },
+        { provide: BackgroundJobsStore, useValue: background },
       ],
     });
     const fixture = TestBed.createComponent(Host);
@@ -93,7 +141,71 @@ describe('ChatWidget', () => {
     const header = [
       ...el.querySelectorAll('.chat__header button, .chat__header a'),
     ].map((control) => control.getAttribute('aria-label'));
-    expect(header).toEqual(['Mở rộng', 'Đóng']);
+    expect(header).toEqual(['Lịch sử hội thoại', 'Mở rộng', 'Đóng']);
+  });
+
+  it('keeps a failed course notice in the panel until it is dismissed', async () => {
+    const { fixture, el } = await render();
+    expect(el.querySelector('.chat__notice')).toBeNull();
+
+    notice.set({
+      kind: 'course',
+      fileName: 'quy-trinh.md',
+      ok: false,
+      href: '/admin/courses/9/edit?step=1',
+      action: 'Mở khóa học',
+      at: 1,
+    });
+    await fixture.whenStable();
+    const banner = el.querySelector<HTMLElement>('.chat__notice');
+    expect(banner?.getAttribute('role')).toBe('alert');
+    expect(banner?.textContent).toContain('Không tạo được khóa học');
+
+    banner
+      ?.querySelector<HTMLButtonElement>('button[aria-label="Đóng thông báo"]')
+      ?.click();
+    expect(background.dismiss).toHaveBeenCalled();
+  });
+
+  it('shows no course notice for a document or a finished course', async () => {
+    const { fixture, el } = await render();
+    notice.set({
+      kind: 'course',
+      fileName: 'a.md',
+      ok: true,
+      href: '/x',
+      action: 'Rà soát',
+      at: 1,
+    });
+    await fixture.whenStable();
+
+    expect(el.querySelector('.chat__notice')).toBeNull();
+  });
+
+  it('names the lesson a conversation is about and opens it with questions about that lesson', async () => {
+    const { fixture, el, store, lesson } = await render();
+    expect(el.querySelector('.chat__context')).toBeNull();
+
+    lesson.set({
+      courseId: 5,
+      revisionId: 50,
+      lessonId: 9,
+      label: 'Tín dụng › Lãi suất',
+    });
+    await fixture.whenStable();
+
+    expect(el.querySelector('.chat__context')?.textContent).toContain(
+      'Tín dụng › Lãi suất',
+    );
+    const suggestions = [
+      ...el.querySelectorAll<HTMLButtonElement>('.chat__suggestion'),
+    ];
+    expect(suggestions.map((button) => button.textContent?.trim())).toEqual([
+      'Bài này nói gì?',
+      'Tóm tắt bài này',
+    ]);
+    suggestions[1].click();
+    expect(store.ask).toHaveBeenCalledWith('Tóm tắt bài này', 'tom_tat_bai');
   });
 
   it('renders nothing while closed or when the assistant is not available', async () => {
@@ -171,11 +283,11 @@ describe('ChatWidget', () => {
     expect(store.close).toHaveBeenCalled();
   });
 
-  it('offers clear only once there is a conversation, and not while a reply is on its way', async () => {
+  it('offers a new conversation only once there is one, and not while a reply is on its way', async () => {
     const { fixture, el, turns, answering, store } = await render();
     const clear = () =>
       el.querySelector<HTMLButtonElement>(
-        'button[aria-label="Xoá hội thoại"]',
+        'button[aria-label="Hội thoại mới"]',
       ) as HTMLButtonElement;
     expect(clear()).toBeNull();
     turns.set([turn(1, 'Trả lời một')]);
@@ -190,6 +302,55 @@ describe('ChatWidget', () => {
     expect(store.clear).toHaveBeenCalled();
   });
 
+  it('swaps the log for the saved conversations from the history button, and back', async () => {
+    const { fixture, el, items, store } = await render();
+    items.set([
+      {
+        id: 7,
+        title: 'Quy trình EOD',
+        lastActivityTime: '2026-11-10T09:00:00Z',
+        createTime: '2026-11-10T09:00:00Z',
+      },
+    ]);
+    const toggle = () =>
+      el.querySelector<HTMLButtonElement>(
+        '.chat__header button[aria-label$="hội thoại"][aria-pressed]',
+      ) as HTMLButtonElement;
+    expect(toggle().getAttribute('aria-pressed')).toBe('false');
+    expect(el.querySelector('app-conversation-list')).toBeNull();
+
+    toggle().click();
+    await fixture.whenStable();
+    expect(store.showHistory).toHaveBeenCalled();
+    expect(el.querySelector('[role="log"]')).toBeNull();
+    expect(el.querySelector('textarea')).toBeNull();
+    expect(el.querySelector('app-conversation-list')?.textContent).toContain(
+      'Quy trình EOD',
+    );
+    expect(toggle().getAttribute('aria-label')).toBe('Quay lại hội thoại');
+
+    toggle().click();
+    await fixture.whenStable();
+    expect(store.hideHistory).toHaveBeenCalled();
+    expect(el.querySelector('[role="log"]')).not.toBeNull();
+  });
+
+  it('reopens a conversation from the list through the store', async () => {
+    const { fixture, el, items, store, historyOpen } = await render();
+    items.set([
+      {
+        id: 7,
+        title: 'Quy trình EOD',
+        lastActivityTime: '2026-11-10T09:00:00Z',
+        createTime: '2026-11-10T09:00:00Z',
+      },
+    ]);
+    historyOpen.set(true);
+    await fixture.whenStable();
+    el.querySelector<HTMLButtonElement>('.history__open')?.click();
+    expect(store.openConversation).toHaveBeenCalledWith(7);
+  });
+
   it('offers three suggested questions that are sent as they stand, then puts the cursor in the box', async () => {
     const { el, store } = await render();
     const suggestions = [
@@ -201,8 +362,51 @@ describe('ChatWidget', () => {
       'Đổi chức danh của tôi',
     ]);
     suggestions[1].click();
-    expect(store.ask).toHaveBeenCalledWith('Mở trang Hồ sơ cá nhân');
+    expect(store.ask).toHaveBeenCalledWith(
+      'Mở trang Hồ sơ cá nhân',
+      'dieu_huong',
+    );
     expect(document.activeElement?.id).toBe('agent-composer-box');
+  });
+
+  it('offers follow-ups only under the newest finished answer, and asking one sends it', async () => {
+    const { fixture, el, store, turns, answering } = await render();
+    turns.set([
+      { ...turn(1, 'Một'), suggestions: ['Cũ?'] },
+      { ...turn(2, 'Hai'), suggestions: ['Còn gì nữa?', 'Ví dụ?'] },
+    ]);
+    await fixture.whenStable();
+    const buttons = () => [
+      ...el.querySelectorAll<HTMLButtonElement>('.chat__suggestion'),
+    ];
+    expect(buttons().map((b) => b.textContent?.trim())).toEqual([
+      'Còn gì nữa?',
+      'Ví dụ?',
+    ]);
+
+    buttons()[1].click();
+    expect(store.ask).toHaveBeenCalledWith('Ví dụ?', undefined);
+
+    answering.set(true);
+    await fixture.whenStable();
+    expect(buttons()).toHaveLength(0);
+  });
+
+  it('sends a follow-up from a turn that read shared content with the Q&A skill', async () => {
+    const { fixture, el, store, turns } = await render();
+    turns.set([
+      {
+        ...turn(1, 'Một'),
+        suggestions: ['Đổi chức danh của tôi'],
+        suggestionsReadOnly: true,
+      },
+    ]);
+    await fixture.whenStable();
+    el.querySelector<HTMLButtonElement>('.chat__suggestion')?.click();
+    expect(store.ask).toHaveBeenCalledWith(
+      'Đổi chức danh của tôi',
+      'qa_tai_lieu',
+    );
   });
 
   it('shows each turn in order and hides the empty line', async () => {
@@ -309,5 +513,63 @@ describe('ChatWidget', () => {
     expect(document.activeElement).toBe(confirm);
     confirm.click();
     expect(document.activeElement).toBe(el.querySelector('textarea'));
+  });
+
+  it('offers opening questions that follow the page, and the default three elsewhere', async () => {
+    const { fixture, el } = await render();
+    const router = TestBed.inject(Router);
+    const questions = () =>
+      [...el.querySelectorAll('.chat__suggestion')].map((b) =>
+        b.textContent?.trim(),
+      );
+    const fallback = questions();
+    expect(fallback).toHaveLength(3);
+
+    await router.navigateByUrl('/quiz/4/take');
+    await fixture.whenStable();
+    const quiz = questions();
+    expect(quiz).toHaveLength(3);
+    expect(quiz).not.toEqual(fallback);
+
+    await router.navigateByUrl('/community/questions');
+    await fixture.whenStable();
+    expect(questions()).not.toEqual(quiz);
+
+    await router.navigateByUrl('/profile');
+    await fixture.whenStable();
+    expect(questions()).toEqual(fallback);
+  });
+
+  it('retries a turn through the store', async () => {
+    const { fixture, el, turns, store } = await render();
+    turns.set([
+      {
+        id: 4,
+        question: 'Câu lỗi',
+        reply: { ...turn(4, '').reply, status: 'error', error: 'Lỗi' },
+      },
+    ]);
+    await fixture.whenStable();
+    const retry = [...el.querySelectorAll('button')].find(
+      (b) => b.textContent?.trim() === 'Thử lại',
+    );
+    retry?.click();
+    expect(store.retry).toHaveBeenCalledWith(4);
+  });
+  it('offers the thumbs only under a finished answer the server stored, and hands a click to the store with the turn', async () => {
+    const { fixture, el, turns, store } = await render();
+    const done = (id: number, serverTurnId?: number): AgentTurn => ({
+      ...turn(id, 'Câu hỏi'),
+      reply: { ...turn(id, '').reply, status: 'done', text: 'Trả lời.' },
+      ...(serverTurnId ? { serverTurnId, feedback: null } : {}),
+    });
+    turns.set([done(1), done(2, 52)]);
+    await fixture.whenStable();
+    expect(el.querySelectorAll('app-answer-feedback')).toHaveLength(1);
+
+    el.querySelector<HTMLButtonElement>(
+      'app-answer-feedback button[aria-label="Câu trả lời hữu ích"]',
+    )?.click();
+    expect(store.rate).toHaveBeenCalledWith(2, { helpful: true });
   });
 });

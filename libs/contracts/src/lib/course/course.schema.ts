@@ -20,7 +20,7 @@ export type CourseLevel = z.infer<typeof CourseLevelSchema>;
 export const RequirementSchema = z.enum(['mandatory', 'optional']);
 export type Requirement = z.infer<typeof RequirementSchema>;
 
-export const LessonTypeSchema = z.enum(['content', 'quiz']);
+export const LessonTypeSchema = z.enum(['content', 'quiz', 'scorm']);
 export type LessonType = z.infer<typeof LessonTypeSchema>;
 
 export const BlockTypeSchema = z.enum([
@@ -115,6 +115,11 @@ export const CourseRevisionSchema = z.object({
   coverColor: z.string().nullish(),
   publishedAt: BackendDateTimeSchema.nullish(),
   publishedBy: z.string().nullish(),
+  /** The content was written by the AI course generation: publishing needs the author's review confirmation. */
+  aiGenerated: z.boolean().optional(),
+  /** Who confirmed the review when the revision was published, and when. */
+  reviewConfirmedBy: z.string().nullish(),
+  reviewConfirmedAt: BackendDateTimeSchema.nullish(),
   /** Send it as `expectedVersion` to save or publish this revision. */
   rowVersion: z.number().int(),
   createTime: BackendDateTimeSchema.nullish(),
@@ -159,6 +164,20 @@ export const CourseChapterSchema = z.object({
 });
 export type CourseChapter = z.infer<typeof CourseChapterSchema>;
 
+export const LessonAiStateSchema = z.enum([
+  'pending',
+  'writing',
+  'written',
+  'user_edited',
+]);
+export type LessonAiState = z.infer<typeof LessonAiStateSchema>;
+
+export const ScormCompletionRuleSchema = z.enum([
+  'completed_or_passed',
+  'passed',
+]);
+export type ScormCompletionRule = z.infer<typeof ScormCompletionRuleSchema>;
+
 export const CourseLessonSchema = z.object({
   id: z.number().int(),
   chapterId: z.number().int(),
@@ -170,9 +189,13 @@ export const CourseLessonSchema = z.object({
   sourceLessonId: z.number().int().nullish(),
   /** The quiz a `quiz` lesson opens (a quiz of the same course); null for a content lesson. */
   quizId: z.number().int().nullish(),
+  scormPackageId: z.number().int().positive().nullish(),
+  scormCompletionRule: ScormCompletionRuleSchema.nullish(),
   rowVersion: z.number().int(),
   createTime: BackendDateTimeSchema.nullish(),
   updateTime: BackendDateTimeSchema.nullish(),
+  /** Set for a lesson the AI manages; read-only, the server keeps it (a save never sends it). */
+  aiState: LessonAiStateSchema.nullish(),
 });
 export type CourseLesson = z.infer<typeof CourseLessonSchema>;
 
@@ -470,6 +493,8 @@ export const LessonInputSchema = z.object({
   isRequired: z.boolean().optional(),
   /** Only for a `quiz` lesson; a draft may leave it empty, publishing needs it. */
   quizId: z.number().int().positive().nullish(),
+  scormPackageId: z.number().int().positive().nullish(),
+  scormCompletionRule: ScormCompletionRuleSchema.nullish(),
   blocks: z.array(BlockInputSchema).max(COURSE_LIMITS.items),
 });
 export type LessonInput = z.infer<typeof LessonInputSchema>;

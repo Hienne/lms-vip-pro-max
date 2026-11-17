@@ -53,6 +53,21 @@ const text = (el: Element | null) =>
   el?.textContent?.replace(/\s+/g, ' ').trim();
 
 describe('CourseCard', () => {
+  it('labels content progress without awarding course completion at 100 percent', () => {
+    const { card } = render({ pct: 100 });
+    expect(text(card)).toContain('100% nội dung');
+    expect(text(card)).toContain('Chưa đủ điều kiện hoàn thành');
+    expect(card.querySelector('.badge--success')).toBeNull();
+  });
+
+  it('explains a failed final exam and hides that warning for a historically completed course', () => {
+    expect(text(render({ pct: 100, failed: true }).card)).toContain(
+      'Bài kiểm tra cuối khóa chưa đạt',
+    );
+    expect(
+      text(render({ pct: 100, failed: true, status: 'completed' }).card),
+    ).not.toContain('chưa đạt');
+  });
   it('is one link to the course, with no other link or button inside', () => {
     const { root, card } = render();
     expect(root.querySelectorAll('a')).toHaveLength(1);
@@ -185,7 +200,7 @@ describe('CourseCard', () => {
     ).toBe('62');
     expect(
       render().card.querySelector('ui-progress')?.getAttribute('aria-label'),
-    ).toBe('Tiến độ Tổng quan hệ thống Core Banking');
+    ).toBe('Tiến độ nội dung Tổng quan hệ thống Core Banking');
     expect(render().card.querySelector('ui-progress')?.className).not.toMatch(
       /progress--(success|danger|warning|reward)/,
     );
@@ -206,7 +221,7 @@ describe('CourseCard', () => {
     expect(text(card.querySelector('.course-card__status'))).toBe(
       'Đang học · Điểm cao nhất 60%',
     );
-    expect(text(card.querySelector('.course-card__pct'))).toBe('62%');
+    expect(text(card.querySelector('.course-card__pct'))).toBe('62% nội dung');
   });
 
   it('keeps the server decimals of the best score', () => {

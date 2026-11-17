@@ -12,6 +12,9 @@ import {
   ErrorState,
   FormActions,
   Icon,
+  Input,
+  List,
+  ListItem,
   Menu,
   PageHeader,
   Pagination,
@@ -23,6 +26,7 @@ import { OrgForm } from './components/org-form/org-form';
 import { OrgImport } from './components/org-import/org-import';
 import { TeamForm } from './components/team-form/team-form';
 import {
+  CHILD_ORGS_PAGE_SIZE,
   OrgStore,
   TEAMS_PAGE_SIZE,
   type TeamAction,
@@ -43,6 +47,9 @@ import { OrgTreeStore } from './data-access/org-tree.store';
     ErrorState,
     FormActions,
     Icon,
+    Input,
+    List,
+    ListItem,
     Menu,
     OrgForm,
     OrgImport,
@@ -59,8 +66,9 @@ import { OrgTreeStore } from './data-access/org-tree.store';
 })
 export class Org {
   protected readonly store = inject(OrgStore);
-  protected readonly previewSize = TEAM_PREVIEW_SIZE;
+  protected readonly previewSize = 3;
   protected readonly pageSize = TEAMS_PAGE_SIZE;
+  protected readonly childPageSize = CHILD_ORGS_PAGE_SIZE;
   protected readonly teamActions: readonly MenuEntry<TeamAction>[] = [
     { kind: 'item', value: 'edit', label: 'Sửa nhóm', icon: 'pen-line' },
     { kind: 'separator' },

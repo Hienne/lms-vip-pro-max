@@ -142,6 +142,15 @@
     border-top: 1px solid ui.color(border);
     font-size: ui.text-size(sm);
   }
+  &__breakdown {
+    grid-column: 1 / -1;
+    min-width: 0;
+
+    > summary {
+      cursor: pointer;
+      margin-bottom: ui.space(3);
+    }
+  }
   &__detail {
     min-width: 0;
     overflow: hidden;
@@ -153,7 +162,7 @@
   &__group-name {
     @include ui.truncate;
     display: block;
-    max-width: 28ch;
+    max-width: 100%;
   }
   &__number {
     @include ui.num;
@@ -199,5 +208,16 @@
 .report-screen__analytics {
   @include ui.bp(md) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.report-screen__result-context {
+  @include ui.stack(2);
+  @include ui.text(sm, muted);
+  padding: ui.space(4) ui.space(5);
+
+  p {
+    margin: 0;
+    overflow-wrap: anywhere;
   }
 }

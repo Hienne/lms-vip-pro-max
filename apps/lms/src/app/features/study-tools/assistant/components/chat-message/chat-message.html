@@ -4,14 +4,13 @@
 </div>
 <div class="message">
   <span class="message__who">Trợ lý</span>
-  @let answer = turn().answer; @let view = content(); @if (answer.text) {
-  <p class="message__answer">
-    @for (part of view.parts; track $index) { @if (part.kind === 'text') {
-    <span class="message__run">{{ part.text }}</span>
-    } @else {
-    <app-source-badge [citation]="part.citation" />
-    } }
-  </p>
+  @let answer = turn().answer; @if (answer.text) {
+  <app-assistant-markdown
+    class="message__answer"
+    [text]="answer.text"
+    [citations]="answer.citations"
+    [badges]="true"
+  />
   } @else if (answer.status === 'searching') {
   <p class="message__progress">
     <span uiSpinner label="Đang tìm"></span>Đang tìm trong tài liệu…
@@ -21,12 +20,36 @@
     <span uiSpinner label="Đang soạn"></span>Đã tìm thấy {{ answer.retrieved }}
     đoạn liên quan, đang soạn câu trả lời…
   </p>
-  } @if (answer.status === 'done' && view.unmarked.length > 0) {
-  <ul class="message__sources" aria-label="Nguồn của câu trả lời">
-    @for (citation of view.unmarked; track citation.n) {
-    <li><app-source-badge [citation]="citation" /></li>
-    }
-  </ul>
+  } @if (answer.status === 'done' && answer.citations.length > 0) {
+  <div uiCard class="sources">
+    <ol uiList class="sources__list" aria-label="Nguồn của câu trả lời">
+      @for (citation of answer.citations; track citation.n) {
+      <li>
+        @if (citation.lesson; as lesson) {
+        <a uiListItem class="source" [routerLink]="lesson.url">
+          <ng-container
+            [ngTemplateOutlet]="sourceRow"
+            [ngTemplateOutletContext]="{ $implicit: citation }"
+          />
+        </a>
+        } @else {
+        <button
+          uiListItem
+          type="button"
+          class="source"
+          [attr.aria-label]="'Mở ' + name(citation)"
+          (click)="viewer.open(citation)"
+        >
+          <ng-container
+            [ngTemplateOutlet]="sourceRow"
+            [ngTemplateOutletContext]="{ $implicit: citation }"
+          />
+        </button>
+        }
+      </li>
+      }
+    </ol>
+  </div>
   } @else if (answer.status === 'stopped') {
   <p class="message__note">
     Đã dừng.
@@ -41,5 +64,29 @@
       Thử lại
     </button>
   </p>
+  } @if (answer.status === 'done' && answer.text && answer.grounded === false) {
+  <p class="message__note message__no-source">Chưa có nguồn</p>
+  } @if (answer.status === 'done' && answer.text && turn().serverTurnId) {
+  <app-answer-feedback
+    class="message__feedback"
+    [value]="turn().feedback ?? null"
+    [saving]="ratingBusy()"
+    [failed]="ratingFailed()"
+    (rated)="rated.emit({ turnId: turn().id, command: $event })"
+  />
+  } @if (answer.action; as action) {
+  <p class="message__note">
+    Đề xuất “{{ action.title }}”: {{ actionStatus[action.status] }}{{
+    action.message ? '. ' + action.message : '' }}
+  </p>
   }
 </div>
+
+<ng-template #sourceRow let-citation>
+  <span uiBadge outline class="source__n">{{ citation.n }}</span>
+  <span class="source__text">
+    <span class="source__file">{{ citation.fileName }}</span>
+    <span class="source__where">{{ location(citation) }}</span>
+  </span>
+  <ui-icon class="source__go" name="chevron-right" size="sm" />
+</ng-template>

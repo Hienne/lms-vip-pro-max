@@ -12,7 +12,26 @@ const citation = (over: Partial<Citation>): Citation => ({
   ...over,
 });
 
+const lessonSource = {
+  courseId: 5,
+  courseTitle: 'Tín dụng',
+  revisionId: 50,
+  chapterTitle: 'Chương 1',
+  lessonId: 9,
+  lessonTitle: 'Lãi suất',
+  blockId: 3,
+  url: '/lesson/5/9',
+};
+
 describe('citationLocation', () => {
+  it('places a lesson by its chapter and lesson, not by page and line', () => {
+    const lesson = citation({ documentId: 0, lesson: lessonSource });
+    expect(citationLocation(lesson)).toBe('Chương 1 · Lãi suất');
+    expect(citationName(lesson)).toBe(
+      'Nguồn 1: quy-trinh.pdf, Chương 1, Lãi suất',
+    );
+  });
+
   it('names the page and the lines for a PDF', () => {
     expect(
       citationLocation(citation({ page: 3, lineStart: 13, lineEnd: 27 })),

@@ -113,6 +113,13 @@ lowers counts. Never raise a count or add a file by hand; the baseline is owned 
 real exception is one line with a trailing `design-drift-allow: <rule> <reason>` comment, which
 review must accept.
 
+## UI terminology
+
+Use **Nhóm năng lực** for competency groups in filters, forms, results, reports and import guidance.
+Use **Bài kiểm tra** for a configured assessment and **Bài kiểm tra cuối khóa** for the final assessment.
+Keep **lượt thi**, **điểm đạt**, **thi lại** and **nộp bài** for the learner's attempt and actions.
+Course percentages describe **tiến độ nội dung**; course completion and eligibility come from the server.
+
 ## Known violations (do not copy)
 
 These are still in the code. Do not copy or extend them. Fix one only when the task is that fix,

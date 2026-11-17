@@ -23,13 +23,15 @@ import {
   Field,
   FormActions,
   Icon,
-  Kpi,
   IconButton,
   Input,
   PageHeader,
   Search,
+  SectionCard,
   Select,
   Spinner,
+  Stat,
+  StatStrip,
   Textarea,
   type DataTableColumn,
   DateInput,
@@ -44,6 +46,7 @@ import { AssessmentScreenStore } from './data-access/assessment-screen.store';
 import { QuizAttemptGrant } from './components/quiz-attempt-grant/quiz-attempt-grant';
 import { QuestionImport } from '../../../shared/quiz/question-import/question-import';
 import { QUESTION_IMPORT_HOST } from '../../../shared/quiz/question-import/data-access/question-import.host';
+import { randomId } from '../../../core/browser/secure-context';
 
 const questionSchema = SaveQuestionSchema.omit({
   domainId: true,
@@ -69,6 +72,7 @@ const questionSchema = SaveQuestionSchema.omit({
       )
       .min(2)
       .max(10),
+    correctOptionIds: z.array(z.string()),
   })
   .superRefine((q, ctx) => {
     if (
@@ -194,7 +198,7 @@ function quizValue(
     scoreMethod: q?.scoreMethod ?? ('BEST' as const),
     graceSeconds: q?.graceSeconds ?? 0,
     allowRetakeAfterPass: q?.allowRetakeAfterPass ?? false,
-    requireLessonsCompleted: q?.requireLessonsCompleted ?? false,
+    requireLessonsCompleted: q?.requireLessonsCompleted ?? true,
   };
 }
 @Component({
@@ -220,13 +224,15 @@ function quizValue(
     Icon,
     IconButton,
     Input,
-    Kpi,
     PageHeader,
     QuestionImport,
     QuizAttemptGrant,
     Search,
+    SectionCard,
     Select,
     Spinner,
+    Stat,
+    StatStrip,
     Textarea,
   ],
   providers: [
@@ -267,19 +273,56 @@ export class AssessmentScreen {
     { key: 'contentPreview', label: 'Nội dung', sortable: false },
     { key: 'questionType', label: 'Loại', sortable: false },
     { key: 'difficulty', label: 'Độ khó', sortable: false },
-    { key: 'competencyName', label: 'Nhóm kiến thức', sortable: false },
+    { key: 'competencyName', label: 'Nhóm năng lực', sortable: false },
     { key: 'usedInQuizCount', label: 'Dùng trong', sortable: false },
     { key: 'status', label: 'Trạng thái', sortable: false },
     { key: 'actions', label: '', sortable: false, kind: 'actions' },
   ];
   protected readonly quizColumns: readonly DataTableColumn[] = [
-    { key: 'title', label: 'Bài kiểm tra', sortable: false },
-    { key: 'questionCount', label: 'Số câu', sortable: false },
-    { key: 'timeLimitMinutes', label: 'Phút', sortable: false },
-    { key: 'gradedAttempts', label: 'Lượt đã chấm', sortable: false },
-    { key: 'passedAttempts', label: 'Lượt đạt', sortable: false },
-    { key: 'status', label: 'Trạng thái', sortable: false },
-    { key: 'actions', label: '', sortable: false, kind: 'actions' },
+    { nowrap: true, key: 'title', label: 'Bài kiểm tra', sortable: false },
+    {
+      width: '5rem',
+      nowrap: true,
+      key: 'questionCount',
+      label: 'Số câu',
+      sortable: false,
+    },
+    {
+      width: '5rem',
+      nowrap: true,
+      key: 'timeLimitMinutes',
+      label: 'Phút',
+      sortable: false,
+    },
+    {
+      width: '9rem',
+      nowrap: true,
+      key: 'gradedAttempts',
+      label: 'Lượt đã chấm',
+      sortable: false,
+    },
+    {
+      width: '7rem',
+      nowrap: true,
+      key: 'passedAttempts',
+      label: 'Lượt đạt',
+      sortable: false,
+    },
+    {
+      width: '10rem',
+      nowrap: true,
+      key: 'status',
+      label: 'Trạng thái',
+      sortable: false,
+    },
+    {
+      width: '4rem',
+      nowrap: true,
+      key: 'actions',
+      label: '',
+      sortable: false,
+      kind: 'actions',
+    },
   ];
   private readonly questionModel = linkedSignal(() => {
     this.store.editorOpen$();
@@ -418,6 +461,7 @@ export class AssessmentScreen {
     }
   }
   protected setCorrect(id: string, checked: boolean): void {
+    this.questionForm.correctOptionIds().markAsTouched();
     this.questionModel.update((q) => ({
       ...q,
       correctOptionIds:
@@ -431,7 +475,7 @@ export class AssessmentScreen {
   protected addOption(): void {
     this.questionModel.update((q) => ({
       ...q,
-      options: [...q.options, { id: crypto.randomUUID(), text: '' }],
+      options: [...q.options, { id: randomId(), text: '' }],
     }));
   }
   protected removeOption(id: string): void {

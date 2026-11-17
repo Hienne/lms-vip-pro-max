@@ -6,9 +6,11 @@ import {
   input,
   linkedSignal,
   output,
+  signal,
 } from '@angular/core';
 import {
   applyEach,
+  applyWhenValue,
   form,
   FormField,
   FormRoot,
@@ -17,11 +19,13 @@ import {
   min,
   required,
   submit,
+  validate,
 } from '@angular/forms/signals';
 import {
   BlockTypeSchema,
   COURSE_LIMITS,
   type BlockType,
+  type BodyFormat,
   type LibraryAsset,
   type QuizSummary,
 } from '@lms/contracts';
@@ -36,10 +40,12 @@ import {
   IconButton,
   Input,
   Select,
+  SearchSelect,
   Textarea,
   UploadItem,
 } from '@lms/ui';
 import { AssetLibrary } from '../asset-library/asset-library';
+import { LessonTextEditor } from './lesson-text-editor';
 import { AssetLibraryStore } from '../asset-library/data-access/asset-library.store';
 import {
   BLOCK_TYPES,
@@ -63,20 +69,34 @@ import {
   type UploadEntry,
 } from '../../data-access/upload-entry';
 import { firstValueFrom } from 'rxjs';
+import { lessonImageIds } from '../../../../../shared/content/markdown/lesson-html';
+import { DOCUMENT } from '@angular/core';
+import { LessonScormUploadStore } from './lesson-scorm-upload.store';
 
 /** A block as the form edits it: process steps as one line each, "Tiêu đề | Mô tả". */
-type BlockFormValue = Omit<BlockValue, 'steps'> & { stepsText: string };
-type LessonFormValue = Omit<LessonValue, 'blocks' | 'quizId'> & {
+type BlockFormValue = Omit<BlockValue, 'steps' | 'bodyFormat'> & {
+  bodyFormat: BodyFormat;
+  stepsText: string;
+};
+type LessonFormValue = Omit<
+  LessonValue,
+  'blocks' | 'quizId' | 'scormPackageId' | 'scormCompletionRule'
+> & {
   /** The chosen quiz's id as the select holds it; empty when none. */
   quizId: string;
+  scormPackageId: string;
+  scormCompletionRule: NonNullable<LessonValue['scormCompletionRule']>;
   blocks: BlockFormValue[];
 };
 
 const toFormValue = (lesson: LessonValue): LessonFormValue => ({
   ...lesson,
+  scormPackageId: lesson.scormPackageId ? String(lesson.scormPackageId) : '',
+  scormCompletionRule: lesson.scormCompletionRule ?? 'completed_or_passed',
   quizId: lesson.quizId === null ? '' : String(lesson.quizId),
   blocks: lesson.blocks.map(({ steps, ...block }) => ({
     ...block,
+    bodyFormat: block.bodyFormat ?? 'markdown',
     stepsText: steps
       .map((s) => (s.description ? `${s.title} | ${s.description}` : s.title))
       .join('\n'),
@@ -130,11 +150,13 @@ const quizLabel = (quiz: QuizSummary): string =>
     Icon,
     IconButton,
     Input,
+    LessonTextEditor,
     Select,
+    SearchSelect,
     Textarea,
     UploadItem,
   ],
-  providers: [AssetLibraryStore],
+  providers: [AssetLibraryStore, LessonScormUploadStore],
   templateUrl: './lesson-form.html',
   styleUrl: './lesson-form.scss',
 })
@@ -143,16 +165,32 @@ export class LessonForm {
   readonly submitted = output<LessonValue>();
 
   protected readonly store = inject(CourseEditorStore);
+  protected readonly scormUpload = inject(LessonScormUploadStore);
   protected readonly library = inject(AssetLibraryStore);
   private readonly dialog = inject(Dialog);
+  private readonly document = inject(DOCUMENT);
+  private readonly inlineUploads = signal<ReadonlySet<string>>(new Set());
+  readonly inlineUploading$ = computed(
+    () => this.inlineUploads().size > 0 || this.scormUpload.pending$(),
+  );
   /** Files chosen in this editor, by block key. */
   protected readonly uploads = this.store.uploads$;
   /** Uploads a reload stopped, by the index of their block in this lesson. */
   protected readonly interrupted = this.store.interrupted$;
   protected readonly itemState = itemState;
   protected readonly isCancellable = isCancellable;
+  protected readonly isBusy = isBusy;
   protected readonly blockTypes = BLOCK_TYPES;
+  /** Two sample lines for an empty "Quy trình từng bước" block, so the format reads at a glance. */
+  protected readonly processExample =
+    'Kiểm tra hồ sơ | Đối chiếu giấy tờ tùy thân với thông tin trên hệ thống\nDuyệt giao dịch | Kiểm soát viên phê duyệt trên màn hình chờ duyệt';
   protected readonly addable = BlockTypeSchema.options;
+  protected readonly mediaBlocks = [
+    'image',
+    'video',
+    'pdf',
+    'attachment',
+  ] as const;
   protected readonly acceptOf = acceptOf;
   protected readonly uploadHintOf = uploadHintOf;
   protected readonly holdsFile = (type: BlockType) => !!FILE_USAGE[type];
@@ -161,7 +199,20 @@ export class LessonForm {
   protected readonly lessonForm = form(
     this.model,
     (path) => {
+      validate(path.scormPackageId, ({ value }) =>
+        this.model().lessonType === 'scorm' && !value()
+          ? {
+              kind: 'required',
+              message: 'Tải tệp ZIP hoặc chọn bài giảng SCORM từ thư viện.',
+            }
+          : undefined,
+      );
       required(path.title, { message: 'Nhập tên bài học.' });
+      validate(path.title, ({ value }) =>
+        value() && !value().trim()
+          ? { kind: 'blank', message: 'Nhập tên bài học.' }
+          : undefined,
+      );
       maxLength(path.title, COURSE_LIMITS.title, {
         message: `Tên bài học tối đa ${COURSE_LIMITS.title} ký tự.`,
       });
@@ -170,15 +221,37 @@ export class LessonForm {
       max(path.minutes, COURSE_LIMITS.lessonSeconds / 60, {
         message: 'Thời lượng tối đa 24 giờ.',
       });
-      applyEach(path.blocks, (block) => {
-        required(block.title, { message: 'Nhập tiêu đề khối.' });
-        maxLength(block.title, COURSE_LIMITS.title, {
-          message: `Tiêu đề khối tối đa ${COURSE_LIMITS.title} ký tự.`,
-        });
-        maxLength(block.body, COURSE_LIMITS.body, {
-          message: `Nội dung tối đa ${COURSE_LIMITS.body} ký tự.`,
-        });
+      maxLength(path.blocks, COURSE_LIMITS.items, {
+        message: `Tối đa ${COURSE_LIMITS.items} khối mỗi bài.`,
       });
+      validate(path.blocks, () =>
+        this.inlineUploads().size
+          ? {
+              kind: 'upload',
+              message: 'Chờ tải ảnh trong nội dung hoàn tất trước khi lưu bài.',
+            }
+          : undefined,
+      );
+      applyWhenValue(
+        path,
+        (value) => value.lessonType === 'content',
+        (content) => {
+          applyEach(content.blocks, (block) => {
+            required(block.title, { message: 'Nhập tiêu đề khối.' });
+            validate(block.title, ({ value }) =>
+              value() && !value().trim()
+                ? { kind: 'blank', message: 'Nhập tiêu đề khối.' }
+                : undefined,
+            );
+            maxLength(block.title, COURSE_LIMITS.title, {
+              message: `Tiêu đề khối tối đa ${COURSE_LIMITS.title} ký tự.`,
+            });
+            maxLength(block.body, COURSE_LIMITS.body, {
+              message: `Nội dung tối đa ${COURSE_LIMITS.body} ký tự.`,
+            });
+          });
+        },
+      );
     },
     { submission: { action: async () => this.apply() } },
   );
@@ -195,6 +268,56 @@ export class LessonForm {
   });
 
   /** The course's quizzes to pick from; the chosen one stays listed even when it is no longer there. */
+  protected readonly missingScormOption = computed(() => {
+    const chosen = this.model().scormPackageId;
+    return (
+      chosen !== '' &&
+      !this.store.scormPackages$().some((item) => String(item.id) === chosen)
+    );
+  });
+  protected readonly scormOptions = computed(() => {
+    const options = this.store.scormPackages$().map((item) => ({
+      value: String(item.id),
+      label: item.title + (item.published ? '' : ' (Nháp)'),
+    }));
+    const selected = this.model().scormPackageId;
+    return this.missingScormOption()
+      ? [
+          ...options,
+          { value: selected, label: `Bài giảng #${selected} (đang gắn)` },
+        ]
+      : options;
+  });
+
+  protected readonly selectedScorm = computed(() => {
+    const id = Number(this.model().scormPackageId);
+    const uploaded = this.scormUpload.lecture$();
+    return uploaded?.id === id
+      ? uploaded
+      : this.store.scormPackages$().find((item) => item.id === id);
+  });
+
+  protected openScormLibrary(): void {
+    this.scormUpload.setLibraryOpen(true);
+    this.store.reloadScorm();
+  }
+
+  protected importScorm(files: readonly File[]): void {
+    this.scormUpload.import(files[0], this.store.ownerOrgId$(), (lecture) => {
+      this.model.update((value) => ({
+        ...value,
+        scormPackageId: String(lecture.id),
+        title: value.title.trim() ? value.title : lecture.title,
+      }));
+    });
+  }
+
+  protected pickedScorm(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.importScorm(Array.from(input.files ?? []));
+    input.value = '';
+  }
+
   protected readonly quizOptions = computed(() => {
     const options = this.store
       .quizzes$()
@@ -216,7 +339,7 @@ export class LessonForm {
    * cannot be saved. A block whose file is still uploading is saved; the asset joins it when done.
    */
   protected readonly missingFiles = computed(() =>
-    this.model().lessonType === 'quiz'
+    this.model().lessonType !== 'content'
       ? []
       : this.model().blocks.filter(
           (b) =>
@@ -229,14 +352,22 @@ export class LessonForm {
 
   /** The drawer's "Lưu" when it is not the footer button that was pressed; false while invalid. */
   save(): Promise<boolean> {
+    if (this.scormUpload.pending$()) return Promise.resolve(false);
     return submit(this.lessonForm);
   }
 
-  protected addBlock(type: BlockType): void {
+  protected addBlock(
+    type: BlockType,
+    index = this.model().blocks.length,
+  ): void {
     const { steps: _steps, ...block } = newBlock(type);
     this.model.update((value) => ({
       ...value,
-      blocks: [...value.blocks, { ...block, stepsText: '' }],
+      blocks: [
+        ...value.blocks.slice(0, index),
+        { ...block, bodyFormat: 'markdown', stepsText: '' },
+        ...value.blocks.slice(index),
+      ],
     }));
   }
 
@@ -250,8 +381,7 @@ export class LessonForm {
   }
 
   /** Removes a block; one whose file is still uploading asks first, and its upload is stopped. */
-  protected async removeBlock(index: number): Promise<void> {
-    const key = this.model().blocks[index].key;
+  protected async removeBlock(key: string): Promise<void> {
     if (isBusy(this.uploads()[key])) {
       const confirmed = await firstValueFrom(
         confirm(this.dialog, {
@@ -266,8 +396,9 @@ export class LessonForm {
     }
     this.model.update((value) => ({
       ...value,
-      blocks: value.blocks.filter((_, i) => i !== index),
+      blocks: value.blocks.filter((block) => block.key !== key),
     }));
+    this.inlineUploading(key, false);
   }
 
   /** A file from the dropzone or a picker; with `resuming` it continues the interrupted upload. */
@@ -279,6 +410,7 @@ export class LessonForm {
   ): void {
     const file = files[0];
     if (!file) return;
+    this.retainAttachments(block.key);
     const request = {
       blockKey: block.key,
       blockType: block.blockType,
@@ -301,16 +433,66 @@ export class LessonForm {
     input.value = '';
   }
 
+  protected imageAdded(key: string, asset: AssetValue): void {
+    this.model.update((value) => ({
+      ...value,
+      blocks: value.blocks.map((block) =>
+        block.key === key
+          ? {
+              ...block,
+              assets: [
+                ...block.assets.filter(
+                  (existing) => existing.assetId !== asset.assetId,
+                ),
+                asset,
+              ],
+            }
+          : block,
+      ),
+    }));
+  }
+
+  protected inlineUploading(key: string, pending: boolean): void {
+    this.inlineUploads.update((keys) => {
+      if (keys.has(key) === pending) return keys;
+      const next = new Set(keys);
+      if (pending) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  }
+
+  protected prepareExam(): void {
+    if (this.inlineUploading$() || this.store.lessonUploading$()) return;
+    this.apply();
+    this.store.goToStep(2);
+  }
+
   /** A file picked from the library goes to the block like a finished upload. */
   protected useLibraryAsset(asset: LibraryAsset): void {
     const target = this.library.target$();
     if (!target) return;
+    this.retainAttachments(target.blockKey);
     this.store.attach({ ...target, asset });
     this.library.close();
   }
 
+  /** Keep completed attachments before the next upload replaces the block's live upload entry. */
+  private retainAttachments(key: string): void {
+    const files = this.files()[key];
+    if (!files?.length) return;
+    this.model.update((value) => ({
+      ...value,
+      blocks: value.blocks.map((block) =>
+        block.key === key && block.blockType === 'attachment'
+          ? { ...block, assets: files }
+          : block,
+      ),
+    }));
+  }
+
   private apply(): void {
-    if (this.missingFiles().length) return;
+    if (this.missingFiles().length || this.scormUpload.pending$()) return;
     const value = this.model();
     const files = this.files();
     this.submitted.emit({
@@ -319,13 +501,29 @@ export class LessonForm {
         value.lessonType === 'quiz' && value.quizId
           ? Number(value.quizId)
           : null,
+      scormPackageId:
+        value.lessonType === 'scorm' && value.scormPackageId
+          ? Number(value.scormPackageId)
+          : null,
+      scormCompletionRule:
+        value.lessonType === 'scorm' ? value.scormCompletionRule : null,
       title: value.title.trim(),
-      blocks: value.blocks.map(({ stepsText, ...block }) => ({
-        ...block,
-        title: block.title.trim(),
-        assets: files[block.key] ?? block.assets,
-        steps: block.blockType === 'process' ? toSteps(stepsText) : [],
-      })),
+      blocks: (value.lessonType === 'content' ? value.blocks : []).map(
+        ({ stepsText, bodyFormat, ...block }) => ({
+          ...block,
+          ...(block.blockType === 'text' ? { bodyFormat } : {}),
+          title: block.title.trim(),
+          assets:
+            block.blockType === 'text'
+              ? block.assets.filter((asset) =>
+                  lessonImageIds(block.body, this.document).includes(
+                    asset.assetId,
+                  ),
+                )
+              : (files[block.key] ?? block.assets),
+          steps: block.blockType === 'process' ? toSteps(stepsText) : [],
+        }),
+      ),
     });
   }
 }

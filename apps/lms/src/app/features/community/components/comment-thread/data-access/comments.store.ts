@@ -10,6 +10,7 @@ import { EndpointClient } from '../../../../../core/http/endpoint-client';
 import { CommunityChanges } from '../../../data-access/community-changes';
 import { reloadOnConflict } from '../../../data-access/conflict';
 import { reportContent } from '../../report-dialog/report-dialog';
+import { randomId } from '../../../../../core/browser/secure-context';
 
 /** The comments one content shows; the first page holds them all for a discussion this size. */
 const PAGE_SIZE = 100;
@@ -47,7 +48,7 @@ export class CommentsStore {
     page: signal(1),
     target: signal<CommentDraftTarget | undefined>(undefined),
     /** One id per opened composer, so a retried send does not post twice. */
-    requestId: signal(crypto.randomUUID()),
+    requestId: signal(randomId()),
   };
 
   private readonly commentsData = serverData(
@@ -208,7 +209,7 @@ export class CommentsStore {
 
   private setTarget(target: CommentDraftTarget | undefined): void {
     this.state.target.set(target);
-    this.state.requestId.set(crypto.randomUUID());
+    this.state.requestId.set(randomId());
   }
 
   // Commands

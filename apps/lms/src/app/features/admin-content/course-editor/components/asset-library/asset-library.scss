@@ -1,43 +1,53 @@
 @use 'ui';
-
 .asset-library {
   @include ui.stack(4);
-
+  min-inline-size: 0;
+  &__edit {
+    @include ui.stack(3);
+    overflow-wrap: anywhere;
+  }
   &__toolbar {
     @include ui.row(3);
     flex-wrap: wrap;
     justify-content: space-between;
   }
-
-  &__count {
+  &__name-wrap {
+    min-inline-size: 0;
+    max-inline-size: 100%;
+  }
+  &__name {
+    @include ui.clamp(2);
+    overflow-wrap: anywhere;
+  }
+  &__count,
+  &__meta {
     @include ui.text(sm, muted);
   }
-
   &__loading {
     display: flex;
     justify-content: center;
     padding-block: ui.space(10);
   }
-
-  &__pick {
-    max-width: 100%;
-    justify-content: flex-start;
-    text-align: start;
-    overflow-wrap: anywhere;
+  &__row {
+    display: flex;
+    align-items: flex-start;
+    gap: ui.space(2);
+    min-inline-size: 0;
   }
-
   &__file {
     @include ui.stack(1);
     min-inline-size: 0;
+    flex: 1;
   }
-
-  &__mime {
-    @include ui.text(xs, muted);
-    padding-inline: ui.space(3);
+  &__pick {
+    max-inline-size: 100%;
+    justify-content: flex-start;
+    text-align: start;
+    white-space: normal;
     overflow-wrap: anywhere;
   }
-
-  &__num {
-    @include ui.num;
+  &__meta {
+    padding-inline: ui.space(3);
+    overflow-wrap: anywhere;
   }
 }

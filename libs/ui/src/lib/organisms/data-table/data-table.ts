@@ -88,7 +88,9 @@ export class DataTable<T extends { readonly id: string | number }> {
     const columns = this.columns();
     const free = columns.filter((column) => column.width === undefined).length;
     if (!this.fixed() || free === 0) return null;
-    const parts = columns.flatMap((column) => (column.width ? [column.width] : []));
+    const parts = columns.flatMap((column) =>
+      column.width ? [column.width] : [],
+    );
     return `calc(${[...parts, `${free} * ${FREE_COLUMN_MIN}`].join(' + ')})`;
   });
 

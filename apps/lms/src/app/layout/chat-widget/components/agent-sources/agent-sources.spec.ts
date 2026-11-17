@@ -2,7 +2,14 @@ import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { Citation } from '@lms/contracts';
 import { knowledgeAnswerFixture } from '@lms/mocks';
+import { SourceViewerStore } from '../../../../core/assistant/source-viewer.store';
 import { AgentSources } from './agent-sources';
+import {
+  parseAppConfig,
+  provideAppConfig,
+} from '../../../../core/config/app-config';
+import { testAppConfig } from '../../../../core/config/app-config.testing';
+import { provideEnvelopeHttpClient } from '../../../../core/http/http.testing';
 
 @Component({
   selector: 'app-host',
@@ -16,6 +23,14 @@ class Host {
 }
 
 describe('AgentSources', () => {
+  beforeEach(() =>
+    TestBed.configureTestingModule({
+      providers: [
+        provideAppConfig(parseAppConfig(testAppConfig())),
+        provideEnvelopeHttpClient(),
+      ],
+    }),
+  );
   async function render(citations?: readonly Citation[]) {
     const fixture = TestBed.createComponent(Host);
     if (citations) fixture.componentInstance.citations.set(citations);
@@ -56,5 +71,33 @@ describe('AgentSources', () => {
     expect(document.body.textContent).toContain(
       knowledgeAnswerFixture.citations[0].snippet,
     );
+  });
+
+  it('shows the section path in the popover when the chunk has one', async () => {
+    const [first] = knowledgeAnswerFixture.citations;
+    const { fixture, lines } = await render([
+      { ...first, sectionPath: 'Quy trình EOD › Đóng sổ' },
+    ]);
+    lines()[0].click();
+    await fixture.whenStable();
+    expect(document.body.querySelector('.sources__section')?.textContent).toBe(
+      'Quy trình EOD › Đóng sổ',
+    );
+  });
+
+  it('"Xem trong tài liệu" closes the popover and opens the source viewer on that source', async () => {
+    const { fixture, lines } = await render();
+    const store = TestBed.inject(SourceViewerStore);
+    const open = vi.spyOn(store, 'open').mockImplementation(() => undefined);
+    lines()[0].click();
+    await fixture.whenStable();
+    const view = [
+      ...document.body.querySelectorAll<HTMLButtonElement>('.sources__open'),
+    ].find((b) => b.textContent?.includes('Xem trong tài liệu'));
+    view?.click();
+    await fixture.whenStable();
+
+    expect(open).toHaveBeenCalledWith(knowledgeAnswerFixture.citations[0]);
+    expect(document.body.querySelector('.sources__open')).toBeNull();
   });
 });

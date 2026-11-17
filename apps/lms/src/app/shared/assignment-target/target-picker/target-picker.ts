@@ -15,9 +15,14 @@ import {
   Icon,
   Segmented,
   Select,
+  MultiSelect,
   type SegmentedOption,
 } from '@lms/ui';
-import { TARGET_TYPE_LABEL, type TargetPick } from '../target-labels';
+import {
+  TARGET_TYPE_LABEL,
+  sameTarget,
+  type TargetPick,
+} from '../target-labels';
 import { TargetOptionsStore } from './data-access/target-options.store';
 
 interface PickerValue {
@@ -44,7 +49,16 @@ const EMPTY: Omit<PickerValue, 'targetType'> = {
  */
 @Component({
   selector: 'app-target-picker',
-  imports: [Button, Checkbox, Field, FormField, Icon, Segmented, Select],
+  imports: [
+    Button,
+    Checkbox,
+    Field,
+    FormField,
+    Icon,
+    Segmented,
+    Select,
+    MultiSelect,
+  ],
   providers: [TargetOptionsStore],
   templateUrl: './target-picker.html',
   styleUrl: './target-picker.scss',
@@ -55,6 +69,10 @@ export class TargetPicker {
   /** The add button's label: the host says what is being added. */
   readonly addLabel = input('Thêm');
   readonly added = output<TargetPick>();
+  readonly multiple = input(false);
+  readonly selected = input<readonly TargetPick[]>([]);
+  readonly limit = input(Number.MAX_SAFE_INTEGER);
+  readonly selectionChange = output<readonly TargetPick[]>();
 
   protected readonly types: readonly SegmentedOption<TargetType>[] = (
     ['org', 'team', 'learning_group', 'user'] as const
@@ -65,6 +83,95 @@ export class TargetPicker {
     ...EMPTY,
   });
   protected readonly pickerForm = form(this.model);
+
+  protected readonly available = computed((): readonly TargetPick[] => {
+    const value = this.model();
+    switch (value.targetType) {
+      case 'user':
+        return this.options.people$().map((p) => ({
+          targetType: 'user',
+          userId: p.userId,
+          label: `${p.fullName} · ${p.userId}`,
+        }));
+      case 'org':
+        return this.options.orgs$().map((org) => ({
+          targetType: 'org',
+          orgId: org.id,
+          includeDescendants: value.includeDescendants,
+          label:
+            org.name + (value.includeDescendants ? ' và đơn vị cấp dưới' : ''),
+        }));
+      case 'learning_group':
+        return this.options.groups$().map((group) => ({
+          targetType: 'learning_group',
+          groupId: group.id,
+          label: group.name,
+        }));
+      case 'team':
+        return value.orgId
+          ? this.options.teams$().map((team) => ({
+              targetType: 'team',
+              teamId: team.id,
+              label: `${team.name} · ${this.options.orgs$().find((org) => String(org.id) === value.orgId)?.name ?? ''}`,
+            }))
+          : [];
+    }
+  });
+  protected readonly multiOptions = computed(() =>
+    this.available().map((pick) => ({
+      value: this.key(pick),
+      label: pick.label,
+    })),
+  );
+  protected readonly selectedValues = computed(() =>
+    this.available()
+      .filter((pick) =>
+        this.selected().some((selected) => sameTarget(selected, pick)),
+      )
+      .map((pick) => this.key(pick)),
+  );
+  protected readonly visibleLimit = computed(() =>
+    Math.max(
+      0,
+      this.limit() - (this.selected().length - this.selectedValues().length),
+    ),
+  );
+  protected readonly targetLabel = computed(
+    () => TARGET_TYPE_LABEL[this.model().targetType],
+  );
+
+  protected selectMany(values: readonly string[]): void {
+    const available = this.available();
+    this.selectionChange.emit([
+      ...this.selected().filter(
+        (selected) => !available.some((pick) => sameTarget(selected, pick)),
+      ),
+      ...available.filter((pick) => values.includes(this.key(pick))),
+    ]);
+  }
+
+  protected descendantsChanged(event: Event): void {
+    if (!this.multiple()) return;
+    const includeDescendants = (event.target as HTMLInputElement).checked;
+    this.model.update((value) => ({ ...value, includeDescendants }));
+    this.selectionChange.emit(
+      this.selected().map((pick) => {
+        if (pick.targetType !== 'org') return pick;
+        const org = this.options.orgs$().find((org) => org.id === pick.orgId);
+        return {
+          ...pick,
+          includeDescendants,
+          label:
+            (org?.name ?? pick.label.replace(/ và đơn vị cấp dưới$/, '')) +
+            (includeDescendants ? ' và đơn vị cấp dưới' : ''),
+        };
+      }),
+    );
+  }
+
+  private key(pick: TargetPick): string {
+    return `${pick.targetType}:${pick.userId ?? pick.orgId ?? pick.teamId ?? pick.groupId}`;
+  }
 
   /** The pick as a target, or null while a part is missing. */
   protected readonly pick = computed((): TargetPick | null => {

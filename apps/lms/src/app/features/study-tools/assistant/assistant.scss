@@ -9,11 +9,19 @@
   min-height: 0;
 }
 
-:host(.assistant--panel) {
-  grid-template-columns: minmax(0, 1fr) ui.layout(panel);
+:host(.assistant--history) {
+  grid-template-columns: ui.layout(panel) minmax(0, 1fr);
 }
 
-// Shared by the two bars so their bottom borders line up.
+:host(.assistant--source) {
+  grid-template-columns: minmax(0, 1fr) ui.layout(assistant);
+}
+
+:host(.assistant--history.assistant--source) {
+  grid-template-columns: ui.layout(panel) minmax(0, 1fr) ui.layout(assistant);
+}
+
+// Shared by the bars so their bottom borders line up.
 %bar {
   display: flex;
   align-items: center;
@@ -38,12 +46,18 @@
     justify-content: space-between;
   }
 
+  &__heading {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.space(2) ui.space(3);
+    align-items: center;
+    min-width: 0;
+  }
+
   &__title {
     @include ui.text(lg);
     margin: 0;
-    font-family: ui.font(sans);
     font-weight: ui.weight(semibold);
-    letter-spacing: normal;
   }
 
   &__toggle {
@@ -86,17 +100,74 @@
     margin-inline: auto;
   }
 
+  // What the next question searches (it cannot be narrowed until the server can); opens the documents.
+  &__scope {
+    @include ui.text(sm, secondary);
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.space(1) ui.space(3);
+    align-items: center;
+  }
+
+  // The ghost button's padding would push the icon off the column's edge.
+  &__scope-open {
+    margin-inline-start: calc(-1 * #{ui.space(2)});
+    font-weight: ui.weight(regular);
+  }
+
+  &__processing {
+    @include ui.num;
+  }
+
   &__note {
-    @include ui.text(xs, muted);
+    @include ui.text(sm, muted);
+    display: flex;
+    gap: ui.space(2);
+    align-items: flex-start;
     margin: 0;
+
+    ui-icon {
+      flex: none;
+      margin-block-start: 0.15em;
+    }
   }
 }
 
-.panel {
+// The documents drawer: upload first, then what is in the store, then the copies uploaded twice.
+.docs {
+  @include ui.stack(5);
+
+  &__intro {
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+
+  &__stock {
+    @include ui.stack(2);
+    min-width: 0;
+  }
+
+  &__title {
+    @include ui.text(md);
+    display: flex;
+    gap: ui.space(2);
+    align-items: baseline;
+    margin: 0;
+    font-weight: ui.weight(semibold);
+  }
+
+  &__count {
+    @include ui.num;
+    @include ui.text(sm, muted);
+    font-weight: ui.weight(regular);
+  }
+}
+
+.history {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   min-height: 0;
-  border-left: 1px solid ui.color(border);
+  border-right: 1px solid ui.color(border);
   background: ui.color(surface);
 
   &__bar {
@@ -106,21 +177,40 @@
   &__title {
     @include ui.text(md);
     margin: 0;
-    font-family: ui.font(sans);
     font-weight: ui.weight(semibold);
   }
 
-  &__count {
-    @include ui.text(sm, muted);
-    @include ui.num;
+  &__body {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: ui.space(4);
+  }
+}
+
+// The source a citation opened, beside the chat on a wide screen.
+.source {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  border-left: 1px solid ui.color(border);
+  background: ui.color(surface);
+
+  &__bar {
+    @extend %bar;
+    justify-content: space-between;
   }
 
-  &__body,
-  &__drawer {
-    @include ui.stack(5);
+  &__title {
+    @include ui.text(md);
+    margin: 0;
+    min-width: 0;
+    font-weight: ui.weight(semibold);
+    overflow-wrap: anywhere;
   }
 
   &__body {
+    min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
     padding: ui.space(4);

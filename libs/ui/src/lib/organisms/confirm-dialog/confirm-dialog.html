@@ -9,6 +9,17 @@
   </button>
 </div>
 <p class="dialog__body" [id]="data.messageId">{{ data.message }}</p>
+@if (data.acknowledge) {
+<label class="dialog__acknowledge">
+  <input
+    type="checkbox"
+    uiCheckbox
+    [checked]="acknowledged()"
+    (change)="tick($event)"
+  />
+  <span>{{ data.acknowledge }}</span>
+</label>
+}
 <div class="dialog__footer">
   <button uiButton variant="ghost" (click)="close(false)">
     {{ data.cancelLabel }}
@@ -16,6 +27,7 @@
   <button
     uiButton
     cdkFocusInitial
+    [disabled]="!canConfirm()"
     [variant]="danger() ? 'danger' : 'primary'"
     (click)="close(true)"
   >

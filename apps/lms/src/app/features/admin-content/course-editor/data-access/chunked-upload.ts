@@ -4,6 +4,8 @@ import {
   assetEndpoints,
   MEDIA_PROCESSING_UNAVAILABLE_CODE,
   type Upload,
+  type LibraryAsset,
+  type MediaKind,
 } from '@lms/contracts';
 import {
   filter,
@@ -38,6 +40,7 @@ const EXPIRED_CODE = 'LEARNING-UPLOAD_EXPIRED';
 export type UploadProgress =
   /** The whole file is read and hashed before anything is sent. */
   | { readonly type: 'hashing'; readonly percent: number }
+  | { readonly type: 'checking' }
   /** The server knows the upload: keep this to resume after a reload. */
   | {
       readonly type: 'started';
@@ -55,11 +58,16 @@ export type UploadProgress =
   /** No network (or the server is failing): the upload goes on by itself. */
   | { readonly type: 'waiting' }
   /** All bytes are there; the server is checking and preparing the file. */
-  | { readonly type: 'processing'; readonly uploadId: string }
+  | {
+      readonly type: 'processing';
+      readonly uploadId: string;
+      readonly retryMessage?: string;
+    }
   /** The server did not finish in `POLL_LIMIT_MS`: "Kiểm tra lại" asks again. */
   | { readonly type: 'stalled'; readonly uploadId: string }
   /** The file is in the library; `upload` carries the duration and page count the server read. */
   | { readonly type: 'ready'; readonly upload: Upload }
+  | { readonly type: 'reuse'; readonly asset: LibraryAsset }
   | {
       readonly type: 'failed';
       readonly code: string | null;
@@ -78,6 +86,12 @@ export interface ResumeTarget {
 
 export interface ChunkedUploadOptions {
   readonly resume?: ResumeTarget;
+  readonly displayName?: string;
+  readonly description?: string;
+  readonly duplicateMediaType?: MediaKind;
+  readonly chooseDuplicate?: (
+    asset: LibraryAsset,
+  ) => Promise<boolean | undefined>;
   /**
    * Resolves when the network is back, or when `signal` aborts (the upload was cancelled); defaults
    * to waiting `SERVER_RETRY_MS`.
@@ -423,7 +437,14 @@ class Flow {
           });
           return;
         default:
-          this.run.emit({ type: 'processing', uploadId: upload.uploadId });
+          this.run.emit({
+            type: 'processing',
+            uploadId: upload.uploadId,
+            ...(upload.errorCode === MEDIA_PROCESSING_UNAVAILABLE_CODE &&
+            upload.errorMessage
+              ? { retryMessage: upload.errorMessage }
+              : {}),
+          });
       }
       if (Date.now() - startedAt >= POLL_LIMIT_MS) {
         this.run.emit({ type: 'stalled', uploadId: upload.uploadId });
@@ -431,6 +452,28 @@ class Flow {
       }
       await this.run.wait(POLL_MS);
       upload = await this.send(() => this.status(upload.uploadId));
+    }
+  }
+}
+
+/** Local browser timings contain no file names, identifiers, or credentials. */
+async function measureStage<T>(
+  name: string,
+  work: () => Promise<T>,
+): Promise<T> {
+  const start = globalThis.performance?.now();
+  try {
+    return await work();
+  } finally {
+    if (start !== undefined) {
+      try {
+        globalThis.performance.measure('learning-upload.' + name, {
+          start,
+          end: globalThis.performance.now(),
+        });
+      } catch {
+        // Diagnostics must never interrupt an upload.
+      }
     }
   }
 }
@@ -483,11 +526,37 @@ export function chunkedUpload(
     ) {
       throw mismatch;
     }
-    const { hex: checksumSha256, sliceHashes } = await flow.hash(
-      file,
-      (percent) => run.emit({ type: 'hashing', percent }),
+    const { hex: checksumSha256, sliceHashes } = await measureStage(
+      'hash',
+      () =>
+        flow.hash(file, (percent) => run.emit({ type: 'hashing', percent })),
     );
     if (resume && resume.checksumSha256 !== checksumSha256) throw mismatch;
+    if (!resume && options.chooseDuplicate && options.duplicateMediaType) {
+      run.emit({ type: 'checking' });
+      const matches = await measureStage('duplicates', () =>
+        flow.send(() =>
+          client.call(assetEndpoints.findDuplicates, {
+            body: {
+              ownerOrgId,
+              checksumSha256,
+              sizeBytes: file.size,
+              mediaType: options.duplicateMediaType!,
+            },
+          }),
+        ),
+      );
+      if (matches.length) {
+        const choice = await options.chooseDuplicate(matches[0]);
+        run.check();
+        if (choice === undefined)
+          throw new Failed(null, 'Đã hủy tải tệp.', false);
+        if (choice) {
+          run.emit({ type: 'reuse', asset: matches[0] });
+          return;
+        }
+      }
+    }
 
     const uploadId = resume?.uploadId ?? requestId();
     let upload = await flow.send(() =>
@@ -496,9 +565,13 @@ export function chunkedUpload(
           requestId: uploadId,
           ownerOrgId,
           originalName: file.name,
-          mimeType: file.type || 'application/octet-stream',
+          mimeType: /\.mp4$/i.test(file.name)
+            ? 'video/mp4'
+            : file.type || 'application/octet-stream',
           sizeBytes: file.size,
           checksumSha256,
+          ...(options.displayName ? { displayName: options.displayName } : {}),
+          ...(options.description ? { description: options.description } : {}),
         },
       }),
     );
@@ -510,10 +583,14 @@ export function chunkedUpload(
     });
 
     if (upload.status === 'uploading') {
-      await flow.sendParts(uploadId, file, upload, sliceHashes);
-      upload = await flow.send(() => flow.complete(uploadId));
+      await measureStage('transfer', () =>
+        flow.sendParts(uploadId, file, upload, sliceHashes),
+      );
+      upload = await measureStage('complete', () =>
+        flow.send(() => flow.complete(uploadId)),
+      );
     }
-    await flow.settle(upload);
+    await measureStage('processing', () => flow.settle(upload));
   });
 }
 

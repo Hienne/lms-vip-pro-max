@@ -18,12 +18,18 @@
   <ui-field label="Chức danh">
     <input uiInput [formField]="userForm.positionName" />
   </ui-field>
-  <div class="grid-2">
+  <div class="stack user-form__membership">
     <ui-field label="Đơn vị">
       <select uiSelect [formField]="userForm.orgId" (change)="onOrgChange()">
         <option value="">— Chưa gắn đơn vị —</option>
-        @for (org of store.orgs$(); track org.id) {
-        <option [value]="org.id">{{ org.name }}</option>
+        @for (option of orgOptions(); track option.org.id) {
+        <option
+          [value]="option.org.id"
+          [attr.data-child]="option.depth ? 'true' : null"
+          [style.--org-depth]="option.depth"
+        >
+          {{ option.org.name.trim() }}
+        </option>
         }
       </select>
     </ui-field>
@@ -56,7 +62,13 @@
   </ui-field>
   <fieldset class="user-form__grants">
     <legend>Vai trò ban đầu</legend>
-    @for (grant of store.pendingGrants$(); track $index) {
+    <p>
+      Vai trò đang chọn sẽ được cấp khi lưu. Nhấn Thêm để chọn thêm vai trò
+      khác.
+    </p>
+    @if (grantError()) {
+    <ui-alert tone="warning">{{ grantError() }}</ui-alert>
+    } @for (grant of store.pendingGrants$(); track $index) {
     <div class="user-form__pending">
       <span>{{ grant.label }}</span>
       <button

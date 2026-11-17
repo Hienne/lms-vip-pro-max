@@ -41,7 +41,6 @@
       @if (store.nodes$().length) {
       <ui-tree
         label="Cây nội dung"
-        wrapLabels
         [nodes]="store.nodes$()"
         [trailing]="trailing"
         [expanded]="store.expanded$()"
@@ -107,13 +106,14 @@
               (click)="store.select('program-' + program.id)"
             >
               <ui-icon name="network" size="sm" />
-              <span class="training-catalog__item-name"
+              <span class="training-catalog__item-name" [title]="program.name"
                 >{{ program.name }}</span
               >
               <app-catalog-status [status]="program.status" />
             </button>
           </li>
-          } } @else { @for (course of node.program.courses; track course.id) {
+          } } @else { @for (course of store.visibleCourses$(); track course.id)
+          {
           <li>
             <button
               type="button"
@@ -121,7 +121,7 @@
               (click)="store.select('course-' + course.id)"
             >
               <ui-icon name="book-open" size="sm" />
-              <span class="training-catalog__item-name"
+              <span class="training-catalog__item-name" [title]="course.title"
                 >{{ course.title }}</span
               >
               <app-catalog-status
@@ -134,10 +134,58 @@
           </li>
           } }
         </ul>
-        } @else {
+        @if (node.kind === 'program') {
+        <ui-pagination
+          [total]="node.program.courses.length"
+          [page]="store.coursePage$()"
+          [pageSize]="store.coursePageSize"
+          (pageChange)="store.goToCoursePage($event)"
+        />
+        } } @else {
         <p class="training-catalog__none">Chưa có mục con.</p>
         }
       </div>
+      } @if (node.kind === 'field') {
+      <section
+        class="training-catalog__children"
+        aria-labelledby="modules-title"
+      >
+        <div class="training-catalog__modules-head">
+          <h3 id="modules-title">Phân hệ nghiệp vụ</h3>
+          <button
+            uiButton
+            size="sm"
+            [disabled]="store.isBusy$()"
+            (click)="store.edit(node)"
+          >
+            Quản lý phân hệ
+          </button>
+        </div>
+        @if (store.selectedModulesLoading$()) {
+        <p class="training-catalog__none" role="status">Đang tải phân hệ…</p>
+        } @else if (store.selectedModulesError$(); as error) {
+        <ui-error-state
+          title="Không tải được phân hệ"
+          [message]="error.message"
+          (retry)="store.retrySelectedModules()"
+        />
+        } @else if (store.selectedModules$().length) {
+        <ul class="training-catalog__list">
+          @for (module of store.selectedModules$(); track module.id) {
+          <li class="training-catalog__module-row">
+            <span class="training-catalog__item-name"
+              >{{ module.name }} · {{ module.code }}</span
+            >
+            <app-catalog-status [status]="module.status" />
+          </li>
+          }
+        </ul>
+        } @else {
+        <p class="training-catalog__none">
+          Chưa có phân hệ. Chọn Quản lý phân hệ để bổ sung.
+        </p>
+        }
+      </section>
       }
 
       <div class="training-catalog__actions">
@@ -224,11 +272,14 @@
           Sao chép, tạm dừng và lưu trữ khóa học ở màn Khóa học.
         </p>
         } @else {
-        <p class="training-catalog__hint">
-          Tạm dừng: không dùng cho mục mới, nội dung đang có và tiến độ học được
-          giữ nguyên. Lưu trữ: ngừng hẳn, lịch sử được giữ. Chỉ xóa được mục
-          không còn mục con.
-        </p>
+        <div class="training-catalog__hint">
+          <div>
+            Tạm dừng: không dùng cho mục mới. Nội dung và tiến độ học được giữ
+            nguyên.
+          </div>
+          <div>Lưu trữ: ngừng sử dụng. Lịch sử được giữ nguyên.</div>
+          <div>Chỉ xóa được mục không còn nội dung liên quan.</div>
+        </div>
         }
       </div>
     </div>
@@ -254,20 +305,30 @@
   uiDrawerBusyLabel="Đang lưu…"
   (uiDrawerDismiss)="store.cancelEdit()"
 >
-  @if (store.editing$(); as editing) {
+  @if (store.editing$(); as editing) { @if (store.modulesLoading$()) {
+  <span uiSpinner></span>
+  <p>Đang tải phân hệ nghiệp vụ…</p>
+  } @else if (store.modulesError$(); as error) {
+  <ui-error-state
+    title="Không tải được phân hệ"
+    [message]="error.message"
+    (retry)="store.retryModules()"
+  />
+  } @else {
   <app-catalog-item-form
     [kind]="editing.kind"
     [item]="editing.item"
+    [modules]="store.editingModules$()"
     (submitted)="store.save($event)"
   />
-  }
+  } }
 </ng-template>
 <ng-template #footer let-close="close">
   <ui-form-actions
     formId="catalog-item-form"
     submitLabel="Lưu"
     cancelLabel="Hủy"
-    [saving]="store.isSaving$()"
+    [saving]="store.isSaving$() || store.modulesLoading$() || !!store.modulesError$()"
     (cancel)="close()"
   />
 </ng-template>

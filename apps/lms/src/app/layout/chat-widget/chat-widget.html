@@ -9,17 +9,33 @@
 >
   <header class="chat__header">
     <app-owl-face class="chat__face" />
-    @if (!isEmpty()) {
+    @if (!isEmpty() && !store.isHistoryOpen$()) {
     <button
       uiIconButton
       size="sm"
-      label="Xoá hội thoại"
+      label="Hội thoại mới"
       [disabled]="store.isAnswering$()"
       (click)="store.clear()"
     >
-      <ui-icon name="trash-2" size="sm" />
+      <ui-icon name="plus" size="sm" />
     </button>
     }
+    <button
+      uiIconButton
+      size="sm"
+      [label]="
+        store.isHistoryOpen$() ? 'Quay lại hội thoại' : 'Lịch sử hội thoại'
+      "
+      [attr.aria-pressed]="store.isHistoryOpen$()"
+      (click)="
+        store.isHistoryOpen$() ? store.hideHistory() : store.showHistory()
+      "
+    >
+      <ui-icon
+        [name]="store.isHistoryOpen$() ? 'message-square' : 'history'"
+        size="sm"
+      />
+    </button>
     <button
       uiIconButton
       size="sm"
@@ -37,6 +53,48 @@
     </button>
   </header>
   <p class="sr-only" aria-live="polite">{{ store.announcement$() }}</p>
+  @if (failure(); as failed) {
+  <div class="chat__notice" role="alert">
+    <p>
+      Không tạo được khóa học từ <strong>{{ failed.fileName }}</strong>.
+      <button type="button" class="chat__notice-link" (click)="openFailure()">
+        {{ failed.action }}
+      </button>
+    </p>
+    <button
+      uiIconButton
+      size="sm"
+      label="Đóng thông báo"
+      (click)="dismissFailure()"
+    >
+      <ui-icon name="x" size="sm" />
+    </button>
+  </div>
+  } @if (store.isHistoryOpen$()) {
+  <div class="chat__history">
+    <app-conversation-list
+      [items]="history.items$()"
+      [activeId]="store.conversationId$()"
+      [loading]="history.isLoading$()"
+      [failed]="!!history.loadError$()"
+      [searching]="history.query$() !== ''"
+      [openError]="store.openError$()"
+      [busy]="store.isAnswering$() || store.isOpening$() || history.isChanging$()"
+      (searched)="history.setQuery($event)"
+      (created)="store.clear()"
+      (opened)="store.openConversation($event)"
+      (renamed)="history.rename($event.id, $event.title)"
+      (removed)="history.remove($event)"
+      (removedAll)="history.removeAll()"
+      (retried)="history.retryLoad()"
+    />
+  </div>
+  } @else { @if (store.lesson$(); as lesson) {
+  <p class="chat__context" [title]="lesson.label">
+    <ui-icon name="book-open" size="sm" />
+    <span>Đang hỏi về bài: {{ lesson.label }}</span>
+  </p>
+  }
   <div
     #log
     class="chat__log"
@@ -49,38 +107,62 @@
     <app-agent-message
       [turn]="turn"
       [busy]="store.isConfirming$()"
+      [answering]="store.isAnswering$()"
+      [ratingBusy]="store.ratingId$() === turn.id"
+      [ratingFailed]="store.ratingFailedId$() === turn.id"
+      (rated)="store.rate($event.turnId, $event.command)"
+      (retried)="retry($event)"
       (confirmed)="confirm($event)"
       (cancelled)="cancel($event)"
     />
     } @empty {
     <div class="chat__empty">
       <p class="chat__hint">
-        Hỏi về tài liệu, mở một màn hình hoặc sửa hồ sơ của bạn. Thử:
+        @if (store.lesson$()) { Hỏi về bài học bạn đang xem. Thử: } @else { Hỏi
+        về tài liệu, mở một màn hình hoặc sửa hồ sơ của bạn. Thử: }
       </p>
       <ul class="chat__suggestions">
-        @for (suggestion of suggestions; track suggestion) {
+        @for (suggestion of suggestions(); track suggestion.text) {
         <li>
           <button
             type="button"
             class="chat__suggestion"
             [disabled]="store.isOffline$()"
-            (click)="suggest(suggestion)"
+            (click)="suggest(suggestion.text, suggestion.skill)"
           >
-            {{ suggestion }}
+            {{ suggestion.text }}
           </button>
         </li>
         }
       </ul>
     </div>
+    } @if (followUps().length) {
+    <ul class="chat__suggestions" aria-label="Gợi ý câu hỏi tiếp theo">
+      @for (question of followUps(); track question) {
+      <li>
+        <button
+          type="button"
+          class="chat__suggestion"
+          [disabled]="store.isOffline$()"
+          (click)="suggest(question, followUpSkill())"
+        >
+          {{ question }}
+        </button>
+      </li>
+      }
+    </ul>
     }
   </div>
   <div class="chat__composer">
     <app-agent-composer
       [answering]="store.isAnswering$()"
       [offline]="store.isOffline$()"
+      [canAttach]="canAttach()"
       (ask)="store.ask($event)"
+      (askWithFile)="store.askWithFile($event.message, $event.file)"
       (stop)="store.stop()"
     />
   </div>
+  }
 </section>
 }

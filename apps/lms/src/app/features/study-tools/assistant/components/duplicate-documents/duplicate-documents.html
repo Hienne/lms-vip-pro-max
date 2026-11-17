@@ -1,0 +1,35 @@
+@if (groups().length > 0) {
+<details class="dup">
+  <summary class="dup__summary">
+    Tài liệu trùng
+    <span class="dup__count">{{ copies() }} bản</span>
+  </summary>
+  <p class="dup__hint">
+    Các tệp bạn đã tải lên nhiều lần. Giữ lại một bản và xoá những bản còn lại;
+    không có gì bị xoá tự động.
+  </p>
+  @for (group of groups(); track group.checksum) {
+  <ul class="dup__group" aria-label="Các bản của cùng một tệp">
+    @for (doc of group.documents; track doc.id) {
+    <li class="dup__row">
+      <span class="dup__name" [title]="doc.title">{{ doc.title }}</span>
+      <span class="dup__meta"
+        >{{ scopeLabel[doc.scope] }} ·
+        <time [attr.datetime]="doc.createdAt"
+          >{{ doc.createdAt | fmtRelative }}</time
+        ></span
+      >
+      <button
+        uiIconButton
+        type="button"
+        [label]="'Xoá bản trùng ' + doc.title"
+        (click)="remove.emit(doc)"
+      >
+        <ui-icon name="trash-2" />
+      </button>
+    </li>
+    }
+  </ul>
+  }
+</details>
+}

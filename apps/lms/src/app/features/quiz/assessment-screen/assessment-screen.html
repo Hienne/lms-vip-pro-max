@@ -10,6 +10,9 @@
   }
   <div slot="actions" class="assessment__actions">
     @if (store.routeScreen$() === 'questions') {
+    <a uiButton variant="secondary" routerLink="/admin/competencies"
+      >Nhóm năng lực</a
+    >
     <a uiButton variant="secondary" routerLink="/admin/flashcards"
       >Quản lý flashcard</a
     >
@@ -43,33 +46,21 @@
   </div>
 </ui-page-header>
 @if (store.routeScreen$() === 'questions' && store.selectedProgramId$()) {
-<div class="assessment__kpis">
-  <ui-kpi
-    icon="circle-help"
-    label="Đang sử dụng"
-    [value]="store.summary$().active ?? '—'"
-  />
-  <ui-kpi
-    icon="circle-check"
-    label="Một đáp án đúng"
-    [value]="store.summary$().single ?? '—'"
-  />
-  <ui-kpi
-    icon="list"
-    tone="info"
+<ui-stat-strip aria-label="Số câu hỏi trong ngân hàng">
+  <ui-stat label="Đang sử dụng" [value]="store.summary$().active ?? '—'" />
+  <ui-stat label="Một đáp án đúng" [value]="store.summary$().single ?? '—'" />
+  <ui-stat
     label="Nhiều đáp án đúng"
     [value]="store.summary$().multiple ?? '—'"
   />
-  <ui-kpi
-    icon="archive"
-    tone="warning"
-    label="Ngưng sử dụng"
-    [value]="store.summary$().inactive ?? '—'"
-  />
-</div>
+  <ui-stat label="Ngưng sử dụng" [value]="store.summary$().inactive ?? '—'" />
+</ui-stat-strip>
 } @if (store.routeScreen$() !== 'config' || store.isNewQuiz$()) {
 <section uiCard padded class="stack assessment__section">
-  <div class="assessment__scope">
+  <div
+    class="assessment__scope"
+    [class.assessment__scope--quizzes]="store.routeScreen$() === 'quizzes'"
+  >
     @if (store.routeScreen$() === 'questions') {
     <ui-search
       label="Tìm chương trình"
@@ -140,18 +131,12 @@
       </select>
     </ui-field>
     }
-    <ui-search
-      label="Tìm khóa học quản lý"
-      placeholder="Tìm khóa học…"
-      [value]="store.courseSearch$()"
-      (searched)="store.searchCourses($event)"
-    />
     <ui-field label="Khóa học">
       <select
         uiSelect
         aria-label="Khóa học quản lý"
         [value]="store.selectedCourseId$() ?? ''"
-        [disabled]="store.editorOpen$() || store.isSaving$() || store.partialSave$()"
+        [disabled]="store.editorOpen$() || store.isSaving$() || store.partialSave$() || store.coursesLoading$()"
         (change)="store.selectCourse($any($event.target).value)"
       >
         <option value="" disabled>— Chọn khóa học —</option>
@@ -170,22 +155,29 @@
         }
       </select>
     </ui-field>
-    @if ((store.courses$()?.totalPages ?? 0) > 1) {
+    <ui-search
+      width="100%"
+      label="Tìm khóa học quản lý"
+      placeholder="Tìm khóa học…"
+      [value]="store.courseSearch$()"
+      (searched)="store.searchCourses($event)"
+    />
+    @if ((store.courses$()?.items?.length ?? 0) > 1) {
     <button
       uiButton
       size="sm"
-      [disabled]="!store.courses$()?.page"
-      (click)="store.nextCoursePage(-1)"
+      [disabled]="store.coursesLoading$() || !store.hasPreviousCourse$()"
+      (click)="store.nextCourse(-1)"
     >
-      Khóa học trước
+      Quay lại
     </button>
     <button
       uiButton
       size="sm"
-      [disabled]="(store.courses$()?.page ?? 0) + 1 >= (store.courses$()?.totalPages ?? 0)"
-      (click)="store.nextCoursePage(1)"
+      [disabled]="store.coursesLoading$() || !store.hasNextCourse$()"
+      (click)="store.nextCourse(1)"
     >
-      Khóa học sau
+      Tiếp theo
     </button>
     } }
   </div>
@@ -196,7 +188,7 @@
   </p>
   } @if (store.routeScreen$() === 'questions' && store.selectedProgramId$()) {
   <div class="assessment__filters">
-    <div class="row row--gap-3">
+    <div class="row assessment__filter-row">
       <ui-search
         label="Tìm câu hỏi"
         placeholder="Mã hoặc nội dung…"
@@ -205,6 +197,8 @@
       />
       <select
         uiSelect
+        size="sm"
+        class="assessment__filter"
         aria-label="Lọc loại câu hỏi"
         [value]="store.questionFilters$().questionType"
         (change)="store.setQuestionFilter('questionType',$any($event.target).value)"
@@ -215,6 +209,8 @@
       </select>
       <select
         uiSelect
+        size="sm"
+        class="assessment__filter"
         aria-label="Lọc độ khó"
         [value]="store.questionFilters$().difficulty"
         (change)="store.setQuestionFilter('difficulty',$any($event.target).value)"
@@ -226,11 +222,13 @@
       </select>
       <select
         uiSelect
-        aria-label="Lọc nhóm kiến thức"
+        size="sm"
+        class="assessment__filter"
+        aria-label="Lọc nhóm năng lực"
         [value]="store.questionFilters$().competencyId"
         (change)="store.setQuestionFilter('competencyId',$any($event.target).value)"
       >
-        <option value="">Nhóm kiến thức: Tất cả</option>
+        <option value="">Nhóm năng lực: Tất cả</option>
         @for(x of store.competencies$();track x.id){
         <option [value]="x.id">{{x.name}}</option>
         }
@@ -238,6 +236,8 @@
 
       <select
         uiSelect
+        size="sm"
+        class="assessment__filter"
         aria-label="Lọc trạng thái"
         [value]="store.questionFilters$().status"
         (change)="store.setQuestionFilter('status',$any($event.target).value)"
@@ -247,7 +247,7 @@
         <option value="INACTIVE">Ngưng sử dụng</option>
       </select>
     </div>
-    <span class="assessment__result-count"
+    <span class="assessment__result-count" aria-live="polite"
       >{{store.questions$()?.totalElements ?? 0}} kết quả</span
     >
   </div>
@@ -277,31 +277,40 @@
 } @else { @switch (store.routeScreen$()) { @case ('questions') {
 <section uiCard>
   @if(store.selectedIds$().length){
-  <div class="assessment__bulk">
-    <strong>Đã chọn {{store.selectedIds$().length}}</strong
-    ><button
-      uiButton
-      size="sm"
-      [disabled]="store.isBulkSaving$()"
-      (click)="store.bulkQuestions('ACTIVE')"
+  <div
+    class="assessment__bulk"
+    role="region"
+    aria-label="Thao tác với câu hỏi đã chọn"
+  >
+    <span class="assessment__bulk-count"
+      >Đã chọn {{store.selectedIds$().length}} câu hỏi</span
     >
-      Đang dùng</button
-    ><button
-      uiButton
-      size="sm"
-      [disabled]="store.isBulkSaving$()"
-      (click)="store.bulkQuestions('INACTIVE')"
-    >
-      Ngưng sử dụng</button
-    ><button
-      uiButton
-      size="sm"
-      variant="danger-ghost"
-      [disabled]="store.isBulkSaving$()"
-      (click)="store.bulkQuestions('delete')"
-    >
-      Xóa
-    </button>
+    <div class="row">
+      <button
+        uiButton
+        size="sm"
+        [disabled]="store.isBulkSaving$()"
+        (click)="store.bulkQuestions('ACTIVE')"
+      >
+        Chuyển sang đang dùng
+      </button>
+      <button
+        uiButton
+        size="sm"
+        [disabled]="store.isBulkSaving$()"
+        (click)="store.bulkQuestions('INACTIVE')"
+      >
+        Ngưng sử dụng
+      </button>
+      <button
+        uiButton
+        size="sm"
+        [disabled]="store.isBulkSaving$()"
+        (click)="store.bulkQuestions('delete')"
+      >
+        <ui-icon name="trash-2" size="sm" /> Xóa
+      </button>
+    </div>
   </div>
   }
   <ui-data-table
@@ -332,8 +341,8 @@
       uiDataTableCell="usedInQuizCount"
       [of]="store.questionRows$()"
       let-row
-      >@if (row.usedInQuizCount) { {{row.usedInQuizCount}} bài thi } @else {
-      <span class="assessment__muted">—</span> }</ng-template
+      >@if (row.usedInQuizCount) { {{row.usedInQuizCount}} bài kiểm tra } @else
+      { <span class="assessment__muted">—</span> }</ng-template
     >
     <ng-template uiDataTableCell="selected" [of]="store.questionRows$()" let-row
       ><input
@@ -457,7 +466,7 @@
         (click)="addOption()"
       >
         Thêm phương án</button
-      >} @if(questionForm().touched()){@for(error of
+      >} @if(questionForm.correctOptionIds().touched()){@for(error of
       questionForm.correctOptionIds().errors();track $index){
       <p class="assessment__error">{{error.message}}</p>
       }}
@@ -525,10 +534,10 @@
     (cancel)="store.cancelQuestion()"
 /></ng-template>
 } @case ('quizzes') {
-<p class="assessment__count">
-  {{store.quizTotal$()}} bài kiểm tra · {{store.selectedCourseTitle$()}}
-</p>
-<section uiCard>
+<ui-section-card title="Danh sách bài kiểm tra" flush>
+  <span slot="action" class="assessment__result-count">
+    {{store.quizTotal$()}} bài kiểm tra · {{store.selectedCourseTitle$()}}
+  </span>
   <ui-data-table
     caption="Bài kiểm tra"
     [columns]="quizColumns"
@@ -554,8 +563,9 @@
         [queryParams]="{courseId:row.courseId}"
         ><ui-icon name="settings" size="sm" /></a
     ></ng-template>
+    <ui-empty slot="empty" title="Chưa có bài kiểm tra trong khóa học này" />
   </ui-data-table>
-</section>
+</ui-section-card>
 } @case ('config') { @if(store.quizSaveError$();as error){<ui-alert
   tone="danger"
   >{{error.message}}@if(store.partialSave$()){
@@ -573,7 +583,7 @@
   (submit)="quizSubmit($event, questionSettings, advancedSettings)"
 >
   <section uiCard padded class="stack">
-    <h2>Thông tin bài thi</h2>
+    <h2>Thông tin bài kiểm tra</h2>
     @if (!store.isNewQuiz$()) {
     <p class="assessment__muted">Khóa học · {{store.selectedCourseTitle$()}}</p>
     }
@@ -615,10 +625,11 @@
         @if(store.canManageBank$() && store.selectedProgramId$()) {
         <a
           uiButton
-          variant="ghost"
+          variant="secondary"
           [routerLink]="['/admin/questions']"
           [queryParams]="{programId:store.selectedProgramId$()}"
-          >Quản lý câu hỏi của chương trình</a
+          ><ui-icon name="circle-help" size="sm" />Quản lý câu hỏi của chương
+          trình</a
         >
         }
         <p>
@@ -753,10 +764,12 @@
           <ui-field label="Mở đề" hint="Để trống nếu không giới hạn."
             ><ui-date-input
               kind="datetime"
+              picker
               [formField]="configForm.openAt" /></ui-field
           ><ui-field label="Đóng đề" hint="Để trống nếu không giới hạn."
             ><ui-date-input
               kind="datetime"
+              picker
               [formField]="configForm.closeAt" /></ui-field
           ><ui-field label="Quyền xem đáp án & giải thích"
             ><select uiSelect [formField]="configForm.reviewPolicy">
@@ -793,7 +806,7 @@
     </details>
   </section>
   <section uiCard padded class="stack">
-    <h2>Xuất bản bài thi</h2>
+    <h2>Xuất bản bài kiểm tra</h2>
     <p>
       {{store.config$()?.status === 'PUBLISHED' ? 'Đã xuất bản' :
       store.config$()?.status === 'CLOSED' ? 'Đã đóng' : 'Bản nháp'}}

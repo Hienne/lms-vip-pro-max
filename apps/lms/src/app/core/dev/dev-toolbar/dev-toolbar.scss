@@ -8,7 +8,7 @@
 .dev-toolbar {
   position: fixed;
   right: ui.space(4);
-  bottom: ui.space(4);
+  bottom: calc(#{ui.space(4)} + var(--toolbar-inset, 0px));
   z-index: ui.z(toast);
 }
 

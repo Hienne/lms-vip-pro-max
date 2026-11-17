@@ -39,17 +39,22 @@ import { LOCAL_STORAGE } from '../../../../core/storage/local-storage';
 import { clock } from '../../../../shared/learning/anchor';
 import type { BlockJump } from '../components/pdf-block/pdf-block';
 import { lessonFeedback } from './lesson-feedback';
-import { readFocus, writeFocus } from './lesson-focus';
 import { lessonNotes } from './lesson-notes';
-import { StudyChannel, type ClaimTarget } from './study-channel';
+import {
+  StudyChannel,
+  type ClaimTarget,
+  type StudyPhase,
+} from './study-channel';
 import { StudySessionStorage } from './study-session.storage';
 import { completionHint } from './completion-hint';
+import { courseCompletion } from './course-completion';
 
 export type LessonView =
   | 'loading'
   | 'missing'
   | 'not-enrolled'
   | 'quiz'
+  | 'scorm'
   | 'empty'
   | 'ready';
 
@@ -103,6 +108,21 @@ const idParam = (value: string | null): number | undefined => {
 
 /** The side panel's tabs. */
 export type SideTab = 'outline' | 'notes';
+
+/** The final exam as the server evaluated it (`NOT_REQUIRED` is not shown). */
+const FINAL_EXAM_LABEL = {
+  NOT_TAKEN: 'Chưa thi',
+  NOT_PASSED: 'Chưa đạt',
+  PASSED: 'Đã đạt',
+} as const;
+
+/** The phases in which the session alert asks the learner to act before studying on. */
+const BLOCKING_PHASES: ReadonlySet<StudyPhase> = new Set([
+  'takeover',
+  'moved',
+  'media-changed',
+  'failed',
+]);
 
 /** A block shown from a given page or second: what an anchor asks for. */
 interface JumpTo extends BlockJump {
@@ -171,6 +191,11 @@ export class LessonStore {
     { params: () => this.courseData.value()?.card.enrollmentId ?? undefined },
   );
 
+  /** The completion evaluation, read again after a lesson completes here. */
+  private readonly completionData = courseCompletion(
+    () => this.courseData.value()?.card.enrollmentId ?? undefined,
+  );
+
   /** The course's quizzes, read only for a quiz lesson: the one that holds the lesson is shown. */
   private readonly quizData = serverData(
     (courseId: number) =>
@@ -191,7 +216,7 @@ export class LessonStore {
     /** The side panel tab: the outline, or the notes of this lesson. */
     sideTab: signal<SideTab>('outline'),
     /** Focus mode: from `lg` the side panel is hidden and the content takes its width. Per browser. */
-    focus: signal(readFocus(this.preferences)),
+    focus: signal(false),
     /** Where the learner is in the active block, as its player tells; a new block starts over. */
     position: linkedSignal<
       number | undefined,
@@ -248,6 +273,8 @@ export class LessonStore {
   readonly quizLoading$ = this.quizData.isLoading;
   readonly quizError$ = this.quizData.error;
   readonly phase$ = this.channel.phase$;
+  /** The session alert is up and its button is the way on: the step bar steps back from primary. */
+  readonly sessionBlocked$ = computed(() => BLOCKING_PHASES.has(this.phase$()));
   readonly save$ = this.channel.save$;
   readonly studyError$ = this.channel.error$;
   /** Where the active block resumes: the claim's progress row. */
@@ -268,6 +295,15 @@ export class LessonStore {
     const index = this.lessonIndex();
     return index < 0 ? undefined : this.lessons()[index];
   });
+
+  readonly scormPackageId$ = computed(
+    () => this.lesson$()?.lesson.scormPackageId,
+  );
+  readonly scormContext$ = computed(() => ({
+    enrollmentId: this.courseData.value()?.card.enrollmentId,
+    lessonId: this.lessonId$(),
+    courseId: this.courseId$(),
+  }));
 
   readonly chapterTitle$ = computed(
     () =>
@@ -292,6 +328,7 @@ export class LessonStore {
     if (this.detail$() === undefined) return 'loading';
     const lesson = this.lesson$();
     if (!lesson) return 'missing';
+    if (lesson.lesson.lessonType === 'scorm') return 'scorm';
     if (lesson.lesson.lessonType === 'quiz') return 'quiz';
     return lesson.blocks.length ? 'ready' : 'empty';
   });
@@ -510,13 +547,16 @@ export class LessonStore {
     const done = active?.status === 'completed';
     const percent = active?.percent ?? 0;
     const threshold = active?.detail.block.completionThreshold ?? null;
-    const manual = active?.detail.block.completionMode === 'manual';
+    const mode = active?.detail.block.completionMode;
+    const manual = mode === 'manual';
     return {
       done,
       completedAt: progress?.completedAt ?? null,
       percent,
       threshold,
       manual,
+      /** A video still being watched shows how far it is, as the server measured it. */
+      meter: !done && mode === 'video_coverage',
       hint:
         active && !done
           ? completionHint(
@@ -544,6 +584,29 @@ export class LessonStore {
       this.detail$()?.enrollment.progressPercent ??
       0,
   );
+
+  /**
+   * What the course still needs, as the server evaluated it: required lessons done out of
+   * required, and the final exam when the course has one. Without an evaluation `required` is
+   * null: the page never counts lessons itself, and never infers a pass.
+   */
+  readonly courseCompletion$ = computed(() => {
+    const summary = this.completionData.summary() ?? this.detail$()?.completion;
+    const exam = summary?.finalExamStatus;
+    return {
+      percent: this.courseProgress$(),
+      required: summary
+        ? {
+            done: summary.completedRequiredLessons,
+            total: summary.requiredLessons,
+          }
+        : null,
+      finalExam:
+        exam && exam !== 'NOT_REQUIRED'
+          ? { label: FINAL_EXAM_LABEL[exam], failed: exam === 'NOT_PASSED' }
+          : null,
+    };
+  });
 
   readonly outline$ = computed((): readonly OutlineChapter[] => {
     const courseId = this.courseId$();
@@ -669,11 +732,10 @@ export class LessonStore {
     this.state.focus.set(focus);
   }
 
-  /** "Chế độ tập trung" / "Hiện mục lục": hides or shows the side panel, and remembers the choice. */
+  /** Focus mode applies only to this lesson view; a fresh entry always shows the outline. */
   toggleFocus(): void {
     const focus = !this.focus$();
     this.setFocus(focus);
-    writeFocus(this.preferences, focus);
   }
 
   /** The PDF on screen shows this page. */
@@ -844,6 +906,11 @@ export class LessonStore {
     this.quizData.reload();
   }
 
+  refreshScormProgress(): void {
+    this.detailData.reload();
+    this.completionData.lessonCompleted();
+  }
+
   retryLoad(): void {
     this.courseData.reload();
     this.detailData.reload();
@@ -874,11 +941,21 @@ export class LessonStore {
   }
 
   private addResult(result: ProgressResult): void {
+    const { lessonId } = result.lesson;
+    const before =
+      this.state.results().lessons.get(lessonId) ??
+      this.detail$()?.lessons.find((l) => l.lessonId === lessonId);
     this.state.results.update((r) => ({
       blocks: new Map(r.blocks).set(result.block.blockId, result.block),
-      lessons: new Map(r.lessons).set(result.lesson.lessonId, result.lesson),
+      lessons: new Map(r.lessons).set(lessonId, result.lesson),
       enrollment: result.enrollment,
     }));
+    if (
+      result.lesson.status === 'completed' &&
+      before?.status !== 'completed'
+    ) {
+      this.completionData.lessonCompleted();
+    }
   }
 
   private dropAnchorFromUrl(): void {

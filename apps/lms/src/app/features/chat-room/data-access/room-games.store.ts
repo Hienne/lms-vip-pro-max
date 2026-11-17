@@ -49,7 +49,9 @@ export class RoomGamesStore {
   readonly visibleCaro$ = computed(() => {
     const table = this.caroTable$();
     const game = this.caro$();
-    return table && (table.playing || game?.result) ? game : null;
+    return table && (table.playing || table.paused || game?.result)
+      ? game
+      : null;
   });
   readonly caroError$ = this.state.caroError.asReadonly();
   readonly latestDice$ = computed(() => this.dice$()?.history[0]);
@@ -126,6 +128,7 @@ export class RoomGamesStore {
       this.caroTable$()?.playing &&
       game &&
       !game.result &&
+      !game.waitingForReturn &&
       game.board[cell] === '.'
     ) {
       this.send?.({

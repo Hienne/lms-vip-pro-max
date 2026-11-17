@@ -1,60 +1,19 @@
 @use 'ui';
 
+// The section is a `ui-section-card`: its title and the open/close button are the card header, the
+// summary line is the body while it is closed, and the forms and lists follow it once open.
 .feedback {
-  @include ui.stack(4);
-  padding: ui.space(5);
-  border: 1px solid ui.color(border);
-  border-radius: ui.radius(card);
-  background: ui.color(surface);
-
-  &__heading {
-    margin: 0;
-  }
-
-  // The whole closed row is the button: title, then the summary, then the chevron at the end. Title
-  // and summary wrap together on a phone; the chevron stays at the end of the first line.
-  &__toggle {
-    @include ui.row(3);
-    flex-wrap: nowrap;
-    align-items: flex-start;
-    width: 100%;
-    padding: 0;
-    border: 0;
-    background: none;
-    color: inherit;
-    font: inherit;
-    text-align: start;
-    cursor: pointer;
-
-    &:focus-visible {
-      @include ui.focus-ring;
-    }
-  }
-
-  &__title {
-    font-size: ui.text-size(lg);
-    font-weight: ui.weight(semibold);
-  }
-
-  &__label {
-    @include ui.row(3);
-    @include ui.grow;
-  }
-
   &__summary {
     @include ui.row(2);
     @include ui.text(sm, muted);
     @include ui.num;
-  }
-
-  &__chevron {
-    flex: none;
-    margin-block-start: ui.space(1);
-    color: ui.color(text-secondary);
+    max-width: none;
+    margin: 0;
   }
 
   &__body {
     @include ui.stack(4);
+    margin-top: ui.space(4);
   }
 
   &__skeleton {

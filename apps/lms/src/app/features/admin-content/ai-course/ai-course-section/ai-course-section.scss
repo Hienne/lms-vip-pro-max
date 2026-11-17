@@ -1,0 +1,38 @@
+@use 'ui';
+
+:host {
+  display: block;
+}
+
+.ai-section {
+  &__body {
+    @include ui.stack(4);
+  }
+
+  &__intro {
+    margin: 0;
+    @include ui.text(sm, secondary);
+  }
+
+  &__pair {
+    display: grid;
+    gap: ui.space(3);
+
+    @include ui.bp(md) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  &__file {
+    @include ui.row(2);
+    align-items: center;
+    min-width: 0;
+  }
+
+  &__file-name {
+    @include ui.text(sm);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

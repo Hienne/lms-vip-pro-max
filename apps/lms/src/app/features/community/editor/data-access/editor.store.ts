@@ -26,6 +26,7 @@ import {
   contentFormFrom,
   type ContentFormValue,
 } from '../../data-access/content-form';
+import { randomId } from '../../../../core/browser/secure-context';
 
 /** What a new post is: "Bài viết" or "Bài học sự cố". */
 export type NewKind = 'article' | 'lesson_learned' | 'architecture_review';
@@ -62,7 +63,7 @@ export class EditorStore {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
-  private readonly clientRequestId = crypto.randomUUID();
+  private readonly clientRequestId = randomId();
   private readonly refresh = invalidation();
 
   readonly contentId$ = toSignal(

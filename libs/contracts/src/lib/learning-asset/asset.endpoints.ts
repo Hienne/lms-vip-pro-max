@@ -4,6 +4,7 @@ import { PageSchema } from '../http/page';
 import {
   AssetListQuerySchema,
   LibraryAssetSchema,
+  MediaKindSchema,
   PartHeadersSchema,
   StartUploadCommandSchema,
   UploadSchema,
@@ -19,6 +20,29 @@ export const assetEndpoints = {
     path: '/api/v1/learning-assets',
     query: AssetListQuerySchema,
     response: PageSchema(LibraryAssetSchema),
+  }),
+  /** Find reusable assets in the caller's permitted scope and the course owner organization. */
+  findDuplicates: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/learning-assets/duplicates',
+    body: z.object({
+      ownerOrgId: z.number().int().positive(),
+      checksumSha256: z.string().regex(/^[0-9a-f]{64}$/),
+      sizeBytes: z.number().int().positive().max(500_000_000),
+      mediaType: MediaKindSchema,
+    }),
+    response: z.array(LibraryAssetSchema),
+  }),
+  /** Updates searchable metadata. */
+  updateMetadata: defineEndpoint({
+    method: 'put',
+    path: '/api/v1/learning-assets/{assetId}/metadata',
+    params: z.object({ assetId: z.number().int().positive() }),
+    body: z.object({
+      displayName: z.string().trim().min(1).max(255),
+      description: z.string().max(2000).nullable(),
+    }),
+    response: z.null(),
   }),
   /** Starts an upload, or returns the one the same `requestId` started (idempotent). */
   startUpload: defineEndpoint({
@@ -60,6 +84,13 @@ export const assetEndpoints = {
     path: '/api/v1/learning-assets/uploads/{uploadId}',
     params: uploadParams,
     response: UploadSchema,
+  }),
+  /** Permanently removes an unreferenced file and its playback object from an unversioned bucket. */
+  deleteAssetPermanently: defineEndpoint({
+    method: 'delete',
+    path: '/api/v1/learning-assets/{assetId}/content',
+    params: z.object({ assetId: z.number().int() }),
+    response: z.null(),
   }),
   /** Removes a library file; `LEARNING-ASSET_IN_USE` refuses one a course still uses. */
   deleteAsset: defineEndpoint({

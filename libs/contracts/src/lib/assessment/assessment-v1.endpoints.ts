@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import {
+  CourseDetailSchema,
+  CreateCourseCommandSchema,
+  SaveDraftCommandSchema,
+} from '../course/course.schema';
 import { defineEndpoint } from '../http/endpoint';
 import { PageQuerySchema, PageSchema } from '../http/page';
 import { XLSX_MIME_TYPE } from '../organization/organization.schema';
@@ -23,14 +28,65 @@ import {
   QuizAttemptGrantSchema,
 } from './assessment-v1.schema';
 
+export const CompetencyCommandSchema = z.object({
+  code: z.string().trim().min(1).max(50),
+  name: z.string().trim().min(1).max(255),
+  description: z.string().max(4000).nullable(),
+  parentId: z.number().int().positive().nullable(),
+  sortNo: z.number().int().nonnegative(),
+  status: AssessmentItemStatusV1Schema,
+});
+
 /** The backend's quiz authoring endpoints the app calls (/api/v1/quizzes). */
+export const CourseExamCommandSchema = z.object({
+  courseId: z.number().int().positive().optional(),
+  revisionId: z.number().int().positive().optional(),
+  course: CreateCourseCommandSchema.optional(),
+  draft: SaveDraftCommandSchema.optional(),
+  quizId: z.number().int().positive().optional(),
+  expectedQuizVersion: z.number().int().nonnegative().optional(),
+  quiz: QuizRequestV1Schema.omit({ courseId: true }).extend({
+    courseId: z.number().int().positive().optional(),
+  }),
+  pool: QuizPoolRequestV1Schema,
+});
+export type CourseExamCommand = z.infer<typeof CourseExamCommandSchema>;
+
 export const assessmentV1Endpoints = {
+  /** Atomic course draft, final exam, selected pool and completion link. */
+  saveCourseExam: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/course-exams',
+    body: CourseExamCommandSchema,
+    response: CourseDetailSchema,
+  }),
   /** Authoring options from the shared competency catalogue, not a mock assessment-options API. */
   competencies: defineEndpoint({
     method: 'get',
     path: '/api/v1/competencies',
     query: z.object({ status: AssessmentItemStatusV1Schema.optional() }),
     response: z.array(CompetencyV1Schema),
+  }),
+  createCompetency: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/competencies',
+    body: CompetencyCommandSchema,
+    response: CompetencyV1Schema,
+  }),
+  updateCompetency: defineEndpoint({
+    method: 'put',
+    path: '/api/v1/competencies/{id}',
+    params: z.object({ id: z.number().int().positive() }),
+    query: AssessmentVersionQuerySchema,
+    body: CompetencyCommandSchema,
+    response: CompetencyV1Schema,
+  }),
+  deleteCompetency: defineEndpoint({
+    method: 'delete',
+    path: '/api/v1/competencies/{id}',
+    params: z.object({ id: z.number().int().positive() }),
+    query: AssessmentVersionQuerySchema,
+    response: z.unknown(),
   }),
   /** Server-paged summaries; answers are fetched only on opening a question detail. */
   questions: defineEndpoint({

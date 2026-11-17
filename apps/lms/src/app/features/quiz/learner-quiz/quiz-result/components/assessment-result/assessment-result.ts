@@ -1,6 +1,8 @@
 import { Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { LearnerAttemptResult, LearnerSubmitType } from '@lms/contracts';
+import { Markdown } from '../../../../../../shared/content/markdown/markdown';
+import type { QuestionExplanation } from '../../data-access/quiz-explain.store';
 import {
   Alert,
   Badge,
@@ -42,6 +44,7 @@ const AUTO_SUBMIT: readonly (LearnerSubmitType | null)[] = [
     FmtDatetimePipe,
     FmtScorePipe,
     Icon,
+    Markdown,
     OptionCard,
     PageHeader,
     Progress,
@@ -55,6 +58,14 @@ export class AssessmentResult {
   readonly canRetry = input.required<boolean>();
   readonly reviewOpen = input(false);
   readonly reviewOpenChange = output<boolean>();
+  /** "Giải thích" is offered per question; false when the user has no assistant. */
+  readonly explainable = input(false);
+  readonly explanations = input<ReadonlyMap<number, QuestionExplanation>>(
+    new Map(),
+  );
+  /** An explanation is on its way, so no other can start. */
+  readonly explainBusy = input(false);
+  readonly explain = output<number>();
 
   protected readonly crumbs = computed((): readonly BreadcrumbItem[] => {
     const result = this.result();
@@ -74,7 +85,7 @@ export class AssessmentResult {
     if (summary.passed)
       return 'Bạn đã đạt bài kiểm tra này ở một lượt thi khác. Lượt này chỉ để xem lại.';
     return summary.attemptsLeft > 0
-      ? 'Xem lại nhóm kiến thức còn yếu bên dưới trước khi thi lại.'
+      ? 'Xem lại nhóm năng lực còn yếu bên dưới trước khi thi lại.'
       : 'Bạn đã dùng hết lượt thi. Giảng viên sẽ xem xét kết quả của bạn.';
   });
 

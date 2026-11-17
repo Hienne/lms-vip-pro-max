@@ -1,6 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { Menu, type MenuEntry } from '@lms/ui';
 import { DevToolbarStore } from './dev-toolbar.store';
+import { ShellInsets } from '../../../layout/shell-insets';
 
 type Choice = 'offline' | 'expire' | 'admin-url' | 'design-system';
 
@@ -12,6 +13,7 @@ type Choice = 'offline' | 'expire' | 'admin-url' | 'design-system';
   selector: 'app-dev-toolbar',
   imports: [Menu],
   providers: [DevToolbarStore],
+  host: { '[style.--toolbar-inset.px]': 'inset()' },
   template: `
     <div class="dev-toolbar">
       <ui-menu
@@ -26,6 +28,7 @@ type Choice = 'offline' | 'expire' | 'admin-url' | 'design-system';
   styleUrl: './dev-toolbar.scss',
 })
 export class DevToolbar {
+  protected readonly inset = inject(ShellInsets).bottom;
   protected readonly store = inject(DevToolbarStore);
 
   protected readonly entries = computed<MenuEntry<Choice>[]>(() => [

@@ -268,12 +268,12 @@
     >
       <h2 id="progress-competency">Năng lực của tôi</h2>
       <p class="learning-progress__muted">
-        Năng lực theo nhóm kiến thức, tổng hợp từ các lượt thi đã chấm. Mở lịch
+        Năng lực theo nhóm năng lực, tổng hợp từ các lượt thi đã chấm. Mở lịch
         sử thi để xem chi tiết.
       </p>
       @if (store.competencyError$(); as error) {
       <ui-error-state
-        title="Không tải được năng lực theo nhóm kiến thức"
+        title="Không tải được năng lực theo nhóm năng lực"
         [message]="error.message"
         (retry)="store.retryCompetency()"
       />
@@ -450,7 +450,7 @@
           [title]="
             store.historyHasFilters$()
               ? 'Không có lượt thi phù hợp với bộ lọc.'
-              : 'Bạn chưa có bài thi nào được chấm.'
+              : 'Bạn chưa có bài kiểm tra nào được chấm.'
           "
         />
         <ng-template uiDataTableCell="quizTitle" [of]="historyRows$()" let-row>

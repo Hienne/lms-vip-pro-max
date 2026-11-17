@@ -1,0 +1,145 @@
+<ui-page-header
+  [title]="store.admin$ ? 'Thư viện bài giảng' : 'Bài giảng SCORM'"
+  description="Bài giảng tương tác SCORM 1.2, có lưu điểm, trạng thái và vị trí học tiếp."
+/>
+@if(store.admin$){
+<ui-section-card title="Nhập bài giảng SCORM">
+  <p>Đơn vị sở hữu: <strong>{{store.ownerName$()}}</strong></p>
+  <p>
+    Chọn tệp ZIP xuất theo SCORM 1.2 (Single SCO). Giữ nguyên tệp nén, tối đa
+    100 MB. Gói mới được lưu nháp để xem thử trước khi xuất bản.
+  </p>
+  <div class="scorm-library__upload">
+    <input
+      #file
+      type="file"
+      accept=".zip,application/zip"
+      hidden
+      (change)="selected($event)"
+    />
+    <button
+      uiButton
+      type="button"
+      (click)="file.click()"
+      [disabled]="store.uploading$()"
+    >
+      <ui-icon name="upload" size="sm" />Chọn tệp ZIP
+    </button>
+    <span>{{store.file$()?.name ?? 'Chưa chọn tệp'}}</span>
+    <button
+      uiButton
+      type="button"
+      variant="primary"
+      [disabled]="!store.file$() || store.uploading$()"
+      (click)="store.upload()"
+    >
+      {{store.uploading$() ? 'Đang tải và kiểm tra…' : 'Nhập và xem thử'}}
+    </button>
+  </div>
+  @if(store.fileError$();as error){<ui-alert tone="danger">{{error}}</ui-alert>}
+  @if(store.uploadError$();as error){<ui-alert tone="danger"
+    >{{error.message}}</ui-alert
+  >}
+  <p>
+    Xuất bản sẽ mở bài giảng cho học viên thuộc đơn vị sở hữu và các đơn vị con.
+    Khi soạn khóa học, giảng viên có thể chọn bài giảng trong thư viện hoặc tải
+    tệp ZIP trực tiếp vào bài học.
+  </p>
+</ui-section-card>
+}
+<ui-section-card title="Danh sách bài giảng" flush>
+  <div class="scorm-library__filters">
+    <ui-search
+      label="Tìm bài giảng"
+      placeholder="Tên bài giảng…"
+      [value]="store.query$()"
+      (searched)="store.search($event)"
+    />
+  </div>
+  @if(store.publishingError$();as error){<ui-alert tone="danger"
+    >{{error.message}}</ui-alert
+  >} @if(store.loading$()){
+  <div uiSkeleton variant="block"></div>
+  } @else if(store.error$();as error){<ui-error-state
+    [message]="error.message"
+    (retry)="store.reload()"
+  />} @else if(store.items$().length){
+  <div uiTableWrap>
+    <table uiTable>
+      <caption class="sr-only">
+        Bài giảng SCORM
+      </caption>
+      <thead>
+        <tr>
+          <th uiTableCol>Nội dung</th>
+          @if(store.admin$){
+          <th uiTableCol>Tệp nguồn</th>
+          }
+          <th uiTableCol>Xuất bản</th>
+          <th uiTableCol>Kết quả của tôi</th>
+          <th uiTableCol>Điểm</th>
+          <th uiTableCol>Cập nhật</th>
+          <th uiTableCol>Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for(item of store.items$();track item.id){
+        <tr>
+          <td uiTableCell data-label="Nội dung">
+            <a
+              uiTablePrimary
+              [routerLink]="['/scorm',item.id]"
+              [queryParams]="item.canManage ? {preview:true}: {}"
+              >{{item.title}}</a
+            >
+          </td>
+          @if(store.admin$){
+          <td uiTableCell data-label="Tệp nguồn">{{item.originalName}}</td>
+          }
+          <td uiTableCell data-label="Xuất bản">
+            {{item.published ? 'Đã xuất bản' : 'Nháp'}}
+          </td>
+          <td uiTableCell data-label="Kết quả của tôi">
+            {{status[item.progress.lessonStatus]}}
+          </td>
+          <td uiTableCell data-label="Điểm">
+            {{item.progress.scoreRaw ?? '—'}}@if(item.progress.scoreMax!==null){
+            / {{item.progress.scoreMax}}}
+          </td>
+          <td uiTableCell data-label="Cập nhật">
+            {{item.progress.updateTime ? (item.progress.updateTime |
+            fmtDatetime) : '—'}}
+          </td>
+          <td uiTableCell data-label="Thao tác">
+            @if(item.canManage && !item.published){<button
+              uiButton
+              size="sm"
+              type="button"
+              [disabled]="store.publishing$()"
+              (click)="store.publish(item)"
+            >
+              Xuất bản</button
+            >}@else{<a
+              uiButton
+              size="sm"
+              [routerLink]="['/scorm',item.id]"
+              [queryParams]="item.canManage ? {preview:true}: {}"
+              >{{item.canManage ? 'Xem thử' : 'Mở bài'}}</a
+            >}
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <ui-pagination
+    [total]="store.total$()"
+    [page]="store.page$()"
+    [pageSize]="20"
+    (pageChange)="store.goToPage($event)"
+  />
+  }@else{<ui-empty
+    title="Chưa có bài giảng phù hợp"
+    description="Bài giảng đã xuất bản trong phạm vi của bạn sẽ xuất hiện tại đây."
+  />}
+</ui-section-card>

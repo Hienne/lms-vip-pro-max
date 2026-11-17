@@ -21,6 +21,7 @@ import {
 } from 'rxjs';
 import { serverMutation } from '../../../core/data-access/server-mutation';
 import { EndpointClient } from '../../../core/http/endpoint-client';
+import { randomId } from '../../../core/browser/secure-context';
 
 async function checksum(file: Blob): Promise<string> {
   return bytesToHex(sha256(new Uint8Array(await file.arrayBuffer())));
@@ -40,7 +41,7 @@ export function communityCoverUpload(design = false) {
         switchMap((hash) =>
           client.call(media.startUpload, {
             body: {
-              requestId: crypto.randomUUID(),
+              requestId: randomId(),
               originalName: file.name,
               mimeType: file.type,
               sizeBytes: file.size,

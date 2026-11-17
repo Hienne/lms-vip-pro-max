@@ -1,7 +1,8 @@
 import { Dialog, DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { defer, map, type Observable } from 'rxjs';
 import { Button } from '../../atoms/button/button.directive';
+import { Checkbox } from '../../atoms/checkbox/checkbox.directive';
 import { Icon } from '../../atoms/icon/icon';
 import { IconButton } from '../../atoms/icon-button/icon-button.directive';
 
@@ -15,16 +16,22 @@ export type ConfirmOptions = {
   /** `danger` swaps the confirm button for the danger one. */
   tone?: ConfirmTone;
   /**
+   * A statement the user must tick before confirming, such as "Tôi đã rà soát nội dung". The
+   * confirm button stays disabled until it is ticked.
+   */
+  acknowledge?: string;
+  /**
    * The close icon, Escape and the backdrop answer `undefined` instead of `false`, so the caller can
    * tell "never mind, go back" from the cancel button's "no". Set by {@link choose}.
    */
   distinctClose?: boolean;
 };
 
-type ConfirmData = Required<ConfirmOptions> & {
-  titleId: string;
-  messageId: string;
-};
+type ConfirmData = Required<Omit<ConfirmOptions, 'acknowledge'>> &
+  Pick<ConfirmOptions, 'acknowledge'> & {
+    titleId: string;
+    messageId: string;
+  };
 
 let nextId = 0;
 
@@ -36,7 +43,7 @@ let nextId = 0;
  */
 @Component({
   selector: 'ui-confirm-dialog',
-  imports: [Button, Icon, IconButton],
+  imports: [Button, Checkbox, Icon, IconButton],
   host: { class: 'dialog' },
   templateUrl: './confirm-dialog.html',
 })
@@ -45,6 +52,14 @@ export class ConfirmDialog {
   protected readonly data = inject<ConfirmData>(DIALOG_DATA);
 
   protected readonly danger = computed(() => this.data.tone === 'danger');
+  protected readonly acknowledged = signal(false);
+  protected readonly canConfirm = computed(
+    () => !this.data.acknowledge || this.acknowledged(),
+  );
+
+  protected tick(event: Event): void {
+    this.acknowledged.set((event.target as HTMLInputElement).checked);
+  }
 
   protected close(result: boolean | undefined): void {
     this.ref.close(result);

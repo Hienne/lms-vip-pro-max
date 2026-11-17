@@ -57,10 +57,36 @@ export default [
     },
   },
   {
+    // This Node-only dev-server config imports workspace tooling, never application/library code.
+    files: ['apps/lms/proxy.conf.mjs', 'proxy.conf.mjs'],
+    rules: { '@nx/enforce-module-boundaries': 'off' },
+  },
+  {
     // @lucide/angular is wrapped once, by ui-icon in libs/ui (docs/conventions/ui-library.md → Icons).
     files: ['apps/**/*.ts', 'libs/contracts/**/*.ts', 'libs/mocks/**/*.ts'],
     rules: {
       'no-restricted-imports': ['error', { paths: [lucidePath] }],
+    },
+  },
+  {
+    // Plain-HTTP deploys have no secure context: use randomId() and copyText() from
+    // core/browser/secure-context. Mocks run in tests and the dev mock API only.
+    files: ['apps/**/*.ts', 'libs/ui/**/*.ts', 'libs/contracts/**/*.ts'],
+    ignores: ['apps/lms/src/app/core/browser/secure-context.ts'],
+    rules: {
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'crypto',
+          property: 'randomUUID',
+          message: 'Use randomId() from core/browser/secure-context.',
+        },
+        {
+          object: 'navigator',
+          property: 'clipboard',
+          message: 'Use copyText() from core/browser/secure-context.',
+        },
+      ],
     },
   },
   {

@@ -65,6 +65,10 @@
     &__msg {
       color: var(--color-text-secondary);
     }
+
+    &__action {
+      margin-block-start: var(--spacing-1);
+    }
   }
 
   @media print {

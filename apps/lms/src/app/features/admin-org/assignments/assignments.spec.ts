@@ -1,11 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import {
   assignmentEndpoints,
+  type RevisionChangeCommand,
   courseEndpoints,
   type AssignCourseCommand,
   type RescheduleAssignmentCommand,
 } from '@lms/contracts';
-import { backendRefusal, seedCourseDetails } from '@lms/mocks';
+import { backendRefusal, envelopeOk, seedCourseDetails } from '@lms/mocks';
 import { setUpAdminScreen } from '../../../core/dev/mock-api/admin-screen.testing';
 import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
 
@@ -101,6 +102,21 @@ describe('Assignments', () => {
       linked,
     );
     expect(courseSelect().value).toBe(linked);
+  });
+
+  it('shows the selected course assignments before opening a new assignment', async () => {
+    const published = seedCourseDetails().filter(
+      (d) => d.course.publishedRevisionId,
+    );
+    const linked = String(published[published.length - 1].course.id);
+    await screen.open(`/admin/assignments?course=${linked}&view=list`);
+
+    expect(editor()).toBeNull();
+    expect(courseSelect().value).toBe(linked);
+    await screen.click(screen.button('Giao khóa học'));
+    expect(
+      (screen.field('Khóa học', editor()!) as HTMLSelectElement).value,
+    ).toBe(linked);
   });
 
   it('assigns the published revision to the chosen targets, then closes and lists it with its counts', async () => {
@@ -261,6 +277,125 @@ describe('Assignments', () => {
       screen.page<{ hasUnsavedChanges(): boolean }>().hasUnsavedChanges(),
     ).toBe(false);
     expect(screen.el.querySelectorAll('h1')).toHaveLength(1);
+  });
+
+  it('previews revision changes, blocks transfer after interaction and sends an explicit relearning request', async () => {
+    const drawer = await startAssigning();
+    await submit(drawer);
+    const backend = TestBed.inject(MockBackend);
+    screen.calls.mockImplementation((endpoint, request) => {
+      if (endpoint === assignmentEndpoints.revisionChangePreview)
+        return {
+          status: 200,
+          body: envelopeOk({
+            enrollmentId: 120,
+            expectedVersion: 3,
+            currentRevisionId: 31,
+            currentRevisionNo: 1,
+            targetRevisionId: 45,
+            targetRevisionNo: 2,
+            learningStatus: 'in_progress',
+            activeObligations: 2,
+            impactToken: 'snapshot-1',
+            canTransfer: false,
+            canRelearn: true,
+            blockReason:
+              'Học viên đã có tương tác hoặc kết quả; cần tạo lần học lại để giữ lịch sử.',
+          }),
+        };
+      if (endpoint === assignmentEndpoints.changeRevision)
+        return backendRefusal('stateConflict');
+      return MockBackend.prototype.handle.call(backend, endpoint, request);
+    });
+    await screen.click(
+      screen.el.querySelector<HTMLButtonElement>('tbody tr button')!,
+    );
+    const detail = screen.drawer()!;
+    await screen.click(screen.button('Phiên bản / học lại', detail));
+    const mode = screen.field('Cách xử lý', detail) as HTMLSelectElement;
+    expect(mode.value).toBe('relearn');
+    expect(
+      Array.from(mode.options).find((o) => o.value === 'transfer_unstarted')
+        ?.disabled,
+    ).toBe(true);
+    await screen.click(screen.button('Xác nhận thay đổi', detail));
+    expect(screen.callsTo(assignmentEndpoints.changeRevision)).toBe(0);
+    await screen.type(
+      screen.field('Lý do', detail) as HTMLTextAreaElement,
+      'Đào tạo lại nội dung mới',
+    );
+    await screen.click(screen.button('Xác nhận thay đổi', detail));
+    const body = screen.lastCall(assignmentEndpoints.changeRevision)
+      ?.body as RevisionChangeCommand;
+    expect(body).toMatchObject({
+      enrollmentId: 120,
+      expectedVersion: 3,
+      targetRevisionId: 45,
+      impactToken: 'snapshot-1',
+      mode: 'relearn',
+      reason: 'Đào tạo lại nội dung mới',
+      dueAt: null,
+    });
+    expect(body.idempotencyKey).toBeTruthy();
+    expect(screen.text(detail)).toContain('Cập nhật phiên bản học');
+  });
+
+  it('transfers eligible selected learners and reports those who cannot transfer', async () => {
+    const drawer = await startAssigning();
+    await submit(drawer);
+    const backend = TestBed.inject(MockBackend);
+    let previews = 0;
+    screen.calls.mockImplementation((endpoint, request) => {
+      if (endpoint === assignmentEndpoints.revisionChangePreview) {
+        previews++;
+        return {
+          status: 200,
+          body: envelopeOk({
+            enrollmentId: 120,
+            expectedVersion: 3,
+            currentRevisionId: 31,
+            currentRevisionNo: 1,
+            targetRevisionId: 45,
+            targetRevisionNo: 2,
+            learningStatus: 'not_started',
+            activeObligations: 1,
+            impactToken: 'snapshot',
+            canTransfer: previews === 1,
+            canRelearn: true,
+            blockReason: previews === 1 ? null : 'Học viên đã bắt đầu.',
+          }),
+        };
+      }
+      if (endpoint === assignmentEndpoints.changeRevision)
+        return {
+          status: 200,
+          body: envelopeOk({
+            previousEnrollmentId: 120,
+            enrollmentId: 121,
+            assignmentId: 5000,
+            revisionId: 45,
+          }),
+        };
+      return MockBackend.prototype.handle.call(backend, endpoint, request);
+    });
+    await screen.click(
+      screen.el.querySelector<HTMLButtonElement>('tbody tr button')!,
+    );
+    const detail = screen.drawer()!;
+    const choices = detail.querySelectorAll<HTMLInputElement>(
+      'input[aria-label^="Chọn "]',
+    );
+    await screen.click(choices[0]);
+    await screen.click(choices[1]);
+    await screen.type(
+      screen.field('Lý do chuyển', detail) as HTMLTextAreaElement,
+      'Cập nhật nội dung',
+    );
+    await screen.click(screen.button('Chuyển học viên đã chọn', detail));
+    expect(screen.callsTo(assignmentEndpoints.revisionChangePreview)).toBe(2);
+    expect(screen.callsTo(assignmentEndpoints.changeRevision)).toBe(1);
+    expect(screen.text(detail)).toContain('Đã chuyển sang phiên bản mới.');
+    expect(screen.text(detail)).toContain('Học viên đã bắt đầu.');
   });
 
   it('revokes one learner with a reason', async () => {

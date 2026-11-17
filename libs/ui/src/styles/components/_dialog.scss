@@ -41,9 +41,18 @@
     }
 
     &__body {
+      white-space: pre-line;
       margin: 0;
       padding: var(--spacing-4) var(--spacing-6);
       color: var(--color-text-secondary);
+      font-size: var(--text-sm);
+    }
+
+    &__acknowledge {
+      display: flex;
+      gap: var(--spacing-2);
+      align-items: flex-start;
+      padding: 0 var(--spacing-6);
       font-size: var(--text-sm);
     }
 

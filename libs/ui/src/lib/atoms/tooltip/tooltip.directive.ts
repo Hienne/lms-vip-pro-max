@@ -100,6 +100,7 @@ export class TooltipBubble {
 })
 export class Tooltip {
   readonly text = input('', { alias: 'uiTooltip' });
+  readonly tooltipDisabled = input(false);
 
   private readonly overlay = inject(Overlay);
   private readonly injector = inject(Injector);
@@ -120,7 +121,7 @@ export class Tooltip {
 
   protected schedule(): void {
     clearTimeout(this.timer);
-    if (this.visible() || !this.text()) return;
+    if (this.tooltipDisabled() || this.visible() || !this.text()) return;
     this.timer = setTimeout(() => this.show(), SHOW_DELAY_MS);
   }
 
@@ -131,7 +132,7 @@ export class Tooltip {
   }
 
   private show(): void {
-    if (!this.text()) return;
+    if (this.tooltipDisabled() || !this.text()) return;
     const ref = (this.overlayRef ??= this.createOverlay());
     const injector = Injector.create({
       parent: this.injector,

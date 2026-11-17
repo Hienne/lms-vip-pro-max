@@ -20,3 +20,43 @@
     justify-content: space-between;
   }
 }
+
+.user-form__membership ui-field {
+  min-width: 0;
+}
+
+.user-form__membership select {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@supports (appearance: base-select) {
+  .user-form__membership select {
+    overflow: visible;
+  }
+
+  .user-form__membership selectedcontent {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@supports (appearance: base-select) and selector(::picker(select)) {
+  select option[data-child='true'] {
+    padding-inline-start: calc(
+      #{ui.space(3)} + var(--org-depth) * #{ui.space(4)}
+    );
+  }
+
+  select option[data-child='true']::before {
+    content: '↳';
+    color: ui.color(text-muted);
+    margin-inline-end: ui.space(2);
+  }
+}

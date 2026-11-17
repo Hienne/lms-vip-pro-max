@@ -6,10 +6,13 @@ import { Tooltip } from './tooltip.directive';
 
 @Component({
   imports: [Tooltip],
-  template: `<button [uiTooltip]="text()">Trigger</button>`,
+  template: `<button [uiTooltip]="text()" [tooltipDisabled]="disabled()">
+    Trigger
+  </button>`,
 })
 class Host {
   readonly text = signal('Xóa khóa học');
+  readonly disabled = signal(false);
 }
 
 function render() {
@@ -31,6 +34,15 @@ const press = (el: Element, key: string) =>
   el.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
 
 describe('Tooltip', () => {
+  it('keeps a disabled tooltip hidden on initial focus and hover', () => {
+    const { host, fixture, trigger, bubble, settle } = render();
+    host.disabled.set(true);
+    fixture.detectChanges();
+    trigger.dispatchEvent(new Event('focus'));
+    trigger.dispatchEvent(new MouseEvent('mouseenter'));
+    settle();
+    expect(bubble()).toBeNull();
+  });
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => {
     vi.useRealTimers();

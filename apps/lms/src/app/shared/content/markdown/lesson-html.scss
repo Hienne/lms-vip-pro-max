@@ -1,0 +1,78 @@
+@use 'ui';
+
+.lesson-html {
+  line-height: ui.leading(relaxed);
+  overflow-wrap: anywhere;
+
+  :is(p, div, h2, h3, h4, ul, ol, blockquote, pre)
+    + :is(p, div, h2, h3, h4, ul, ol, blockquote, pre) {
+    margin-block-start: ui.space(2);
+  }
+
+  h2,
+  h3,
+  h4 {
+    font-weight: ui.weight(medium);
+  }
+
+  h2 {
+    font-size: ui.text-size(lg);
+  }
+  h3 {
+    font-size: ui.text-size(md);
+  }
+  ul,
+  ol {
+    padding-inline-start: ui.space(6);
+  }
+  ul {
+    list-style: disc;
+  }
+  ol {
+    list-style: decimal;
+  }
+  blockquote {
+    padding-inline-start: ui.space(3);
+    border-inline-start: 1px solid ui.color(border-strong);
+  }
+  pre {
+    white-space: pre-wrap;
+  }
+  a {
+    color: ui.color(primary);
+    text-decoration: underline;
+  }
+  img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin-block: ui.space(3);
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    table-layout: fixed;
+    margin-block: ui.space(3);
+  }
+  th,
+  td {
+    border: 1px solid ui.color(border-strong);
+    padding: ui.space(2);
+    min-width: 0;
+    vertical-align: top;
+  }
+  th {
+    background: ui.color(surface-2);
+    font-weight: ui.weight(semibold);
+  }
+  caption {
+    padding: ui.space(2);
+    text-align: left;
+  }
+  pre {
+    @include ui.mono;
+    padding: ui.space(3);
+    background: ui.color(surface-2);
+    border: 1px solid ui.color(border);
+  }
+}

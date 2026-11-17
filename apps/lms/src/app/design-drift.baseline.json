@@ -12,9 +12,6 @@
   "apps/lms/src/app/features/achievements/progress/progress.scss": {
     "own-radius": 2
   },
-  "apps/lms/src/app/features/admin-content/course-editor/components/asset-library/asset-library.scss": {
-    "text-xs": 1
-  },
   "apps/lms/src/app/features/admin-content/course-editor/components/course-info/course-info.scss": {
     "text-xs": 1
   },
@@ -233,9 +230,6 @@
   "apps/lms/src/app/features/lesson/lesson/components/image-block/image-block.scss": {
     "own-radius": 1
   },
-  "apps/lms/src/app/features/lesson/lesson/components/lesson-feedback/lesson-feedback.scss": {
-    "own-radius": 1
-  },
   "apps/lms/src/app/features/lesson/lesson/components/lesson-notes/lesson-notes.scss": {
     "own-radius": 1,
     "text-xs": 1
@@ -255,13 +249,7 @@
     "own-radius": 1
   },
   "apps/lms/src/app/features/lesson/lesson/lesson.scss": {
-    "own-radius": 2,
     "own-shadow": 2
-  },
-  "apps/lms/src/app/features/quiz/assessment-screen/assessment-screen.scss": {
-    "own-radius": 1,
-    "subtle-fill": 1,
-    "text-xs": 2
   },
   "apps/lms/src/app/features/quiz/learner-quiz/quiz-attempts/quiz-attempts.scss": {
     "text-xs": 1
@@ -280,10 +268,6 @@
   },
   "apps/lms/src/app/features/study-tools/assistant/assistant.html": {
     "own-h1": 1
-  },
-  "apps/lms/src/app/features/study-tools/assistant/assistant.scss": {
-    "own-font": 4,
-    "text-xs": 1
   },
   "apps/lms/src/app/features/study-tools/assistant/components/chat-message/chat-message.scss": {
     "own-radius": 1

@@ -1,0 +1,50 @@
+@use 'ui';
+@layer components {
+  .search-select {
+    display: block;
+    min-width: 0;
+  }
+  .search-select__trigger {
+    width: 100%;
+    justify-content: space-between;
+    text-align: left;
+  }
+  .search-select__value {
+    @include ui.truncate;
+  }
+  .search-select__panel {
+    @include ui.stack(3);
+    width: 100%;
+    padding: ui.space(3);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(control);
+    background: ui.color(surface);
+    color: ui.color(text);
+    box-shadow: ui.shadow(lg);
+    max-width: calc(100vw - var(--spacing-6));
+  }
+  .search-select__options {
+    max-height: 18rem;
+    overflow-y: auto;
+    @include ui.scrollbar;
+  }
+  .search-select__option {
+    @include ui.row(3);
+    justify-content: space-between;
+    padding: ui.space(3);
+    cursor: pointer;
+    &[aria-selected='true'] {
+      background: ui.color(primary-subtle);
+    }
+    &:hover,
+    &:focus-visible {
+      background: ui.color(surface-2);
+      outline: 2px solid ui.color(primary);
+      outline-offset: -2px;
+    }
+    &[aria-disabled='true'] {
+      color: ui.color(text-muted);
+      cursor: not-allowed;
+    }
+  }
+}

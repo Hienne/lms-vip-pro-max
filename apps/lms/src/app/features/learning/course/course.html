@@ -1,6 +1,7 @@
 @if (store.loadError$(); as error) {
 <ui-error-state
   title="Không tải được khóa học"
+  [headingLevel]="1"
   [message]="error.message"
   (retry)="store.retry()"
 />
@@ -14,9 +15,10 @@
   <a uiButton variant="primary" routerLink="/catalog">Về danh mục</a>
 </ui-empty>
 } @else if (store.view$() === 'loading') {
-<div class="course__loading" aria-busy="true">
+<div class="course__loading" aria-busy="true" aria-label="Đang tải khóa học">
   <div uiSkeleton variant="text" class="course__skeleton-title"></div>
   <div uiSkeleton variant="text"></div>
+  <div uiSkeleton variant="block" class="course__skeleton-strip"></div>
   <div uiSkeleton variant="block" class="course__skeleton-body"></div>
 </div>
 } @else { @if (store.card$(); as card) {
@@ -28,13 +30,14 @@
       uiButton
       variant="primary"
       [disabled]="store.isEnrolling$()"
+      [attr.aria-busy]="store.isEnrolling$()"
       (click)="store.enroll()"
     >
-      Đăng ký học
+      {{ store.isEnrolling$() ? 'Đang đăng ký…' : 'Đăng ký học' }}
     </button>
-    } @else if (store.nextExamId$(); as quizId) {
-    <a uiButton variant="primary" [routerLink]="['/quiz', quizId]"
-      >Đến bài thi cuối khóa</a
+    } @else if (store.nextExamAction$(); as exam) {
+    <a uiButton variant="primary" [routerLink]="['/quiz', exam.id]"
+      >{{ exam.label }}</a
     >
     } @else if (store.primaryAction$(); as label) {
     <a uiButton variant="primary" [routerLink]="store.resumeLink$()"
@@ -46,13 +49,12 @@
   </div>
 </ui-page-header>
 
-@if (store.nextExamId$()) {
-<p class="course__next">
-  Bạn đã học xong các bài bắt buộc. Hãy đạt bài thi cuối khóa để hoàn thành
-  khóa.
-</p>
-} @else if (store.primaryAction$() && store.resumeLessonTitle$(); as title) {
-<p class="course__next">Bài học · <strong>{{ title }}</strong></p>
+@if (store.nextExamAction$()?.note; as note) {
+<ui-alert tone="info" [announce]="false">{{ note }}</ui-alert>
+} @if (store.needsAssignment$()) {
+<ui-alert tone="info" [announce]="false">
+  Khóa học bắt buộc này cần được giao để học.
+</ui-alert>
 }
 
 <p class="course__meta">
@@ -66,159 +68,162 @@
       >Đánh giá {{ rating.average }} trên 5 sao từ {{ rating.count }} lượt</span
     >
   </span>
-  } @if (card.dueAt) {
+  } @if (card.dueAt && store.view$() !== 'enrolled') {
   <app-due-date
     highlight
     [dueAt]="card.dueAt"
     [done]="card.learningStatus === 'completed'"
   />
+  } @if (!store.nextExamId$() && store.primaryAction$() &&
+  store.resumeLessonTitle$(); as title) {
+  <span>Bài tiếp theo · <strong>{{ title }}</strong></span>
   }
 </p>
 
-<div class="course__layout">
+@if (store.view$() === 'enrolled') {
+<section class="course__status" aria-label="Tình trạng hoàn thành">
+  <ui-stat-strip>
+    <ui-stat
+      label="Tiến độ bài bắt buộc"
+      [value]="progress()"
+      unit="%"
+      [note]="
+        card.learningStatus === 'completed'
+          ? 'Đã hoàn thành khóa'
+          : 'Chưa hoàn thành khóa'
+      "
+    />
+    @if (required(); as required) {
+    <ui-stat
+      label="Bài bắt buộc"
+      [value]="required.done + '/' + required.total"
+      [note]="required.satisfied ? 'Đã đủ' : 'Chưa đủ'"
+    />
+    } @if (finalExam(); as exam) {
+    <ui-stat
+      label="Bài kiểm tra cuối khóa"
+      [value]="exam.label"
+      [tone]="exam.failed ? 'danger' : 'default'"
+      [note]="exam.note"
+    />
+    } @if (card.learningStatus === 'completed' && card.completedAt) {
+    <ui-stat
+      label="Ngày hoàn thành"
+      [value]="card.completedAt | fmtDate"
+      [note]="card.dueAt ? 'Hạn ' + (card.dueAt | fmtDate) : undefined"
+    />
+    } @else if (card.learningStatus !== 'completed' && card.dueAt) { @let days =
+    card.dueAt | fmtDaysLeft;
+    <ui-stat
+      label="Hạn hoàn thành"
+      [value]="card.dueAt | fmtDate"
+      [tone]="card.overdue ? 'danger' : 'default'"
+      [note]="
+        days === null
+          ? undefined
+          : days < 0
+            ? 'Quá hạn ' + -days + ' ngày'
+            : 'Còn ' + days + ' ngày'
+      "
+    />
+    }
+  </ui-stat-strip>
+</section>
+}
+
+<div class="course__layout" [class.course__layout--intro]="hasIntro()">
+  @if (store.view$() !== 'enrolled') {
+  <ng-container *ngTemplateOutlet="intro" />
+  }
+
   <div class="course__main">
-    @if (coverSrc() || objectives().length) {
-    <details class="course__overview" [open]="store.view$() !== 'enrolled'">
-      <summary>Giới thiệu khóa học</summary>
+    <ui-section-card title="Nội dung khóa học" headingId="course-outline" flush>
+      @if (store.view$() === 'enrolled') {
+      <span slot="action" class="course__tally"
+        >{{ store.lessonTally$().done }}/{{ store.lessonTally$().total }} bài đã
+        học</span
+      >
+      }
+      <app-course-outline
+        class="course__outline"
+        [chapters]="store.outline$()"
+      />
+    </ui-section-card>
+
+    @if (store.view$() === 'enrolled') { @if (store.quizError$(); as error) {
+    <ui-section-card title="Bài kiểm tra" headingId="course-quizzes">
+      <ui-error-state
+        title="Không tải được bài kiểm tra"
+        [message]="error.message"
+        (retry)="store.retryQuizzes()"
+      />
+    </ui-section-card>
+    } @else if (store.quizzesLoading$()) {
+    <div
+      uiSkeleton
+      variant="block"
+      class="course__skeleton-quizzes"
+      aria-busy="true"
+      aria-label="Đang tải bài kiểm tra"
+    ></div>
+    } @else if (store.finalExam$() || store.otherQuizzes$().length) {
+    <ui-section-card title="Bài kiểm tra" headingId="course-quizzes" flush>
+      @if (store.requiredQuizCount$() && card.learningStatus !== 'completed') {
+      <p class="course__quiz-rule">
+        Để hoàn thành khóa, cần đạt điểm yêu cầu của {{
+        store.requiredQuizCount$() }} bài kiểm tra bắt buộc.
+      </p>
+      }
+      <ul uiList>
+        @if (store.finalExam$(); as exam) {
+        <li uiListItem class="course__final">
+          <app-quiz-card class="course__quiz" [card]="exam" />
+        </li>
+        } @for (quiz of store.otherQuizzes$(); track quiz.quiz.id) {
+        <li uiListItem>
+          <app-quiz-card class="course__quiz" [card]="quiz" />
+        </li>
+        }
+      </ul>
+    </ui-section-card>
+    } }
+  </div>
+
+  @if (store.view$() === 'enrolled') {
+  <ng-container *ngTemplateOutlet="intro" />
+  }
+</div>
+
+<ng-template #intro>
+  @if (hasIntro()) {
+  <ui-section-card
+    title="Giới thiệu khóa học"
+    headingId="course-intro"
+    class="course__side"
+  >
+    <div class="course__intro">
       @if (coverSrc(); as src) {
       <img class="course__cover" [src]="src" alt="" />
+      } @if (summary(); as summary) {
+      <p class="course__summary">{{ summary }}</p>
       } @if (objectives().length) {
       <section aria-labelledby="course-objectives">
-        <h2 id="course-objectives" class="course__heading">Mục tiêu đầu ra</h2>
+        <h3 id="course-objectives" class="course__subheading">
+          Mục tiêu đầu ra
+        </h3>
         <ul class="course__objectives">
           @for (objective of objectives(); track objective.id) {
           <li>{{ objective.description }}</li>
           }
         </ul>
       </section>
-      }
-    </details>
-    }
-    <section aria-labelledby="course-outline">
-      <h2 id="course-outline" class="course__heading">Nội dung khóa học</h2>
-      @if (store.view$() === 'enrolled' && requiredTally(); as tally) {
-      <p class="course__tally">
-        {{ tally.done }}/{{ tally.required }} bài bắt buộc đã hoàn thành
-      </p>
-      } @if (store.needsAssignment$()) {
-      <p class="course__note">Khóa học bắt buộc này cần được giao để học.</p>
-      }
-      <section uiCard class="course__outline">
-        <app-course-outline [chapters]="store.outline$()" />
-      </section>
-    </section>
-    @if (store.view$() === 'enrolled') { @if (store.requiredQuizCount$() &&
-    card.learningStatus !== 'completed') {
-    <ui-alert tone="info" [announce]="false">
-      Để hoàn thành khóa học, cần học xong nội dung bắt buộc và đạt điểm yêu cầu
-      của {{ store.requiredQuizCount$() }} bài kiểm tra bắt buộc.
-    </ui-alert>
-    } @if (store.quizError$(); as error) {
-    <section aria-labelledby="course-quizzes">
-      <h2 id="course-quizzes" class="course__heading">Bài kiểm tra</h2>
-      <ui-error-state
-        title="Không tải được bài kiểm tra"
-        [message]="error.message"
-        (retry)="store.retryQuizzes()"
-      />
-    </section>
-    } @else if (store.finalExam$() || store.otherQuizzes$().length) {
-    <section aria-labelledby="course-quizzes">
-      <h2 id="course-quizzes" class="course__heading">Bài kiểm tra</h2>
-      @if (store.finalExam$(); as exam) {
-      <section uiCard class="course__final">
-        <div uiCardBody><app-quiz-card [card]="exam" /></div>
-      </section>
-      } @if (store.otherQuizzes$().length) {
-      <ul class="course__quizzes">
-        @for (card of store.otherQuizzes$(); track card.quiz.id) {
-        <li><app-quiz-card [card]="card" /></li>
-        }
-      </ul>
-      }
-    </section>
-    } }
-  </div>
-
-  @if (store.view$() === 'enrolled') {
-  <aside class="course__side" aria-label="Tiến độ">
-    <ui-section-card title="Tiến độ học" class="course__progress">
-      <p class="course__percent">
-        <strong>{{ (card.progressPercent ?? 0) | fmtPct }}</strong>
-        <span
-          >{{ card.learningStatus === 'completed' ? 'Đã hoàn thành khóa' : 'Chưa
-          hoàn thành khóa' }}</span
-        >
-      </p>
-      <ui-progress
-        [value]="card.progressPercent ?? 0"
-        label="Tiến độ học các bài bắt buộc"
-      />
-      <dl class="course__facts">
-        <div>
-          <dt>Đã học</dt>
-          <dd>
-            {{ store.lessonTally$().done }}/{{ store.lessonTally$().total }} bài
-          </dd>
-        </div>
-        @if (card.startedAt) {
-        <div>
-          <dt>Bắt đầu</dt>
-          <dd>{{ card.startedAt | fmtDate }}</dd>
-        </div>
-        } @if (card.lastAccessAt) {
-        <div>
-          <dt>Học gần nhất</dt>
-          <dd>{{ card.lastAccessAt | fmtDate }}</dd>
-        </div>
-        } @if (card.completedAt) {
-        <div>
-          <dt>Hoàn thành</dt>
-          <dd>{{ card.completedAt | fmtDate }}</dd>
-        </div>
-        }
-      </dl>
-    </ui-section-card>
-    <section aria-labelledby="course-rule">
-      <h2 id="course-rule" class="course__heading">Điều kiện hoàn thành</h2>
-      @if (store.detail$()?.completion; as completion) {
-      <ul class="course__rule">
-        <li>
-          Bài bắt buộc: {{ completion.completedRequiredLessons }}/{{
-          completion.requiredLessons }} — {{ completion.lessonsSatisfied ? 'Đã
-          hoàn thành' : 'Chưa hoàn thành' }}
-        </li>
-        <li>
-          Bài thi cuối khóa: @switch (completion.finalExamStatus) { @case
-          ('NOT_REQUIRED') { Không yêu cầu } @case ('NOT_TAKEN') { Chưa thi }
-          @case ('NOT_PASSED') { Chưa đạt } @case ('PASSED') { Đã đạt } }
-        </li>
-      </ul>
-      @if (!completion.allSatisfied && card.learningStatus !== 'completed') {
-      <p class="course__note">
-        Cần hoàn thành tất cả điều kiện bắt buộc để hoàn thành khóa.
-      </p>
-      @if (completion.finalQuizId && completion.finalExamStatus !== 'PASSED' &&
-      !store.nextExamId$()) {
-      <a uiButton [routerLink]="['/quiz', completion.finalQuizId]"
-        >Đến bài thi cuối khóa</a
-      >
-      } } @else if (!completion.allSatisfied) {
-      <p class="course__note">
-        Khóa đã được công nhận hoàn thành trước đó. Các điều kiện trên phản ánh
-        kết quả hiện tại.
-      </p>
-      } } @else {
-      <p class="course__note">
-        Chưa có thông tin đánh giá điều kiện hoàn thành.
-      </p>
       } @if (rewardPoints() > 0) {
       <p class="course__reward">
         +{{ rewardPoints() }} điểm thưởng khi hoàn thành
       </p>
       }
-    </section>
-  </aside>
+    </div>
+  </ui-section-card>
   }
-</div>
+</ng-template>
 } }

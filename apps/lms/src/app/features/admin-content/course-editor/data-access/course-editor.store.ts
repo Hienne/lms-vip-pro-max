@@ -18,6 +18,7 @@ import {
 } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
+  scormEndpoints,
   assessmentV1Endpoints,
   assignmentEndpoints,
   courseEndpoints,
@@ -26,14 +27,19 @@ import {
   PUBLISH_LIMITS,
   trainingCatalogEndpoints,
   type BlockType,
+  type MediaKind,
   type CourseDetail,
   type CreateCourseCommand,
   type LibraryAsset,
   type SaveDraftCommand,
+  type ScormPackage,
 } from '@lms/contracts';
 import { choose, confirm, NOW, Toaster, type StepperItem } from '@lms/ui';
 import {
   catchError,
+  EMPTY,
+  expand,
+  reduce,
   filter,
   firstValueFrom,
   map,
@@ -97,7 +103,6 @@ import {
   type PublishTargets,
 } from './publish-targets';
 import { Sha256Hasher } from './sha256-hasher';
-import { syncExamPool } from '../components/course-rules/data-access/exam-pool';
 import {
   hashingStatus,
   isBusy,
@@ -114,7 +119,7 @@ export const EDITOR_STEPS: readonly StepperItem[] = [
   { label: 'Thông tin cơ bản', subtitle: 'Tên, mã, chương trình' },
   { label: 'Nội dung khóa học', subtitle: 'Chương, bài, khối nội dung' },
   {
-    label: 'Bài thi & điều kiện',
+    label: 'Bài kiểm tra & điều kiện',
     subtitle: 'Điều kiện hoàn thành, điểm thưởng',
   },
   { label: 'Đối tượng & xuất bản', subtitle: 'Kiểm tra trước khi xuất bản' },
@@ -132,6 +137,8 @@ export interface UploadRequest {
   /** The block's place in its lesson: the key does not survive a reload, the place does. */
   readonly blockIndex: number;
   readonly file: File;
+  readonly displayName?: string;
+  readonly description?: string;
 }
 
 /** An upload the page lost in a reload: the author picks the file again to continue it. */
@@ -173,6 +180,8 @@ type PublishInput = {
   readonly targets: PublishTargets;
   /** The draft exam the publish brings along: the wizard's, still a draft. */
   readonly exam?: { readonly id: number; readonly title: string };
+  /** The author ticked "Tôi đã rà soát nội dung" for a revision with AI-generated content. */
+  readonly reviewConfirmed?: boolean;
 } & (
   | { readonly kind: 'save'; readonly command: SaveDraftCommand }
   | { readonly kind: 'create'; readonly command: CreateCourseCommand }
@@ -205,6 +214,21 @@ const UPLOAD_RULES: Partial<
   pdf: { extensions: ['pdf'], maxMb: 20 },
   image: { extensions: ['png', 'jpg', 'jpeg', 'webp'], maxMb: 5 },
   attachment: { extensions: ['pdf', 'docx', 'xlsx', 'pptx'], maxMb: 10 },
+};
+
+const duplicateKind = (type: BlockType, file: File): MediaKind | undefined => {
+  switch (type) {
+    case 'video':
+      return 'video';
+    case 'pdf':
+      return 'document';
+    case 'image':
+      return 'image';
+    case 'attachment':
+      return /\.pdf$/i.test(file.name) ? 'document' : 'attachment';
+    default:
+      return undefined;
+  }
 };
 
 export const acceptOf = (type: BlockType): string =>
@@ -254,9 +278,12 @@ export class CourseEditorStore {
   private readonly keptOwners = new Map<string, string>();
 
   private readonly state = {
+    scormPickerOpen: signal(false),
     step: signal(this.initialStep()),
     /** The steps the author has opened, which may show ✓ once they are valid and left. */
-    visited: signal<readonly number[]>([this.initialStep()]),
+    visited: signal<readonly number[]>(
+      Array.from({ length: this.initialStep() + 1 }, (_, index) => index),
+    ),
     /** The checks of steps 1 to 3 over the form, handed over once by the page. */
     stepChecks: signal<readonly StepCheck[]>([]),
     /** The exam a publish already published: a retry of the course does not publish it again. */
@@ -283,6 +310,8 @@ export class CourseEditorStore {
     left: signal(false),
     /** The course code the server refused as taken, so the code field can say so. */
     takenCode: signal<string | null>(null),
+    examSaving: signal(false),
+    examEditing: signal(false),
     /** The program whose field lists the modules; follows the course until the author picks. */
     programId: linkedSignal<number | undefined>(
       () => this.courseData.value()?.revision.programId ?? undefined,
@@ -313,6 +342,49 @@ export class CourseEditorStore {
     ),
   );
 
+  /** Where this page's unsaved draft is kept when the session ends: per user and course. */
+  readonly keptDraftKey$ = computed(
+    () => `course:${this.userId() ?? ''}:${this.courseId() ?? 'new'}`,
+  );
+
+  private readonly scormData = serverData(
+    (_: true) =>
+      this.client
+        .call(scormEndpoints.list, { query: { page: 0, size: 100 } })
+        .pipe(
+          expand((page, index) => {
+            if (page.page !== index)
+              throw new Error('Thư viện trả về sai trang. Vui lòng thử lại.');
+            return page.page + 1 < page.totalPages
+              ? this.client.call(scormEndpoints.list, {
+                  query: { page: page.page + 1, size: 100 },
+                })
+              : EMPTY;
+          }),
+          reduce((all, page) => [...all, ...page.items], [] as ScormPackage[]),
+        ),
+    {
+      params: () => (this.state.scormPickerOpen() ? true : undefined),
+    },
+  );
+  readonly scormPackages$ = computed(() =>
+    (this.scormData.value() ?? []).filter(
+      (p) => p.canManage && p.ownerOrgId === this.ownerOrgId$(),
+    ),
+  );
+  readonly scormError$ = this.scormData.error;
+  readonly scormLoading$ = this.scormData.isLoading;
+  private setScormPickerOpen(open: boolean): void {
+    this.state.scormPickerOpen.set(open);
+  }
+  reloadScorm(): void {
+    if (!this.state.scormPickerOpen()) {
+      this.setScormPickerOpen(true);
+      return;
+    }
+    this.scormData.reload();
+  }
+
   private readonly orgId = computed(() => this.session.user$()?.org?.id);
   private readonly userId = computed(() => this.session.user$()?.userId);
 
@@ -341,7 +413,7 @@ export class CourseEditorStore {
       this.client.call(trainingCatalogEndpoints.listPrograms, {
         query: { ownerOrgId, size: 100 },
       }),
-    { params: () => this.orgId() },
+    { params: () => this.ownerOrgId$() },
   );
 
   private readonly fieldId = computed(() => {
@@ -422,7 +494,7 @@ export class CourseEditorStore {
     this.state.step(),
   );
 
-  /** "Tiếp tục" on step 1 of a new course: the edit URL opens on step 2. */
+  /** "Tiếp theo" on step 1 of a new course: the edit URL opens on step 2. */
   private readonly createAndContinueMutation = this.newCreateMutation(() => 1);
 
   /**
@@ -505,6 +577,7 @@ export class CourseEditorStore {
 
   // Selectors
   readonly step$ = this.state.step.asReadonly();
+  readonly examEditing$ = this.state.examEditing.asReadonly();
   readonly visited$ = this.state.visited.asReadonly();
   /** The stepper's steps, each completed only while visited, valid and not open. */
   readonly steps$ = computed((): readonly StepperItem[] => {
@@ -516,7 +589,7 @@ export class CourseEditorStore {
     );
     return EDITOR_STEPS.map((step, index) => ({
       ...step,
-      completed: done[index],
+      completed: done[index] && (index !== 2 || !this.state.examEditing()),
     }));
   });
   /** Steps holding a field whose error the author has been shown. */
@@ -539,7 +612,7 @@ export class CourseEditorStore {
   readonly isCreate$ = computed(
     () => this.route.snapshot.data['mode'] === 'create',
   );
-  /** Whether the user may open the quiz screen to author the course's final exam. */
+  /** Whether the user may author the course's final exam inline. */
   readonly canCreateQuiz$ = computed(() =>
     this.session.menus$().includes('QUIZ_MANAGEMENT'),
   );
@@ -582,6 +655,9 @@ export class CourseEditorStore {
       : undefined;
   });
   readonly programs$ = computed(() => this.programsData.value()?.items ?? []);
+  readonly programsLoading$ = this.programsData.isLoading;
+  readonly programsError$ = this.programsData.error;
+  readonly modulesError$ = this.modulesData.error;
   readonly modules$ = computed(() =>
     this.fieldId() ? (this.modulesData.value()?.items ?? []) : [],
   );
@@ -589,6 +665,7 @@ export class CourseEditorStore {
   readonly isOpeningDraft$ = this.openDraftMutation.isPending;
   readonly isSaving$ = computed(
     () =>
+      this.state.examSaving() ||
       this.saveMutation.isPending() ||
       this.createMutation.isPending() ||
       this.createAndContinueMutation.isPending() ||
@@ -613,6 +690,10 @@ export class CourseEditorStore {
 
   // Step 4: the rows, the reminder and the shares that go with the publish.
   readonly publishRows$ = this.state.publishRows.asReadonly();
+  readonly publishPicks$ = computed(() =>
+    this.state.publishRows().map((row) => row.pick),
+  );
+  readonly publishTargetLimit = PUBLISH_LIMITS.assignments;
   readonly reminderEnabled$ = this.state.reminderEnabled.asReadonly();
   readonly newShareOrgIds$ = this.state.newShareOrgIds.asReadonly();
   /** The unit that owns the course: its own while stored, else the author's. */
@@ -844,6 +925,7 @@ export class CourseEditorStore {
 
   // Commands
   goToStep(step: number): void {
+    if (this.state.examSaving()) return;
     const target = Math.max(0, Math.min(EDITOR_STEPS.length - 1, step));
     this.setStep(target);
     if (!this.state.visited().includes(target)) {
@@ -859,6 +941,23 @@ export class CourseEditorStore {
   /** The page hands over how a newly made final exam joins the draft (the form's field, then a save). */
   registerExamAttacher(attach: (quizId: number) => void): void {
     this.setExamAttacher(attach);
+  }
+
+  setExamSaving(saving: boolean): void {
+    this.state.examSaving.set(saving);
+  }
+
+  setExamEditing(editing: boolean): void {
+    this.state.examEditing.set(editing);
+  }
+
+  acceptExamCourse(saved: CourseDetail, nextStep?: number): void {
+    if (this.isCreate$()) this.moveToEditor(saved, nextStep ?? 2);
+    else {
+      this.changes.bump();
+      this.quizzesData.reload();
+      if (nextStep !== undefined) this.goToStep(nextStep);
+    }
   }
 
   /**
@@ -891,23 +990,39 @@ export class CourseEditorStore {
   }
 
   /**
-   * "Tiếp tục": shows the current step's errors and stays while it has any, else opens the next
+   * "Tiếp theo": shows the current step's errors and stays while it has any, else opens the next
    * step. Returns whether it moved, so the page can focus the first error when it did not.
    * Leaving step 1 of a new course stores it as a draft first (the page moves on to the edit URL
    * when that is done), so the later steps always have a course to attach to.
    */
-  continue(draft: CourseDraftValue): boolean {
+  continue(draft: CourseDraftValue, target = this.state.step() + 1): boolean {
+    if (this.isSaving$()) return false;
     const step = this.state.step();
-    const check = this.state.stepChecks()[step];
-    check?.touch();
-    if (check?.invalid()) return false;
+    if (!this.validateBefore(target)) return false;
     if (this.isCreate$() && step === 0) {
       const command = this.createCommand(draft);
       if (!command) return false;
       this.createAndContinueMutation.run(command);
       return true;
     }
-    this.goToStep(step + 1);
+    this.goToStep(target);
+    return true;
+  }
+
+  /** Every route forward uses the same checks; a header click cannot skip unfinished content. */
+  validateBefore(target: number): boolean {
+    for (
+      let step = 0;
+      step < Math.min(target, this.state.stepChecks().length);
+      step++
+    ) {
+      const check = this.state.stepChecks()[step];
+      check.touch();
+      if (check.invalid()) {
+        this.setStep(step);
+        return false;
+      }
+    }
     return true;
   }
 
@@ -938,11 +1053,13 @@ export class CourseEditorStore {
   /** Opens a lesson in the drawer; a published revision is not edited, so it stays shut. */
   editLesson(target: LessonTarget): void {
     if (!this.isDraft$()) return;
+    this.setScormPickerOpen(false);
     this.setSessionUploads([]);
     this.setEditingLesson(target);
   }
 
   closeLesson(): void {
+    this.setScormPickerOpen(false);
     this.setSessionUploads([]);
     this.setEditingLesson(null);
   }
@@ -990,6 +1107,7 @@ export class CourseEditorStore {
 
   /** The first save of a new course: it is created with the whole draft in one call. */
   create(value: CourseDraftValue): void {
+    if (this.isSaving$()) return;
     const command = this.createCommand(value);
     if (command) this.createMutation.run(command);
   }
@@ -1000,6 +1118,8 @@ export class CourseEditorStore {
     const targets = this.targetsToPublish();
     if (!revision || !targets) return;
     const exam = this.examToPublish(command.finalQuizId);
+    // Content the AI wrote is only published after the author says they reviewed it.
+    const reviewConfirmed = revision.aiGenerated === true;
     this.confirmPublish(
       targets,
       () =>
@@ -1008,13 +1128,16 @@ export class CourseEditorStore {
           command: { ...command, expectedVersion: revision.rowVersion },
           targets,
           exam,
+          ...(reviewConfirmed ? { reviewConfirmed } : {}),
         }),
       exam?.title,
+      reviewConfirmed,
     );
   }
 
   /** Publishing a course that is not stored yet creates it first, then publishes it. */
   createAndPublish(value: CourseDraftValue): void {
+    if (this.isSaving$()) return;
     const command = this.createCommand(value);
     const targets = this.targetsToPublish();
     if (!command || !targets) return;
@@ -1038,6 +1161,33 @@ export class CourseEditorStore {
         dueDate: '',
       },
     ]);
+  }
+
+  /** Multi-selection retains dates, row identities and refusals for unchanged targets. */
+  setPublishPicks(picks: readonly TargetPick[]): void {
+    const unique = picks
+      .filter(
+        (pick, index) =>
+          picks.findIndex((other) => sameTarget(other, pick)) === index,
+      )
+      .slice(0, PUBLISH_LIMITS.assignments);
+    const rows = this.state.publishRows();
+    this.setPublishRows(
+      unique.map((pick) => {
+        const previous = rows.find((row) => sameTarget(row.pick, pick));
+        if (!previous)
+          return {
+            id: this.nextRowId++,
+            pick,
+            startDate: dateInput(this.now()),
+            dueDate: '',
+          };
+        if (previous.pick.includeDescendants === pick.includeDescendants)
+          return { ...previous, pick };
+        const { error: _error, ...rest } = previous;
+        return { ...rest, pick };
+      }),
+    );
   }
 
   /** "Xóa dòng". */
@@ -1209,6 +1359,19 @@ export class CourseEditorStore {
     this.courseData.reload();
   }
 
+  retryPrograms(): void {
+    this.programsData.reload();
+  }
+
+  retryModules(): void {
+    this.modulesData.reload();
+  }
+
+  /** Reads the course again, keeping what is on screen meanwhile (the AI wrote into it). */
+  reloadCourse(): void {
+    this.courseData.reload();
+  }
+
   /** Reads the course's quizzes again (after a failed read, or a quiz made elsewhere). */
   reloadQuizzes(): void {
     this.quizzesData.reload();
@@ -1222,7 +1385,7 @@ export class CourseEditorStore {
     const message =
       rule && !rule.extensions.includes(extension)
         ? `Sai định dạng: chỉ chấp nhận ${rule.extensions.join(', ').toUpperCase()}.`
-        : rule && file.size > rule.maxMb * 1024 * 1024
+        : rule && file.size > rule.maxMb * 1_000_000
           ? `Tệp vượt giới hạn ${rule.maxMb} MB.`
           : undefined;
     if (message === undefined) return false;
@@ -1276,6 +1439,22 @@ export class CourseEditorStore {
       context,
       chunkedUpload(this.client, this.hasher, file, this.orgId() ?? 0, {
         resume: resumed,
+        displayName: request.displayName,
+        description: request.description,
+        ...(duplicateKind(request.blockType, file) && !resumed
+          ? {
+              duplicateMediaType: duplicateKind(request.blockType, file),
+              chooseDuplicate: (asset: LibraryAsset) =>
+                firstValueFrom(
+                  choose(this.dialog, {
+                    title: 'Tệp đã có trong thư viện',
+                    message: `Tệp giống với “${asset.displayName || asset.originalName}”. Dùng tệp có sẵn để không tải lại, hoặc tiếp tục tải tệp mới.`,
+                    confirmLabel: 'Dùng tệp có sẵn',
+                    cancelLabel: 'Vẫn tải lên',
+                  }),
+                ),
+            }
+          : {}),
         online: this.online,
       }),
     );
@@ -1301,6 +1480,13 @@ export class CourseEditorStore {
           state: 'hashing',
           percent: event.percent,
           status: hashingStatus(event.percent),
+        });
+        return;
+      case 'checking':
+        this.patchUpload(blockKey, {
+          state: 'hashing',
+          percent: undefined,
+          status: 'Đang tìm tệp trùng trong thư viện…',
         });
         return;
       case 'started':
@@ -1339,7 +1525,7 @@ export class CourseEditorStore {
           state: 'processing',
           uploadId: event.uploadId,
           percent: undefined,
-          status: PROCESSING_STATUS,
+          status: event.retryMessage ?? PROCESSING_STATUS,
         });
         return;
       case 'stalled':
@@ -1348,6 +1534,13 @@ export class CourseEditorStore {
           uploadId: event.uploadId,
           status: undefined,
           message: STALLED_MESSAGE,
+        });
+        return;
+      case 'reuse':
+        this.attach({
+          blockKey,
+          blockType: context.blockType,
+          asset: event.asset,
         });
         return;
       case 'ready':
@@ -1580,20 +1773,27 @@ export class CourseEditorStore {
     targets: PublishTargets,
     publish: () => void,
     examTitle?: string,
+    requireReview = false,
   ): void {
-    const counts =
-      targets.rows.length || targets.shareOrgIds.length
-        ? ` ${countsText(targets.rows.length, targets.shareOrgIds.length)}`
-        : '';
+    const details = [
+      targets.rows.length
+        ? `Giao cho ${targets.rows.length} đối tượng.`
+        : 'Chưa chọn đối tượng giao.',
+      targets.shareOrgIds.length
+        ? `Chia sẻ cho ${targets.shareOrgIds.length} đơn vị.`
+        : '',
+      examTitle
+        ? `Bài kiểm tra cuối khóa “${examTitle}” cũng sẽ được xuất bản.`
+        : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
     confirm(this.dialog, {
       title: 'Xuất bản khóa học?',
-      message: `Bản nháp được lưu rồi xuất bản. Học viên được giao thấy nội dung mới ngay, tiến độ đã có được giữ.${counts}${
-        examTitle
-          ? ` Bài thi cuối khóa “${examTitle}” sẽ được xuất bản cùng khóa học.`
-          : ''
-      }`,
+      message: `Bản nháp sẽ được lưu và xuất bản.\n\nLượt học hiện có giữ nguyên phiên bản, tiến độ và kết quả. Phiên bản mới áp dụng cho lượt học mới.\n\n${details}`,
       confirmLabel: 'Xuất bản',
       tone: 'primary',
+      ...(requireReview ? { acknowledge: 'Tôi đã rà soát nội dung' } : {}),
     })
       .pipe(filter(Boolean), takeUntilDestroyed(this.destroyRef))
       .subscribe(publish);
@@ -1634,7 +1834,6 @@ export class CourseEditorStore {
       ?.items.find((quiz) => quiz.id === finalQuizId);
     return exam &&
       exam.status === 'DRAFT' &&
-      exam.selectionMode !== 'FIXED' &&
       exam.id !== this.state.publishedExamId()
       ? { id: exam.id, title: exam.title }
       : undefined;
@@ -1651,26 +1850,25 @@ export class CourseEditorStore {
     const exam = input.exam;
     const programId = saved.revision.programId;
     if (input.kind !== 'save' || !exam || !programId) return of(null);
-    return syncExamPool(this.client, exam.id, {
-      programId,
-      courseId: saved.course.id,
-    }).pipe(
-      switchMap((pool) =>
-        this.client.call(assessmentV1Endpoints.publishQuiz, {
-          params: { id: exam.id },
-          body: { expectedVersion: pool.quiz.rowVersion },
+    return this.client
+      .call(assessmentV1Endpoints.quiz, { params: { id: exam.id } })
+      .pipe(
+        switchMap((pool) =>
+          this.client.call(assessmentV1Endpoints.publishQuiz, {
+            params: { id: exam.id },
+            body: { expectedVersion: pool.quiz.rowVersion },
+          }),
+        ),
+        tap(() => this.setPublishedExamId(exam.id)),
+        catchError((error: unknown) => {
+          this.setExamPublishError(toAppError(error));
+          this.setFailureShown(true);
+          this.goToStep(2);
+          this.changes.bump();
+          this.quizzesData.reload();
+          return throwError(() => error);
         }),
-      ),
-      tap(() => this.setPublishedExamId(exam.id)),
-      catchError((error: unknown) => {
-        this.setExamPublishError(toAppError(error));
-        this.setFailureShown(true);
-        this.goToStep(2);
-        this.changes.bump();
-        this.quizzesData.reload();
-        return throwError(() => error);
-      }),
-    );
+      );
   }
 
   private publishCourse(input: PublishInput, saved: CourseDetail) {
@@ -1680,7 +1878,11 @@ export class CourseEditorStore {
           courseId: saved.course.id,
           revisionId: saved.revision.id,
         },
-        body: toPublishCommand(saved.revision.rowVersion, input.targets),
+        body: toPublishCommand(
+          saved.revision.rowVersion,
+          input.targets,
+          input.reviewConfirmed,
+        ),
       })
       .pipe(
         catchError((error: unknown) => {
@@ -1695,7 +1897,7 @@ export class CourseEditorStore {
             this.changes.bump();
             if (input.exam && input.exam.id === this.state.publishedExamId()) {
               this.toaster.error(
-                'Bài thi đã xuất bản, khóa học chưa xuất bản',
+                'Bài kiểm tra đã xuất bản, khóa học chưa xuất bản',
                 this.refusalText(error, input.targets),
               );
               this.setFailureShown(true);
@@ -1715,8 +1917,16 @@ export class CourseEditorStore {
     created: CourseDetail,
     step: number = this.state.step(),
   ): void {
+    this.moveToCourse(created.course.id, step);
+  }
+
+  /**
+   * Continues as the edit screen of a course that exists now (made here, or by an AI job started
+   * from this page): leaving does not ask, and `/new` leaves no history entry.
+   */
+  moveToCourse(courseId: number, step: number): void {
     this.setLeft(true);
-    void this.router.navigate(['/admin/courses', created.course.id, 'edit'], {
+    void this.router.navigate(['/admin/courses', courseId, 'edit'], {
       replaceUrl: true,
       queryParams: { step },
     });

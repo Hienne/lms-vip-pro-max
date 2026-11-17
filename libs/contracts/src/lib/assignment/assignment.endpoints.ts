@@ -2,6 +2,9 @@ import { z } from 'zod';
 import { defineEndpoint } from '../http/endpoint';
 import { PageSchema } from '../http/page';
 import {
+  RevisionChangePreviewSchema,
+  RevisionChangeCommandSchema,
+  RevisionChangeResultSchema,
   AssignCourseCommandSchema,
   AssignmentDetailSchema,
   AssignmentRecipientSchema,
@@ -25,6 +28,19 @@ const assignmentParams = z.object({ assignmentId: z.number().int() });
 
 /** The backend's assignment and learning-group endpoints. */
 export const assignmentEndpoints = {
+  revisionChangePreview: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/learning-assignments/recipients/{recipientId}/revision-change',
+    params: z.object({ recipientId: z.number().int().positive() }),
+    response: RevisionChangePreviewSchema,
+  }),
+  changeRevision: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/learning-assignments/recipients/{recipientId}/revision-change',
+    params: z.object({ recipientId: z.number().int().positive() }),
+    body: RevisionChangeCommandSchema,
+    response: RevisionChangeResultSchema,
+  }),
   /** An org's assignments of a course, after checking the org's scope and use rights. */
   courseAssignments: defineEndpoint({
     method: 'get',

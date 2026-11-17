@@ -171,7 +171,7 @@ export class PdfBlock {
     const stage = this.stage()?.nativeElement;
     if (!stage) return;
     const resize = () => {
-      const width = Math.min(MAX_PAGE_WIDTH, stage.clientWidth);
+      const width = stage.clientWidth;
       if (width > 0 && width !== this.width()) {
         if (!this.scrollTarget())
           this.moveTo(this.page$(), this.pageOffset(stage));
@@ -289,6 +289,11 @@ export class PdfBlock {
 
   protected bookmarkPage(): void {
     this.bookmark.emit(this.state.page());
+  }
+
+  protected turnPage(direction: -1 | 1): void {
+    if (this.loading$() || this.failed$()) return;
+    this.moveTo(this.clamp(this.page$() + direction));
   }
 
   protected retried(): void {

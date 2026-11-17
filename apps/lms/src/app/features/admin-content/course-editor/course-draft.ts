@@ -3,6 +3,7 @@ import type {
   BlockDetail,
   BlockInput,
   BlockType,
+  BodyFormat,
   CompletionMode,
   CourseDetail,
   CourseLevel,
@@ -12,6 +13,7 @@ import type {
   QuizSummary,
   Requirement,
   SaveDraftCommand,
+  ScormCompletionRule,
   TranscriptLine,
   VideoChapter,
 } from '@lms/contracts';
@@ -40,8 +42,9 @@ export interface BlockValue {
   readonly key: string;
   readonly blockType: BlockType;
   readonly title: string;
-  /** Markdown for a text block, the caption of an image. */
+  /** Formatted content for a text block, or the caption of an image. */
   readonly body: string;
+  readonly bodyFormat?: BodyFormat;
   readonly completionMode: CompletionMode;
   readonly completionThreshold: number | null;
   readonly isRequired: boolean;
@@ -61,6 +64,8 @@ export interface LessonValue {
   readonly lessonType: LessonType;
   /** The quiz a quiz lesson holds; `null` until one is chosen, and always `null` for a content lesson. */
   readonly quizId: number | null;
+  readonly scormPackageId?: number | null;
+  readonly scormCompletionRule?: ScormCompletionRule | null;
   readonly minutes: number;
   readonly isRequired: boolean;
   readonly blocks: readonly BlockValue[];
@@ -98,7 +103,7 @@ export const BLOCK_TYPES: Readonly<
 > = {
   video: { icon: 'video', label: 'Video' },
   pdf: { icon: 'file-text', label: 'Tài liệu PDF' },
-  text: { icon: 'file', label: 'Văn bản / Markdown' },
+  text: { icon: 'file', label: 'Văn bản' },
   process: { icon: 'workflow', label: 'Quy trình từng bước' },
   image: { icon: 'image', label: 'Hình ảnh' },
   attachment: { icon: 'paperclip', label: 'Tệp đính kèm' },
@@ -191,6 +196,9 @@ function toBlockValue({ block, assets, steps }: BlockDetail): BlockValue {
     blockType: block.blockType,
     title: block.title,
     body: block.blockType === 'image' ? (caption ?? '') : (block.body ?? ''),
+    ...(block.blockType === 'text' && block.bodyFormat
+      ? { bodyFormat: block.bodyFormat }
+      : {}),
     completionMode: block.completionMode,
     completionThreshold: block.completionThreshold ?? null,
     isRequired: block.isRequired ?? true,
@@ -215,6 +223,8 @@ function toLessonValue({ lesson, blocks }: LessonDetail): LessonValue {
     key: newKey(),
     title: lesson.title,
     lessonType: lesson.lessonType,
+    scormPackageId: lesson.scormPackageId ?? null,
+    scormCompletionRule: lesson.scormCompletionRule ?? 'completed_or_passed',
     quizId: lesson.lessonType === 'quiz' ? (lesson.quizId ?? null) : null,
     minutes: Math.round((lesson.estimatedDurationSeconds ?? 0) / 60),
     isRequired: lesson.isRequired ?? true,
@@ -272,7 +282,7 @@ function toBlockInput(block: BlockValue): BlockInput {
     blockType: block.blockType,
     title: block.title.trim(),
     ...(block.blockType === 'text' && text
-      ? { body: text, bodyFormat: 'markdown' as const }
+      ? { body: text, bodyFormat: block.bodyFormat ?? 'markdown' }
       : {}),
     completionMode: block.completionMode,
     ...(block.completionThreshold
@@ -336,14 +346,71 @@ function toDraftContent(value: CourseDraftValue): DraftContent {
       lessons: chapter.lessons.map((lesson) => ({
         title: lesson.title.trim(),
         lessonType: lesson.lessonType,
+        ...(lesson.lessonType === 'scorm'
+          ? {
+              scormPackageId: lesson.scormPackageId ?? null,
+              scormCompletionRule:
+                lesson.scormCompletionRule ?? 'completed_or_passed',
+            }
+          : {}),
         ...(lesson.lessonType === 'quiz' && lesson.quizId
           ? { quizId: lesson.quizId }
           : {}),
         estimatedDurationSeconds: Math.max(0, Math.round(lesson.minutes * 60)),
         isRequired: lesson.isRequired,
         blocks:
-          lesson.lessonType === 'quiz' ? [] : lesson.blocks.map(toBlockInput),
+          lesson.lessonType !== 'content'
+            ? []
+            : lesson.blocks.map(toBlockInput),
       })),
+    })),
+  };
+}
+
+/** Whether two drafts would be saved as the same thing (row keys do not count). */
+export function sameDraft(a: CourseDraftValue, b: CourseDraftValue): boolean {
+  return (
+    a.code === b.code &&
+    JSON.stringify(toDraftContent(a)) === JSON.stringify(toDraftContent(b))
+  );
+}
+
+const shapeOf = (value: CourseDraftValue): string =>
+  JSON.stringify(value.chapters.map((c) => c.lessons.length));
+
+const lessonContent = (lesson: LessonValue): string =>
+  JSON.stringify(
+    toDraftContent({
+      ...emptyDraftValue(),
+      chapters: [{ key: '', title: '', lessons: [lesson] }],
+    }),
+  );
+
+/**
+ * The form after the server's draft was read again while the AI writes into it. A form the author
+ * has not touched takes the server's draft. A touched one keeps everything the author typed and
+ * takes the server's version of each lesson the author did not touch, so a lesson the AI has
+ * just written appears while an edit in progress is never replaced. `saved` is the previous
+ * server draft, `form` the form as it is, `fresh` the draft just read.
+ */
+export function mergeLive(
+  saved: CourseDraftValue,
+  form: CourseDraftValue,
+  fresh: CourseDraftValue,
+): CourseDraftValue {
+  if (sameDraft(saved, form)) return fresh;
+  if (shapeOf(saved) !== shapeOf(form) || shapeOf(form) !== shapeOf(fresh)) {
+    return form;
+  }
+  return {
+    ...form,
+    chapters: form.chapters.map((chapter, ci) => ({
+      ...chapter,
+      lessons: chapter.lessons.map((lesson, li) =>
+        lessonContent(lesson) === lessonContent(saved.chapters[ci].lessons[li])
+          ? fresh.chapters[ci].lessons[li]
+          : lesson,
+      ),
     })),
   };
 }
@@ -369,10 +436,26 @@ export function toCreateCourseCommand(
 
 /** A content lesson needs a block and its files; a quiz lesson needs its quiz. */
 export function lessonProblem(lesson: LessonValue): string | null {
+  if (lesson.lessonType === 'scorm')
+    return lesson.scormPackageId ? null : 'Chưa chọn gói SCORM';
   if (lesson.lessonType === 'quiz') {
     return lesson.quizId ? null : 'Chưa chọn bài kiểm tra';
   }
   if (!lesson.blocks.length) return 'Thiếu nội dung';
+  if (
+    lesson.blocks.some(
+      (block) => block.blockType === 'text' && !block.body.trim(),
+    )
+  ) {
+    return 'Khối văn bản chưa có nội dung';
+  }
+  if (
+    lesson.blocks.some(
+      (block) => block.blockType === 'process' && !block.steps.length,
+    )
+  ) {
+    return 'Khối quy trình chưa có bước';
+  }
   const missing = lesson.blocks.find(
     (b) =>
       b.blockType !== 'attachment' &&
@@ -399,7 +482,7 @@ export interface DraftCheck {
 function finalExamCheck(
   exam: Pick<QuizSummary, 'status' | 'selectionMode'> | undefined,
 ): DraftCheck {
-  const withCourse = exam?.status === 'DRAFT' && exam.selectionMode !== 'FIXED';
+  const withCourse = exam?.status === 'DRAFT';
   return withCourse
     ? {
         label: 'Bài kiểm tra cuối khóa sẽ được xuất bản cùng khóa học',
@@ -446,6 +529,7 @@ export function draftChecks(
       optional: true,
     },
     ...(finalQuizId ? [finalExamCheck(finalQuiz)] : []),
+    { label: 'Đã chọn mức độ khóa học', ok: !!value.level, step: 0 },
   ];
 }
 

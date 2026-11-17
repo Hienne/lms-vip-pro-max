@@ -243,7 +243,7 @@ export const SEED_FUNCTIONS: readonly FunctionInfo[] = [
   {
     id: 6,
     code: 'LESSON_MANAGEMENT',
-    name: 'Quản lý bài giảng',
+    name: 'Thư viện bài giảng',
     routePattern: '/admin/lessons',
     parentFunctionId: null,
     sortNo: 60,
@@ -259,7 +259,7 @@ export const SEED_FUNCTIONS: readonly FunctionInfo[] = [
   {
     id: 8,
     code: 'QUIZ_MANAGEMENT',
-    name: 'Quản lý bài thi',
+    name: 'Quản lý bài kiểm tra',
     routePattern: '/admin/quizzes',
     parentFunctionId: null,
     sortNo: 80,
@@ -308,7 +308,7 @@ export const SEED_FUNCTIONS: readonly FunctionInfo[] = [
     id: 14,
     code: 'SYSTEM_AUDIT',
     name: 'Nhật ký hệ thống',
-    routePattern: '/admin/system',
+    routePattern: '/admin/gamification',
     parentFunctionId: null,
     sortNo: 140,
   },

@@ -19,8 +19,40 @@
       [value]="store.filters$().q"
       (searched)="store.search($event)"
     />
+    @if (store.compact$()) {
+    <button
+      uiButton
+      (click)="store.setFiltersOpen(true)"
+      [attr.aria-expanded]="store.filtersOpen$()"
+    >
+      <ui-icon name="funnel" size="sm" />Bộ lọc@if (store.detailFilterCount$())
+      { ({{ store.detailFilterCount$() }}) }
+    </button>
+    }
   </div>
-  <div class="catalog__row">
+  @if (!store.compact$()) {
+  <ng-container [ngTemplateOutlet]="filterFields" />
+  } @if (store.filterItems$().length) {
+  <div class="catalog__row" aria-label="Điều kiện đang lọc">
+    @for (filter of store.filterItems$(); track filter.key) {
+    <button
+      uiChip
+      class="catalog__filter-chip"
+      [attr.aria-label]="'Bỏ lọc ' + filter.label"
+      (click)="store.removeFilter(filter.key)"
+    >
+      {{ filter.label }} <ui-icon name="x" size="sm" />
+    </button>
+    }
+    <button uiButton size="sm" variant="ghost" (click)="store.clearFilters()">
+      Xóa {{ store.activeFilters$() }} bộ lọc
+    </button>
+  </div>
+  }
+</section>
+
+<ng-template #filterFields>
+  <div class="catalog__details">
     @if (store.fields$().length) {
     <select
       uiSelect
@@ -140,13 +172,25 @@
       </option>
       }
     </select>
-    @if (store.activeFilters$(); as active) {
-    <button uiButton size="sm" variant="ghost" (click)="store.clearFilters()">
-      <ui-icon name="x" size="sm" />Xóa {{ active }} bộ lọc
-    </button>
-    }
   </div>
-</section>
+</ng-template>
+
+<ng-template
+  [uiDrawer]="store.compact$() && store.filtersOpen$()"
+  uiDrawerTitle="Lọc khóa học"
+  [uiDrawerFooter]="filterFooter"
+  (uiDrawerDismiss)="store.setFiltersOpen(false)"
+>
+  <ng-container [ngTemplateOutlet]="filterFields" />
+</ng-template>
+<ng-template #filterFooter>
+  <button uiButton variant="ghost" (click)="store.clearFilters()">
+    Xóa bộ lọc
+  </button>
+  <button uiButton variant="primary" (click)="store.setFiltersOpen(false)">
+    Xem kết quả
+  </button>
+</ng-template>
 
 <div class="catalog__bar">
   <p class="catalog__count" role="status" aria-live="polite">

@@ -160,7 +160,7 @@ describe('UserDetail', () => {
     expect(scopes).toContain('ORG');
     await choose(picker('Phạm vi'), 'ORG');
     expect(add.disabled).toBe(true);
-    await choose(picker('Đơn vị'), '1');
+    await choose(picker('Đơn vị / phòng ban'), '1');
     expect(add.disabled).toBe(false);
     add.click();
     await settle();

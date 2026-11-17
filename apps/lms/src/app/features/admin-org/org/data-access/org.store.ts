@@ -9,11 +9,13 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
+  identityEndpoints,
   organizationEndpoints,
   type CreateOrgCommand,
   type CreateTeamCommand,
   type OrganizationContents,
   type OrganizationInfo,
+  type OrganizationTreeNode,
   type TeamInfo,
   type UpdateOrgCommand,
   type UpdateTeamCommand,
@@ -27,7 +29,8 @@ import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { SessionStore } from '../../../../core/session/session.store';
 import { OrgTreeStore } from './org-tree.store';
 
-export const TEAMS_PAGE_SIZE = 6;
+export const TEAMS_PAGE_SIZE = 10;
+export const CHILD_ORGS_PAGE_SIZE = 6;
 export type TeamAction = 'edit' | 'delete';
 
 type OrgSave =
@@ -72,6 +75,18 @@ export class OrgStore {
     editingTeam: signal<{ readonly team: TeamInfo | null } | null>(null),
     /** The "Nhập từ tệp" drawer is open. */
     importing: signal(false),
+    memberPage: linkedSignal<number | undefined, number>({
+      source: () => this.tree.selectedTeam$()?.id,
+      computation: () => 0,
+    }),
+    memberQuery: linkedSignal<number | undefined, string>({
+      source: () => this.tree.selectedTeam$()?.id,
+      computation: () => '',
+    }),
+    childPage: linkedSignal<number | undefined, number>({
+      source: this.selectedOrgId,
+      computation: () => 0,
+    }),
     /** The team page being read (0-based); a different org starts again at the first. */
     teamPage: linkedSignal<number | undefined, number>({
       source: this.selectedOrgId,
@@ -85,6 +100,49 @@ export class OrgStore {
     this.tree.reloadOn(this.changes);
   }
 
+  private readonly membersData = serverData(
+    (read: { teamId: number; page: number; q: string }) =>
+      this.client.call(identityEndpoints.listUsers, {
+        query: {
+          teamId: read.teamId,
+          page: read.page,
+          size: 10,
+          ...(read.q ? { q: read.q } : {}),
+        },
+      }),
+    {
+      params: () => {
+        const team = this.tree.selectedTeam$();
+        return team
+          ? {
+              teamId: team.id,
+              page: this.state.memberPage(),
+              q: this.state.memberQuery().trim().slice(0, 100),
+            }
+          : undefined;
+      },
+      reloadOn: this.changes,
+    },
+  );
+  private readonly childrenData = serverData(
+    (read: { orgId: number; page: number }) =>
+      this.client.call(organizationEndpoints.orgTree, {
+        query: {
+          parentId: read.orgId,
+          page: read.page,
+          size: CHILD_ORGS_PAGE_SIZE,
+        },
+      }),
+    {
+      params: () => {
+        const selected = this.tree.selected$();
+        return selected?.hasChildren
+          ? { orgId: selected.id, page: this.state.childPage() }
+          : undefined;
+      },
+      reloadOn: this.changes,
+    },
+  );
   /** A different node or team page drops the held value, so a late answer for the old one is ignored. */
   private readonly contentsData = serverData(
     (read: { orgId: number; page: number }) =>
@@ -190,6 +248,22 @@ export class OrgStore {
     },
   );
 
+  readonly selectedTeam$ = this.tree.selectedTeam$;
+  readonly members$ = computed(() => this.membersData.value()?.items ?? []);
+  readonly membersTotal$ = computed(
+    () => this.membersData.value()?.totalElements ?? 0,
+  );
+  readonly memberPage$ = computed(() => this.state.memberPage() + 1);
+  readonly memberQuery$ = this.state.memberQuery.asReadonly();
+  readonly membersLoading$ = this.membersData.isLoading;
+  readonly membersError$ = this.membersData.error;
+  readonly children$ = computed(() => this.childrenData.value()?.items ?? []);
+  readonly childrenTotal$ = computed(
+    () => this.childrenData.value()?.totalElements ?? 0,
+  );
+  readonly childPage$ = computed(() => this.state.childPage() + 1);
+  readonly childrenLoading$ = this.childrenData.isLoading;
+  readonly childrenError$ = this.childrenData.error;
   readonly treeNodes$ = this.tree.nodes$;
   readonly treeExpanded$ = this.tree.expanded$;
   readonly treeLoading$ = this.tree.isLoading$;
@@ -303,6 +377,29 @@ export class OrgStore {
     this.changes.bump();
   }
 
+  searchMembers(query: string): void {
+    this.state.memberQuery.set(query);
+    this.state.memberPage.set(0);
+  }
+
+  goToMemberPage(page: number): void {
+    this.state.memberPage.set(page - 1);
+  }
+
+  retryMembers(): void {
+    this.membersData.reload();
+  }
+  goToChildPage(page: number): void {
+    this.state.childPage.set(page - 1);
+  }
+
+  selectChild(child: OrganizationTreeNode): void {
+    this.tree.selectChild(child);
+  }
+
+  retryChildren(): void {
+    this.childrenData.reload();
+  }
   goToTeamPage(page: number): void {
     this.setTeamPage(page - 1);
   }

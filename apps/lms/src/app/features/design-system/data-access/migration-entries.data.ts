@@ -410,6 +410,17 @@ export const MIGRATION_ENTRIES = [
     status: 'todo',
   },
   {
+    id: 'multi-select',
+    kind: 'component',
+    mockupSource: null,
+    level: 'molecule',
+    targets: ['MultiSelect'],
+    checklist: ['H'],
+    status: 'todo',
+    notes:
+      'Searchable checkbox dropdown with CDK overlay/focus containment, used for course publication targets and shares. Migration visual verification pending.',
+  },
+  {
     id: 'kpi',
     kind: 'component',
     mockupSource: 'UI.Kpi',
@@ -655,7 +666,7 @@ export const MIGRATION_ENTRIES = [
     kind: 'component',
     mockupSource: 'charts.js (Radar, bars, .chart-legend)',
     level: 'organism',
-    targets: ['RadarChart', 'BarChart', 'DonutChart'],
+    targets: ['RadarChart', 'BarChart', 'HorizontalBarChart', 'DonutChart'],
     checklist: ['H'],
     status: 'todo',
   },
@@ -911,7 +922,7 @@ export const MIGRATION_ENTRIES = [
   {
     id: 'route-lesson-course-id-lesson-id',
     notes:
-      'Nối API học thật: phiên học một thiết bị, heartbeat, video/PDF qua nội dung có kiểm soát. Mốc video, transcript có tìm kiếm và chế độ tập trung đã có (lesson-player-modes); chờ đối chiếu trình duyệt ở 375/768/1280 px.',
+      'Nối API học thật: phiên học một thiết bị, heartbeat, video/PDF qua nội dung có kiểm soát. Mốc video, transcript có tìm kiếm và chế độ tập trung đã có (lesson-player-modes); chờ đối chiếu trình duyệt ở 375/768/1280 px. SCORM now embeds in the lesson tree; local browser QA verified page-4 resume, quiz score and server-owned course completion.',
     kind: 'route',
     mockupSource: 'src/pages/lesson.js · lesson',
     target: 'lesson/:courseId/:lessonId',
@@ -1297,6 +1308,23 @@ export const MIGRATION_ENTRIES = [
     },
   },
   {
+    id: 'route-admin-courses-ai-drafts-jobid',
+    notes:
+      '2026-11-12: không còn màn rà soát riêng. Đường dẫn cũ chỉ để các liên kết đã gửi còn dùng được: chuyển tới trình soạn khóa học của khóa nháp mà job đã tạo; job cũ không có khóa học thì hiện "Job này thuộc luồng cũ". Chưa đối chiếu trình duyệt.',
+    kind: 'route',
+    mockupSource: 'src/pages/admin-content.js · courseWizard',
+    target: 'admin/courses/ai-drafts/:jobId',
+    checklist: ['B.3'],
+    status: 'in-progress',
+    owner: 'longnvse',
+    verify: {
+      lightDark: 'todo',
+      widths: 'todo',
+      keyboard: 'todo',
+      errorStates: 'todo',
+    },
+  },
+  {
     id: 'route-admin-courses-id-edit',
     notes:
       '2026-11-03: bốn bước (Thông tin cơ bản, Nội dung khóa học, Bài thi & điều kiện, Đối tượng & xuất bản); bước 3 là điều kiện hoàn thành và điểm thưởng, bước 4 là danh sách kiểm tra và tóm tắt. Đọc ?step= một lần khi mở. Bước 3 có thêm "Bài kiểm tra cuối khóa" (course-final-exam): chọn bài thi loại Thi cuối khóa của khóa, ghi chú "· Nháp"/"· Đã đóng" khi chưa xuất bản; bước 4 có thêm dòng khuyến nghị và dòng bắt buộc "đã xuất bản" khi đã chọn. Máy chủ quyết định khi xuất bản. Đã đối chiếu trình duyệt 2026-11-03. 2026-11-04 (course-publish-targets): bước 4 có thêm "Giao khóa học" (chọn đối tượng bằng bộ chọn dùng chung với Giao học & hạn, mỗi dòng có Bắt đầu và Hạn hoàn thành, công tắc nhắc trước hạn 3 ngày) và "Chia sẻ cho đơn vị khác" (đơn vị sở hữu và đơn vị đã chia sẻ được chọn sẵn, khóa); xuất bản gửi cả hai trong cùng lệnh, hoặc cả hai hoặc không gì, và dòng bị từ chối được đánh dấu bằng thông báo của máy chủ. Đã đối chiếu trình duyệt 2026-11-04 (375/768/1280 px, sáng/tối, bàn phím, dòng bị từ chối).',
@@ -1482,11 +1510,33 @@ export const MIGRATION_ENTRIES = [
   },
   {
     id: 'route-admin-lessons',
+    notes:
+      'Lesson library supports ZIP import and preview. Course authoring also imports ZIP directly, with the library as an optional picker. Full migration visual checks remain pending.',
     kind: 'route',
     mockupSource: null,
     target: 'admin/lessons',
     checklist: [],
     status: 'todo',
+  },
+  {
+    id: 'route-scorm',
+    kind: 'route',
+    mockupSource: null,
+    target: 'scorm',
+    checklist: [],
+    status: 'todo',
+    notes:
+      'Existing standalone library route retained for compatibility. Normal course learning embeds SCORM in the lesson route. Full migration visual checks remain pending.',
+  },
+  {
+    id: 'route-scorm-id',
+    kind: 'route',
+    mockupSource: null,
+    target: 'scorm/:id',
+    checklist: [],
+    status: 'todo',
+    notes:
+      'Existing standalone player and author preview route retained for old links; course lessons use the embedded player with enrollment and lesson context. Full migration visual checks remain pending.',
   },
   {
     id: 'route-knowledge',
@@ -1501,6 +1551,15 @@ export const MIGRATION_ENTRIES = [
     kind: 'route',
     mockupSource: null,
     target: 'issues',
+    checklist: [],
+    status: 'todo',
+  },
+  {
+    // The old documents page; it now opens the documents drawer on /assistant.
+    id: 'route-assistant-documents',
+    kind: 'route',
+    mockupSource: null,
+    target: 'assistant/tai-lieu',
     checklist: [],
     status: 'todo',
   },

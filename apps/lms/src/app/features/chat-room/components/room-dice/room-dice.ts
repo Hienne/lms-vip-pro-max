@@ -39,10 +39,10 @@ export class RoomDice {
   protected readonly betForm = form(
     this.bet,
     (path) => {
-      required(path.stake, { message: 'Nhập số CPoint muốn đặt.' });
-      min(path.stake, 1, { message: 'Đặt ít nhất 1 CPoint.' });
+      required(path.stake, { message: 'Nhập số CPoint bạn muốn góp.' });
+      min(path.stake, 1, { message: 'Góp ít nhất 1 CPoint.' });
       max(path.stake, () => Math.min(this.balance(), ROOM_MAX_STAKE), {
-        message: 'Số CPoint đặt vượt mức hiện có.',
+        message: 'Số CPoint góp vượt mức hiện có.',
       });
       validate(path.stake, ({ value }) => {
         const stake = value();

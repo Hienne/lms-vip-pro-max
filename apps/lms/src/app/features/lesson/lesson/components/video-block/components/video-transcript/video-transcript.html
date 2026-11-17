@@ -1,7 +1,7 @@
 <details class="transcript">
   <summary class="transcript__summary">
     <ui-icon name="chevron-down" size="sm" class="transcript__chevron" />
-    Transcript ({{ lines().length }} đoạn)
+    Lời thoại ({{ lines().length }} đoạn)
   </summary>
   <div class="transcript__body">
     <input
@@ -9,8 +9,8 @@
       size="sm"
       type="search"
       class="transcript__search"
-      aria-label="Tìm trong transcript"
-      placeholder="Tìm trong transcript"
+      aria-label="Tìm trong lời thoại"
+      placeholder="Tìm trong lời thoại"
       [formField]="searchForm.query"
     />
     @if (shown().length) {

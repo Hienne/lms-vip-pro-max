@@ -2,7 +2,7 @@
   class="room-canvas"
   tabindex="0"
   role="application"
-  aria-label="Phòng giải trí. Dùng WASD hoặc phím mũi tên để di chuyển, Enter để chat."
+  aria-label="Phòng giờ ra chơi. Dùng WASD hoặc phím mũi tên để di chuyển, Enter để chat."
   (pointerdown)="focus($event)"
   (pointermove)="trackChairPointer($event)"
   (pointerup)="pickChair($event)"
@@ -76,14 +76,14 @@
       }
     </div>
     }
+    <p
+      class="room-canvas__gesture-notice"
+      [class.room-canvas__gesture-notice--active]="gestureNotice()"
+      role="status"
+    >
+      {{ gestureNotice() }}
+    </p>
   </div>
-  <p
-    class="room-canvas__gesture-notice"
-    [class.room-canvas__gesture-notice--active]="gestureNotice()"
-    role="status"
-  >
-    {{ gestureNotice() }}
-  </p>
   <button
     uiButton
     size="sm"
@@ -93,7 +93,7 @@
   >
     Cận cảnh nhân vật
   </button>
-  @if (!seated()) {
+  @if (!seated() && !view().chatting) {
   <div class="room-canvas__controls" aria-label="Điều khiển cảm ứng">
     <button
       uiButton

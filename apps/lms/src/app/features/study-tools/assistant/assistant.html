@@ -1,85 +1,189 @@
+@if (store.historyBeside$()) {
+<aside
+  id="assistant-history"
+  class="history"
+  aria-labelledby="assistant-history-title"
+>
+  <header class="history__bar">
+    <h2 id="assistant-history-title" class="history__title">Hội thoại</h2>
+  </header>
+  <div class="history__body">
+    <ng-container [ngTemplateOutlet]="conversations" />
+  </div>
+</aside>
+}
+
 <section class="chat" aria-labelledby="assistant-title">
   <header class="chat__bar">
-    <h1 id="assistant-title" class="chat__title">Trợ lý AI tra cứu tài liệu</h1>
-    <button
-      uiButton
-      type="button"
-      variant="ghost"
-      size="sm"
-      class="chat__toggle"
-      [attr.aria-controls]="store.panelOpen$() ? 'assistant-documents' : null"
-      [attr.aria-expanded]="store.panelOpen$()"
-      (click)="store.togglePanel()"
-    >
-      <ui-icon name="panel-right" size="sm" />Tài liệu
-      <span class="chat__count">{{ store.totalDocuments$() }}</span>
-    </button>
+    <div class="chat__heading">
+      <button
+        uiButton
+        type="button"
+        variant="ghost"
+        size="sm"
+        class="chat__toggle"
+        [attr.aria-controls]="store.historyOpen$() ? 'assistant-history' : null"
+        [attr.aria-expanded]="store.historyOpen$()"
+        (click)="store.toggleHistory()"
+      >
+        <ui-icon name="history" size="sm" />Hội thoại
+      </button>
+      <h1 id="assistant-title" class="chat__title">
+        Trợ lý AI tra cứu tài liệu
+      </h1>
+    </div>
   </header>
   <div class="chat__scroll">
     <app-chat-log
       class="chat__thread"
       [turns]="store.turns$()"
+      [ratingId]="store.ratingId$()"
+      [ratingFailedId]="store.ratingFailedId$()"
       (retry)="store.retry($event)"
+      (asked)="store.ask($event)"
+      (rated)="store.rate($event.turnId, $event.command)"
     />
   </div>
   <div class="chat__composer">
     <div class="chat__dock">
+      <div class="chat__scope">
+        <button
+          uiButton
+          type="button"
+          variant="ghost"
+          size="sm"
+          class="chat__scope-open"
+          aria-haspopup="dialog"
+          [attr.aria-expanded]="documentsOpen$()"
+          (click)="openDocuments()"
+        >
+          <ui-icon name="library" size="sm" />
+          <span
+            >Tra trong: <strong>Tất cả tài liệu</strong>&nbsp;<span
+              class="chat__count"
+              >({{ documents.totalDocuments$() }})</span
+            ></span
+          >
+        </button>
+        @if (processing$()) {
+        <span class="chat__processing">{{ processing$() }} tệp đang xử lý</span>
+        }
+      </div>
       <app-ask-form
         [answering]="store.isAnswering$()"
         (ask)="store.ask($event)"
         (stop)="store.stop()"
       />
       <p class="chat__note">
-        Trợ lý chỉ trả lời từ các tài liệu trong kho. Hãy đối chiếu với tài liệu
-        gốc trước khi áp dụng.
+        <ui-icon name="info" size="sm" />
+        <span
+          >Trợ lý chỉ trả lời từ các tài liệu trong kho. Hãy đối chiếu với tài
+          liệu gốc trước khi áp dụng.</span
+        >
       </p>
     </div>
   </div>
 </section>
 
-@if (store.panelBeside$()) {
-<aside
-  id="assistant-documents"
-  class="panel"
-  aria-labelledby="assistant-documents-title"
->
-  <header class="panel__bar">
-    <h2 id="assistant-documents-title" class="panel__title">
-      Tài liệu trong kho
+@if (store.sourceBeside$()) {
+<aside class="source" aria-labelledby="assistant-source-title">
+  <header class="source__bar">
+    <h2 id="assistant-source-title" class="source__title">
+      {{ viewer.citation$()?.fileName }}
     </h2>
-    <span class="panel__count">{{ store.totalDocuments$() }}</span>
+    <button
+      uiIconButton
+      type="button"
+      size="sm"
+      label="Đóng nguồn"
+      (click)="viewer.close()"
+    >
+      <ui-icon name="x" size="sm" />
+    </button>
   </header>
-  <div class="panel__body">
-    <ng-container [ngTemplateOutlet]="documents" />
+  <div class="source__body">
+    <app-source-text />
   </div>
 </aside>
 }
 
 <ng-template
-  [uiDrawer]="store.panelInDrawer$()"
-  uiDrawerTitle="Tài liệu trong kho"
-  (uiDrawerDismiss)="store.closePanel()"
+  [uiDrawer]="store.historyInDrawer$()"
+  uiDrawerTitle="Hội thoại"
+  (uiDrawerDismiss)="store.closeHistory()"
 >
-  <div id="assistant-documents" class="panel__drawer">
-    <ng-container [ngTemplateOutlet]="documents" />
+  <div id="assistant-history" class="history__drawer">
+    <ng-container [ngTemplateOutlet]="conversations" />
   </div>
 </ng-template>
 
-<ng-template #documents>
-  <app-document-upload
-    [uploads]="store.uploads$()"
-    (files)="store.addFiles($event)"
-    (dismiss)="store.dismissUpload($event)"
-  />
-  <app-document-list
-    [documents]="store.documents$()"
-    [total]="store.totalDocuments$()"
-    [page]="store.page$()"
-    [pageSize]="pageSize"
-    [loading]="store.isLoading$()"
-    [failed]="!!store.loadError$()"
-    (pageChange)="store.setPage($event)"
-    (retry)="store.retryLoad()"
+<ng-template
+  [uiDrawer]="documentsOpen$()"
+  uiDrawerTitle="Tài liệu của trợ lý"
+  (uiDrawerDismiss)="closeDocuments()"
+>
+  <div id="assistant-documents" class="docs">
+    <p class="docs__intro">
+      Trợ lý chỉ trả lời từ các tài liệu ở đây. Tệp mới tra cứu được sau vài
+      phút xử lý.
+    </p>
+    <app-document-upload
+      [uploads]="documents.uploads$()"
+      [canShareGlobally]="documents.canShareGlobally$()"
+      [scope]="documents.uploadScope$()"
+      (scopeChange)="documents.setUploadScope($event)"
+      [title]="documents.uploadTitle$()"
+      (titleChange)="documents.setUploadTitle($event)"
+      (files)="documents.addFiles($event)"
+      (dismiss)="documents.dismissUpload($event)"
+      (showExisting)="documents.showDocument($event)"
+    />
+    <section class="docs__stock" aria-labelledby="assistant-documents-title">
+      <h3 id="assistant-documents-title" class="docs__title">
+        Trong kho
+        <span class="docs__count">{{ documents.totalDocuments$() }}</span>
+      </h3>
+      <app-document-list
+        [documents]="documents.documents$()"
+        [total]="documents.totalDocuments$()"
+        [page]="documents.page$()"
+        [pageSize]="pageSize"
+        [loading]="documents.isLoading$()"
+        [failed]="!!documents.loadError$()"
+        [canRemove]="documents.canRemove"
+        [canEdit]="documents.canEdit"
+        [highlightId]="documents.highlightId$()"
+        (remove)="documents.removeDocument($event)"
+        (renamed)="documents.renameDocument($event.document, $event.title)"
+        (replaced)="documents.replaceDocument($event.document, $event.file)"
+        (pageChange)="documents.setPage($event)"
+        (retry)="documents.retryLoad()"
+      />
+    </section>
+    <app-duplicate-documents
+      [groups]="documents.duplicates$()"
+      (remove)="documents.removeDocument($event)"
+    />
+  </div>
+</ng-template>
+
+<ng-template #conversations>
+  <app-conversation-list
+    [items]="history.items$()"
+    [activeId]="store.conversationId$()"
+    [loading]="history.isLoading$()"
+    [failed]="!!history.loadError$()"
+    [searching]="history.query$() !== ''"
+    [openError]="store.openError$()"
+    [busy]="store.isAnswering$() || store.isOpening$() || history.isChanging$()"
+    (searched)="history.setQuery($event)"
+    (created)="store.newConversation()"
+    (opened)="store.openConversation($event)"
+    (renamed)="history.rename($event.id, $event.title)"
+    (removed)="history.remove($event)"
+    (removedAll)="history.removeAll()"
+    (retried)="history.retryLoad()"
   />
 </ng-template>
+
 <p class="sr-only" role="status">{{ store.announcement$() }}</p>

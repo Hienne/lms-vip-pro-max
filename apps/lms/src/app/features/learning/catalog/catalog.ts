@@ -1,7 +1,10 @@
 import { Component, inject } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import {
   Button,
   Card,
+  Chip,
+  DrawerOutlet,
   Empty,
   ErrorState,
   Icon,
@@ -37,6 +40,9 @@ const entries = <K extends string>(labels: Record<K, string>) =>
   imports: [
     Button,
     Card,
+    Chip,
+    DrawerOutlet,
+    NgTemplateOutlet,
     CourseCard,
     Empty,
     ErrorState,
@@ -59,6 +65,7 @@ export class Catalog {
 
   protected readonly scopes: readonly SegmentedOption<CatalogScope>[] = [
     { value: 'all', label: 'Tất cả' },
+    { value: 'mine', label: 'Đã tham gia' },
     { value: 'assigned', label: 'Được giao' },
   ];
   protected readonly levels = entries(LEVEL_LABEL);

@@ -1,0 +1,78 @@
+<div class="feedback__bar" role="group" aria-label="Đánh giá câu trả lời">
+  <button
+    uiIconButton
+    size="sm"
+    class="feedback__thumb"
+    label="Câu trả lời hữu ích"
+    [attr.aria-pressed]="helpful()"
+    [disabled]="saving()"
+    (click)="thumbsUp()"
+  >
+    <ui-icon name="thumbs-up" size="sm" />
+  </button>
+  <button
+    uiIconButton
+    size="sm"
+    class="feedback__thumb"
+    label="Câu trả lời chưa tốt"
+    [attr.aria-pressed]="unhelpful()"
+    [attr.aria-expanded]="picking()"
+    [disabled]="saving()"
+    (click)="thumbsDown()"
+  >
+    <ui-icon name="thumbs-down" size="sm" />
+  </button>
+  @if (failed()) {
+  <span class="feedback__failed" role="alert"
+    >Chưa lưu được đánh giá. Bạn thử lại nhé.</span
+  >
+  }
+</div>
+
+@if (picking()) {
+<form class="feedback__picker" (submit)="$event.preventDefault()">
+  <fieldset class="feedback__reasons">
+    <legend class="feedback__legend">Câu trả lời này có vấn đề gì?</legend>
+    @for (item of reasons; track item.code) {
+    <button
+      uiButton
+      type="button"
+      size="sm"
+      class="feedback__reason"
+      [attr.aria-pressed]="reason() === item.code"
+      (click)="choose(item.code)"
+    >
+      {{ item.label }}
+    </button>
+    }
+  </fieldset>
+  <textarea
+    #note
+    uiTextarea
+    class="feedback__note"
+    rows="2"
+    aria-label="Ghi chú thêm (không bắt buộc)"
+    placeholder="Ghi chú thêm (không bắt buộc)"
+    [maxLength]="noteMax"
+    [value]="value()?.note ?? ''"
+  ></textarea>
+  <label class="feedback__share">
+    <input
+      type="checkbox"
+      uiCheckbox
+      [checked]="share()"
+      (change)="share.set(shareBox.checked)"
+      #shareBox
+    />
+    Gửi kèm câu hỏi và câu trả lời cho đội phát triển
+  </label>
+  <div class="feedback__actions">
+    <button uiButton type="button" size="sm" (click)="send(note.value)">
+      Gửi đánh giá
+    </button>
+    <button uiButton type="button" variant="ghost" size="sm" (click)="cancel()">
+      Hủy
+    </button>
+  </div>
+</form>
+}

@@ -28,12 +28,11 @@ function render() {
 }
 
 describe('Mai', () => {
-  it('draws five petals around a core in a 40-unit box', () => {
+  it('draws the brand flower as one SVG in its own box', () => {
     const { mai } = render();
     const svg = mai.querySelector('svg');
-    expect(svg?.getAttribute('viewBox')).toBe('0 0 40 40');
-    expect(mai.querySelectorAll('.mai__petals circle')).toHaveLength(5);
-    expect(mai.querySelectorAll('.mai__core')).toHaveLength(1);
+    expect(svg?.getAttribute('viewBox')).toBe('0 0 323.3 332.2');
+    expect(svg?.querySelectorAll('path').length).toBeGreaterThanOrEqual(5);
   });
 
   it.each([16, 40, 360])('renders at %ipx', (size) => {

@@ -19,9 +19,27 @@
 >
   <div class="pdf__bar">
     @if (!loading$()) {
+    <button
+      uiIconButton
+      size="sm"
+      label="Trang trước"
+      [disabled]="page$() <= 1"
+      (click)="turnPage(-1)"
+    >
+      <ui-icon name="chevron-left" />
+    </button>
     <span class="pdf__page-count">
       Trang {{ page$() }}/{{ pageCount$() }}
     </span>
+    <button
+      uiIconButton
+      size="sm"
+      label="Trang tiếp theo"
+      [disabled]="page$() >= pageCount$()"
+      (click)="turnPage(1)"
+    >
+      <ui-icon name="chevron-right" />
+    </button>
     <button
       uiIconButton
       size="sm"

@@ -8,8 +8,8 @@
   <p class="dice__balance">Số dư <strong>{{ balance() }} CPoint</strong></p>
   @if (state(); as table) {
   <p class="dice__rules">
-    Một kết quả chung sau mỗi 30 giây. Bộ ba làm cả hai cửa thua. Cửa thắng nhận
-    gấp đôi tiền đặt.
+    Một kết quả chung sau mỗi 30 giây. Nếu ra ba mặt giống nhau, cả hai lựa chọn
+    đều không nhận điểm. Đoán đúng nhận gấp đôi số CPoint đã góp.
   </p>
   <p class="dice__round">
     <strong>Lượt {{ table.round }}</strong> · {{ seconds() ? 'Còn ' + seconds()
@@ -17,17 +17,18 @@
   </p>
   @if (table.bet; as bet) {
   <p role="status">
-    Đã đặt <strong>{{ bet.stake }} CPoint</strong> cửa {{ labels[bet.side] }}.
+    Đã góp <strong>{{ bet.stake }} CPoint</strong> cho lựa chọn {{
+    labels[bet.side] }}.
   </p>
   } @else if (balance() > 0) {
   <form class="dice__form" [formRoot]="betForm">
-    <ui-field label="Cửa đặt">
+    <ui-field label="Bạn đoán">
       <select uiSelect [formField]="betForm.side">
         <option value="upper">Trên · 11–17</option>
         <option value="lower">Dưới · 4–10</option>
       </select>
     </ui-field>
-    <ui-field label="CPoint đặt" required>
+    <ui-field label="CPoint góp" required>
       <input
         uiInput
         type="number"
@@ -42,7 +43,7 @@
       type="submit"
       [disabled]="pending() || !seconds()"
     >
-      {{ pending() ? 'Đang đặt…' : 'Đặt cược' }}
+      {{ pending() ? 'Đang gửi…' : 'Gửi dự đoán' }}
     </button>
   </form>
   } @else {
@@ -64,8 +65,8 @@
     @if (table.lastBet; as bet) {
     <p>
       <strong
-        >{{ bet.side === latest.outcome ? 'Thắng +' : 'Thua −' }}{{ bet.stake }}
-        CPoint</strong
+        >{{ bet.side === latest.outcome ? 'Đoán đúng +' : 'Chưa đúng −' }}{{
+        bet.stake }} CPoint</strong
       >
     </p>
     }

@@ -2,149 +2,169 @@
   title="Đã lưu & ghi chú"
   description="Tìm lại ghi chú và mở bài học đúng trang PDF hoặc mốc video."
 />
-<div class="saved__toolbar">
+
+@if (store.error$(); as error) {
+<ui-error-state
+  title="Không tải được mục đã lưu"
+  [message]="error.message"
+  (retry)="store.retry()"
+/>
+} @else if (store.isLoading$()) {
+<div class="saved__loading" aria-busy="true" aria-label="Đang tải mục đã lưu">
+  <div uiSkeleton variant="text"></div>
+  <div uiSkeleton variant="block"></div>
+</div>
+} @else if (store.isEmpty$()) {
+<ui-empty
+  title="Chưa có mục nào."
+  description="Bạn có thể lưu ghi chú và đánh dấu ngay trong bài học."
+  ><a uiButton variant="secondary" routerLink="/learn">Vào học</a></ui-empty
+>
+} @else {
+<div class="saved__tools">
   <ui-search
     width="100%"
     label="Tìm trong mục đã lưu"
-    placeholder="Tìm trong ghi chú, bài học…"
+    [placeholder]="'Tìm trong ' + store.counts$().notes + ' ghi chú và ' + store.counts$().bookmarks + ' đánh dấu…'"
     [value]="store.search$()"
     (searched)="store.setSearch($event)"
   />
+  @if (store.lesson$(); as current) {
   <select
     uiSelect
-    #lessonFilter
-    aria-label="Lọc theo bài học"
-    [value]="store.lesson$()"
-    (change)="store.setLesson(lessonFilter.value)"
+    #picker
+    class="saved__picker"
+    aria-label="Bài học"
+    (change)="store.selectLesson(picker.value)"
   >
-    <option value="">Tất cả bài học</option>
-    @for (lesson of store.lessons$(); track lesson[0]) {
-    <option [value]="lesson[0]">{{ lesson[1] }}</option>
+    @for (course of store.courses$(); track course.courseId) {
+    <optgroup [label]="course.courseTitle">
+      @for (lesson of course.lessons; track lesson.lessonId) {
+      <option
+        [value]="lesson.lessonId"
+        [selected]="lesson.lessonId === current.lessonId"
+      >
+        {{ lesson.lessonTitle }}
+      </option>
+      }
+    </optgroup>
     }
   </select>
-  <select
-    uiSelect
-    #sortFilter
-    aria-label="Sắp xếp"
-    [value]="store.sort$()"
-    (change)="store.setSort(sortFilter.value)"
-  >
-    <option value="newest">Mới nhất</option>
-    <option value="oldest">Cũ nhất</option>
-  </select>
-</div>
-<ui-tabs
-  [tabs]="store.tabs$()"
-  label="Loại mục đã lưu"
-  [selected]="store.tab$()"
-  (selectedChange)="store.setTab($event)"
->
-  @for (tab of store.tabs$(); track tab.id) {
-  <div [uiTabPanel]="tab.id">
-    @if (tab.id === store.tab$()) { @if (store.isLoading$()) {
-    <p class="saved__status" role="status">Đang tải mục đã lưu…</p>
-    } @else if (store.error$(); as error) {<ui-error-state
-      [message]="error.message"
-      (retry)="store.retry()"
-    />} @else if (store.rows$().length === 0) {<ui-empty
-      variant="inline"
-      title="Chưa có mục nào."
-      description="Thử đổi từ khóa hoặc bộ lọc. Bạn có thể lưu ghi chú và đánh dấu trong bài học."
-      ><a uiButton variant="secondary" routerLink="/learn">Vào học</a></ui-empty
-    >} @else { @if (tab.id === 'notes') {
-    <div class="saved__layout">
-      <ui-section-card title="Ghi chú của bạn" flush
-        ><ul uiList>
-          @for (row of store.rows$(); track row.item.id) {
-          <li class="saved__row">
-            <button
-              uiButton
-              variant="ghost"
-              uiListItem
-              class="saved__choose"
-              [attr.aria-pressed]="store.selected$()?.item.id === row.item.id"
-              (click)="store.selectNote(row.item.id)"
-            >
-              <span class="saved__body"
-                ><strong>{{ row.title }}</strong
-                ><span
-                  >{{ row.item.lessonTitle }} @if (row.where) { · {{ row.where
-                  }} }</span
-                ><small>{{ row.item.createTime | fmtRelative }}</small></span
-              >
-            </button>
-            <ui-menu
-              iconOnly
-              icon="ellipsis"
-              [label]="'Thao tác với ' + row.title"
-              [entries]="actions"
-              [disabled]="store.isSaving$()"
-              (selected)="store.remove(row.item)"
-            />
-          </li>
-          }
-        </ul></ui-section-card
-      >
-      <ui-section-card title="Nội dung ghi chú">
-        @if (store.selected$(); as row) {
-        <div class="stack">
-          <p>{{ row.item.courseTitle }} · {{ row.item.lessonTitle }}</p>
-          @if (row.where) {
-          <p>{{ row.where }}</p>
-          }
-          <p class="saved__content">{{ row.item.text }}</p>
-          <p>Đã lưu {{ row.item.createTime | fmtRelative }}</p>
-          <a
-            uiButton
-            variant="secondary"
-            [routerLink]="row.link"
-            [queryParams]="row.query"
-            >Mở bài học @if (row.where) { · {{ row.where }} }<ui-icon
-              name="arrow-right"
-              size="sm"
-          /></a>
-        </div>
-        }
-      </ui-section-card>
-    </div>
-    } @else {
-    <div class="saved__groups">
-      @for (group of store.groups$(); track group.id) {
-      <ui-section-card [title]="group.title" flush
-        ><span slot="action">{{ group.rows.length }} đánh dấu</span>
-        <ul uiList>
-          @for (row of group.rows; track row.item.id) {
-          <li class="saved__row">
-            <a
-              uiListItem
-              class="saved__choose"
-              [routerLink]="row.link"
-              [queryParams]="row.query"
-              ><ui-icon
-                [name]="row.item.anchor.type === 'video' ? 'play' : 'file-text'"
-                size="sm" /><span class="saved__body"
-                ><strong>{{ row.title }}</strong><span>{{ row.where }}</span
-                ><small>{{ row.item.createTime | fmtRelative }}</small></span
-              ><ui-icon name="chevron-right" size="sm" /></a
-            ><ui-menu
-              iconOnly
-              icon="ellipsis"
-              [label]="'Thao tác với ' + row.title"
-              [entries]="actions"
-              [disabled]="store.isSaving$()"
-              (selected)="store.remove(row.item)"
-            />
-          </li>
-          }
-        </ul></ui-section-card
-      >}
-    </div>
-    } @if (store.total$() > pageSize) {<ui-pagination
-      [total]="store.total$()"
-      [page]="store.page$()+1"
-      [pageSize]="pageSize"
-      (pageChange)="store.setPage($event-1)"
-    />} }}
-  </div>
   }
-</ui-tabs>
+</div>
+
+@if (store.lesson$(); as lesson) {
+<div class="saved__split">
+  <ui-section-card
+    class="saved__index"
+    title="Bài học"
+    headingId="saved-index-title"
+    flush
+  >
+    <span slot="action" class="saved__count"
+      >{{ store.lessonCount$() }} bài</span
+    >
+    <nav aria-labelledby="saved-index-title">
+      @for (course of store.courses$(); track course.courseId) {
+      <h3 class="saved__course">{{ course.courseTitle }}</h3>
+      <ul uiList>
+        @for (item of course.lessons; track item.lessonId) {
+        <li>
+          <a
+            uiListItem
+            class="saved__lesson"
+            routerLink="."
+            [queryParams]="{ bai: item.lessonId }"
+            queryParamsHandling="merge"
+            replaceUrl
+            [class.saved__lesson--current]="item.lessonId === lesson.lessonId"
+            [attr.aria-current]="item.lessonId === lesson.lessonId ? 'true' : null"
+            ><span class="saved__lesson-title">{{ item.lessonTitle }}</span
+            ><span
+              class="saved__lesson-count"
+              [attr.aria-label]="item.notes + ' ghi chú, ' + item.bookmarks + ' đánh dấu'"
+              >{{ item.notes + item.bookmarks }}</span
+            ></a
+          >
+        </li>
+        }
+      </ul>
+      }
+    </nav>
+  </ui-section-card>
+
+  <ui-section-card
+    class="saved__sheet"
+    [title]="lesson.lessonTitle"
+    headingId="saved-sheet-title"
+    flush
+  >
+    <a
+      slot="action"
+      uiButton
+      variant="secondary"
+      size="sm"
+      [routerLink]="['/lesson', lesson.courseId, lesson.lessonId]"
+      >Mở bài học</a
+    >
+    <div class="saved__sheet-tools">
+      <p class="saved__meta">
+        {{ lesson.courseTitle }} · {{ lesson.notes }} ghi chú, {{
+        lesson.bookmarks }} đánh dấu
+      </p>
+      <ui-segmented
+        label="Loại mục"
+        [options]="kinds"
+        [value]="store.kind$()"
+        (valueChange)="store.setKind($event)"
+      />
+    </div>
+    @if (store.entries$().length) {
+    <ol uiList class="saved__entries">
+      @for (row of store.entries$(); track row.item.kind + row.item.id) {
+      <li uiListItem class="saved__entry">
+        <a
+          class="saved__where"
+          [routerLink]="row.link"
+          [queryParams]="row.query"
+          >@if (row.item.anchor.type !== 'none') {<ui-icon
+            [name]="row.item.anchor.type === 'video' ? 'play' : 'file-text'"
+            size="sm"
+          />}{{ row.where }}</a
+        >
+        <div class="saved__body">
+          @if (row.item.kind === 'bookmark') {
+          <p class="saved__label">
+            <ui-icon name="bookmark" size="sm" />Đánh dấu · {{ row.title }}
+          </p>
+          } @else {
+          <p class="saved__text">{{ row.title }}</p>
+          }
+          <time class="saved__time" [attr.datetime]="row.item.createTime"
+            >{{ row.item.createTime | fmtRelative }}</time
+          >
+        </div>
+        <ui-menu
+          iconOnly
+          icon="ellipsis"
+          size="sm"
+          [label]="'Thao tác với ' + row.title"
+          [entries]="actions"
+          [disabled]="store.isSaving$()"
+          (selected)="store.remove(row.item)"
+        />
+      </li>
+      }
+    </ol>
+    } @else {
+    <p class="saved__none">
+      Bài này chưa có {{ store.kind$() === 'note' ? 'ghi chú' : 'đánh dấu' }}.
+    </p>
+    }
+  </ui-section-card>
+</div>
+} @else {
+<p class="saved__none" role="status">
+  Không có ghi chú hay đánh dấu nào khớp “{{ store.search$() }}”.
+</p>
+} }

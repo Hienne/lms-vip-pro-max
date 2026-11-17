@@ -85,6 +85,15 @@ export class AssessmentAuthoringMock {
   ) {}
   private nextId = 1000;
 
+  checkpointExamWrites(): () => void {
+    const quizzes = structuredClone(this.quizzes);
+    const nextId = this.nextId;
+    return () => {
+      this.quizzes = quizzes;
+      this.nextId = nextId;
+    };
+  }
+
   /** The status of a quiz, for the learning service's publish check; `undefined` when it is gone. */
   quizStatus(quizId: number): string | undefined {
     return this.quizzes.find((q) => q.quiz.id === quizId)?.quiz.status;
@@ -658,19 +667,6 @@ export class AssessmentAuthoringMock {
           detail.quiz.rowVersion !== Number(r.query['expectedVersion']))
       )
         return fail('ASSESSMENT-CONFLICT', 'Dữ liệu đã thay đổi.');
-      if (
-        parsed.data.quizType === 'FINAL_EXAM' &&
-        this.quizzes.some(
-          (q) =>
-            q.quiz.courseId === parsed.data.courseId &&
-            q.quiz.quizType === 'FINAL_EXAM' &&
-            q.quiz.id !== detail?.quiz.id,
-        )
-      )
-        return fail(
-          'ASSESSMENT-DUPLICATE',
-          'Khóa học đã có bài thi cuối khóa.',
-        );
       const item: QuizDetailV1 = {
         quiz: {
           ...parsed.data,

@@ -52,129 +52,131 @@
   title="Bộ thẻ khóa học"
   [hidden]="store.source$() !== 'course'"
 >
-  <div class="flashcards__filters">
-    <label
-      >Lĩnh vực
-      <select
-        uiSelect
-        #fieldSelect
-        [value]="store.field$() ?? ''"
-        (change)="store.filterCourses(+fieldSelect.value || undefined, undefined, store.keyword$())"
-      >
-        <option value="">Tất cả</option>
-        @for (item of store.facets$()?.fields ?? []; track item.id) {
-        <option [value]="item.id">{{ item.name }}</option>
-        }
-      </select>
-    </label>
-    <label
-      >Chương trình
-      <select
-        uiSelect
-        #programSelect
-        [value]="store.program$() ?? ''"
-        (change)="store.filterCourses(store.field$(), +programSelect.value || undefined, store.keyword$())"
-      >
-        <option value="">Tất cả</option>
-        @for (item of store.programs$(); track item.id) {
-        <option [value]="item.id">{{ item.name }}</option>
-        }
-      </select>
-    </label>
-    <ui-search
-      width="100%"
-      label="Tìm khóa học"
-      placeholder="Tìm khóa học…"
-      [value]="store.keyword$()"
-      (searched)="store.filterCourses(store.field$(), store.program$(), $event)"
-    />
-  </div>
-  @if (store.coursesError$(); as error) {
-  <ui-error-state
-    title="Không tải được khóa học"
-    [message]="error.message"
-    (retry)="store.reloadCourses()"
-  />
-  } @else if (store.courses$(); as list) {
-  <label
-    >Khóa học
-    <select
-      uiSelect
-      #courseSelect
-      [value]="store.courseId$()"
-      (change)="store.pickCourse(+courseSelect.value)"
-    >
-      <option value="0">Chọn khóa học</option>
-      @for (item of list.items; track item.courseId) {
-      <option [value]="item.courseId">{{ item.title }}</option>
-      }
-    </select>
-  </label>
-  <ui-pagination
-    [total]="list.totalElements"
-    [page]="store.page$()"
-    [pageSize]="store.pageSize"
-    (pageChange)="store.pickCourse(0); store.setPage($event)"
-  />
-  } @else {
-  <p role="status">Đang tải khóa học…</p>
-  } @if (store.courseId$()) { @if (store.cardsError$(); as error) {
-  <ui-error-state
-    title="Không tải được thẻ ôn tập"
-    [message]="error.message"
-    (retry)="store.reloadCards()"
-  />
-  } @else if (store.cards$()) {
-  <div class="flashcards__filters">
-    <label
-      >Nhóm kiến thức
-      <select
-        uiSelect
-        #group
-        [value]="store.competency$()"
-        (change)="store.setCompetency(+group.value)"
-      >
-        <option value="0">Tất cả</option>
-        @for (item of store.groups$(); track item[0]) {
-        <option [value]="item[0]">{{ item[1] }}</option>
-        }
-      </select>
-    </label>
-    <div class="flashcards__scope">
-      <span>Phạm vi ôn</span
-      ><ui-segmented
-        label="Phạm vi ôn"
-        [options]="store.scopeOptions"
-        [value]="store.mode$()"
-        (valueChange)="store.setMode($event)"
+  <div class="flashcards__course">
+    <div class="flashcards__filters">
+      <label
+        >Lĩnh vực
+        <select
+          uiSelect
+          #fieldSelect
+          [value]="store.field$() ?? ''"
+          (change)="store.filterCourses(+fieldSelect.value || undefined, undefined, store.keyword$())"
+        >
+          <option value="">Tất cả</option>
+          @for (item of store.facets$()?.fields ?? []; track item.id) {
+          <option [value]="item.id">{{ item.name }}</option>
+          }
+        </select>
+      </label>
+      <label
+        >Chương trình
+        <select
+          uiSelect
+          #programSelect
+          [value]="store.program$() ?? ''"
+          (change)="store.filterCourses(store.field$(), +programSelect.value || undefined, store.keyword$())"
+        >
+          <option value="">Tất cả</option>
+          @for (item of store.programs$(); track item.id) {
+          <option [value]="item.id">{{ item.name }}</option>
+          }
+        </select>
+      </label>
+      <ui-search
+        width="100%"
+        label="Tìm khóa học"
+        placeholder="Tìm khóa học…"
+        [value]="store.keyword$()"
+        (searched)="store.filterCourses(store.field$(), store.program$(), $event)"
       />
     </div>
+    @if (store.coursesError$(); as error) {
+    <ui-error-state
+      title="Không tải được khóa học"
+      [message]="error.message"
+      (retry)="store.reloadCourses()"
+    />
+    } @else if (store.courses$(); as list) {
+    <label class="flashcards__course-field"
+      >Khóa học
+      <select
+        uiSelect
+        #courseSelect
+        [value]="store.courseId$()"
+        (change)="store.pickCourse(+courseSelect.value)"
+      >
+        <option value="0">Chọn khóa học</option>
+        @for (item of list.items; track item.courseId) {
+        <option [value]="item.courseId">{{ item.title }}</option>
+        }
+      </select>
+    </label>
+    <ui-pagination
+      [total]="list.totalElements"
+      [page]="store.page$()"
+      [pageSize]="store.pageSize"
+      (pageChange)="store.pickCourse(0); store.setPage($event)"
+    />
+    } @else {
+    <p role="status">Đang tải khóa học…</p>
+    } @if (store.courseId$()) { @if (store.cardsError$(); as error) {
+    <ui-error-state
+      title="Không tải được thẻ ôn tập"
+      [message]="error.message"
+      (retry)="store.reloadCards()"
+    />
+    } @else if (store.cards$()) {
+    <div class="flashcards__filters">
+      <label
+        >Nhóm năng lực
+        <select
+          uiSelect
+          #group
+          [value]="store.competency$()"
+          (change)="store.setCompetency(+group.value)"
+        >
+          <option value="0">Tất cả</option>
+          @for (item of store.groups$(); track item[0]) {
+          <option [value]="item[0]">{{ item[1] }}</option>
+          }
+        </select>
+      </label>
+      <div class="flashcards__scope">
+        <span>Phạm vi ôn</span
+        ><ui-segmented
+          label="Phạm vi ôn"
+          [options]="store.scopeOptions"
+          [value]="store.mode$()"
+          (valueChange)="store.setMode($event)"
+        />
+      </div>
+    </div>
+    <div class="flashcards__actions">
+      <span>{{ store.available$().length }} thẻ khả dụng</span>
+      <label class="flashcards__shuffle"
+        ><input
+          type="checkbox"
+          uiCheckbox
+          #mix
+          [checked]="store.shuffle$()"
+          (change)="store.setShuffle(mix.checked)"
+        />
+        Trộn thẻ</label
+      >
+      <button
+        uiButton
+        variant="primary"
+        type="button"
+        [disabled]="!store.available$().length"
+        (click)="store.start(store.available$())"
+      >
+        <ui-icon name="play" size="sm" /> Bắt đầu ôn
+      </button>
+    </div>
+    } @else {
+    <p role="status">Đang tải thẻ ôn tập…</p>
+    } }
   </div>
-  <div class="flashcards__actions">
-    <span>{{ store.available$().length }} thẻ khả dụng</span>
-    <label
-      ><input
-        type="checkbox"
-        uiCheckbox
-        #mix
-        [checked]="store.shuffle$()"
-        (change)="store.setShuffle(mix.checked)"
-      />
-      Trộn thẻ</label
-    >
-    <button
-      uiButton
-      variant="primary"
-      type="button"
-      [disabled]="!store.available$().length"
-      (click)="store.start(store.available$())"
-    >
-      <ui-icon name="play" size="sm" /> Bắt đầu ôn
-    </button>
-  </div>
-  } @else {
-  <p role="status">Đang tải thẻ ôn tập…</p>
-  } }
 </ui-section-card>
 
 }

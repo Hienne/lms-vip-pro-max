@@ -1,0 +1,130 @@
+<ui-page-header
+  title="Danh mục nhóm năng lực"
+  description="Quản lý mã nhóm năng lực dùng trong câu hỏi và báo cáo."
+>
+  <div slot="actions" class="row">
+    <a uiButton routerLink="/admin/questions">Ngân hàng câu hỏi</a>
+    @if (store.canEdit$()) {
+    <button uiButton variant="primary" type="button" (click)="open(null)">
+      <ui-icon name="plus" size="sm" />Thêm nhóm năng lực
+    </button>
+    }
+  </div>
+</ui-page-header>
+@if (!store.canEdit$()) {
+<ui-alert tone="info"
+  >Chỉ quản trị viên toàn hệ thống được thay đổi danh mục.</ui-alert
+>
+} @if (store.loading$()) {
+<p>Đang tải danh mục…</p>
+} @else if (store.error$(); as error) {
+<ui-error-state
+  title="Không tải được danh mục"
+  [message]="error.message"
+  (retry)="store.reload()"
+/>
+} @else {
+<section uiCard padded>
+  <ui-data-table
+    caption="Danh sách nhóm năng lực"
+    [columns]="[
+    {key:'code', label:'Mã', sortable:false},
+    {key:'name', label:'Tên nhóm năng lực', sortable:false},
+    {key:'parentId', label:'Nhóm cha', sortable:false},
+    {key:'status', label:'Trạng thái', sortable:false},
+    {key:'actions', label:'Thao tác', kind:'actions'}
+  ]"
+    [rows]="store.rows$()"
+    [total]="store.items$().length"
+    [page]="store.page$()"
+    [pageSize]="store.pageSize$()"
+    (pageChange)="store.page($event)"
+    (pageSizeChange)="store.pageSize($event)"
+  >
+    <ui-empty slot="empty" variant="inline" title="Chưa có nhóm năng lực" />
+    <ng-template uiDataTableCell="parentId" [of]="store.rows$()" let-item
+      >{{ name(item.parentId) }}</ng-template
+    >
+    <ng-template uiDataTableCell="status" [of]="store.rows$()" let-item
+      ><span uiBadge [tone]="item.status === 'ACTIVE' ? 'success' : 'neutral'"
+        >{{ item.status === 'ACTIVE' ? 'Hoạt động' : 'Tạm dừng' }}</span
+      ></ng-template
+    >
+    <ng-template uiDataTableCell="actions" [of]="store.rows$()" let-item>
+      @if (store.canEdit$()) {
+      <ui-menu
+        [label]="'Thao tác cho ' + item.name"
+        icon="ellipsis"
+        iconOnly
+        variant="ghost"
+        size="sm"
+        [entries]="actions"
+        [disabled]="store.busy$()"
+        (selected)="act(item, $event)"
+      />
+      }
+    </ng-template>
+  </ui-data-table>
+</section>
+}
+<ng-template
+  [uiDrawer]="store.editing$() !== undefined"
+  [uiDrawerTitle]="store.editing$() ? 'Sửa nhóm năng lực' : 'Thêm nhóm năng lực'"
+  [uiDrawerFooter]="footer"
+  [uiDrawerBusy]="store.busy$()"
+  (uiDrawerDismiss)="store.cancel()"
+>
+  <form
+    id="competency-form"
+    class="stack"
+    (submit)="$event.preventDefault(); submit()"
+  >
+    <ui-field label="Mã nhóm năng lực" required
+      ><input
+        uiInput
+        required
+        maxlength="50"
+        [value]="model().code"
+        (input)="change('code', $any($event.target).value)"
+    /></ui-field>
+    <ui-field label="Tên nhóm năng lực" required
+      ><input
+        uiInput
+        required
+        maxlength="255"
+        [value]="model().name"
+        (input)="change('name', $any($event.target).value)"
+    /></ui-field>
+    <ui-field label="Nhóm cha"
+      ><select
+        uiSelect
+        [value]="model().parentId ?? ''"
+        (change)="change('parentId', $any($event.target).value)"
+      >
+        <option value="">Không có</option>
+        @for (item of store.items$(); track item.id) { @if (item.id !==
+        store.editing$()?.id) {
+        <option [value]="item.id">{{ item.name }}</option>
+        } }
+      </select></ui-field
+    >
+    <ui-field label="Trạng thái"
+      ><select
+        uiSelect
+        [value]="model().status"
+        (change)="change('status', $any($event.target).value)"
+      >
+        <option value="ACTIVE">Hoạt động</option>
+        <option value="INACTIVE">Tạm dừng</option>
+      </select></ui-field
+    >
+  </form>
+</ng-template>
+<ng-template #footer let-close="close"
+  ><ui-form-actions
+    formId="competency-form"
+    submitLabel="Lưu"
+    cancelLabel="Hủy"
+    [saving]="store.busy$()"
+    (cancel)="close()"
+/></ng-template>

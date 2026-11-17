@@ -11,6 +11,7 @@ import {
   courseEndpoints,
   identityEndpoints,
   MAX_PAGE_SIZE,
+  type RevisionChangeCommand,
   type AssignCourseCommand,
   type AssignmentSummary,
   type CourseCard,
@@ -19,13 +20,15 @@ import {
   type Page,
   type RescheduleAssignmentCommand,
 } from '@lms/contracts';
-import { switchMap } from 'rxjs';
+import { catchError, concatMap, from, map, of, switchMap, toArray } from 'rxjs';
+import { toAppError } from '../../../../core/errors/app-error';
 import { invalidation } from '../../../../core/data-access/invalidation';
 import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { SessionStore } from '../../../../core/session/session.store';
 import { courseCatalogStatus } from '../../../../shared/status/catalog-status';
+import { randomId } from '../../../../core/browser/secure-context';
 
 export const ASSIGNMENTS_PAGE_SIZE = 10;
 
@@ -83,7 +86,7 @@ const idParam = (value: string | null): number | undefined => {
   return value && Number.isInteger(id) && id > 0 ? id : undefined;
 };
 
-const newIdempotencyKey = (): string => `assign-${crypto.randomUUID()}`;
+const newIdempotencyKey = (): string => `assign-${randomId()}`;
 
 /**
  * Course assignment (the mockup's `assignments`): an org's assignments across courses or of one
@@ -110,7 +113,8 @@ export class AssignmentsStore {
     pageSize: signal(ASSIGNMENTS_PAGE_SIZE),
     /** The assign drawer; a link from the course list opens it on that course. */
     assigning: signal<Assigning | null>(
-      this.linkedCourseId
+      this.linkedCourseId &&
+        this.route.snapshot.queryParamMap.get('view') !== 'list'
         ? {
             idempotencyKey: newIdempotencyKey(),
             courseId: this.linkedCourseId,
@@ -118,6 +122,10 @@ export class AssignmentsStore {
         : null,
     ),
     viewingId: signal<number | null>(null),
+    revisionRecipientId: signal<number | null>(null),
+    revisionKey: signal(''),
+    selectedRecipients: signal<readonly number[]>([]),
+    bulkResults: signal<readonly { id: number; message: string }[]>([]),
     revokingId: signal<number | null>(null),
     reschedulingId: signal<number | null>(null),
     withdrawingId: signal<number | null>(null),
@@ -172,6 +180,172 @@ export class AssignmentsStore {
       reloadOn: this.assignmentChanges,
     },
   );
+
+  private readonly revisionPreviewData = serverData(
+    (recipientId: number) =>
+      this.client.call(assignmentEndpoints.revisionChangePreview, {
+        params: { recipientId },
+      }),
+    {
+      params: () => this.state.revisionRecipientId() ?? undefined,
+      reloadOn: this.assignmentChanges,
+    },
+  );
+  private readonly revisionMutation = serverMutation(
+    (input: { recipientId: number; body: RevisionChangeCommand }) =>
+      this.client.call(assignmentEndpoints.changeRevision, {
+        params: { recipientId: input.recipientId },
+        body: input.body,
+      }),
+    {
+      errors: 'alert',
+      success: () => 'Đã cập nhật lần học. Lịch sử cũ được giữ nguyên.',
+      onSuccess: (result) => {
+        this.setRevisionRecipientId(null);
+        this.setViewingId(result.assignmentId);
+      },
+      invalidates: this.assignmentChanges,
+    },
+  );
+  readonly revisionRecipientId$ = this.state.revisionRecipientId.asReadonly();
+  readonly revisionPreview$ = this.revisionPreviewData.value;
+  readonly revisionLoading$ = this.revisionPreviewData.isLoading;
+  readonly revisionError$ = computed(
+    () => this.revisionPreviewData.error() ?? this.revisionMutation.error(),
+  );
+  readonly revisionSaving$ = this.revisionMutation.isPending;
+  private setRevisionRecipientId(id: number | null): void {
+    this.state.revisionRecipientId.set(id);
+  }
+  private setRevisionKey(key: string): void {
+    this.state.revisionKey.set(key);
+  }
+  startRevisionChange(id: number): void {
+    this.revisionMutation.reset();
+    this.setRevisionKey(newIdempotencyKey());
+    this.setRevisionRecipientId(id);
+  }
+  cancelRevisionChange(): void {
+    this.setRevisionRecipientId(null);
+  }
+  retryRevisionPreview(): void {
+    this.revisionMutation.reset();
+    this.revisionPreviewData.reload();
+  }
+  changeRevision(
+    mode: RevisionChangeCommand['mode'],
+    reason: string,
+    dueAt: string | null,
+  ): void {
+    const recipientId = this.state.revisionRecipientId(),
+      preview = this.revisionPreviewData.value();
+    if (
+      !recipientId ||
+      !preview?.targetRevisionId ||
+      this.revisionMutation.isPending()
+    )
+      return;
+    this.revisionMutation.run({
+      recipientId,
+      body: {
+        impactToken: preview.impactToken,
+        enrollmentId: preview.enrollmentId,
+        expectedVersion: preview.expectedVersion,
+        targetRevisionId: preview.targetRevisionId,
+        mode,
+        reason,
+        dueAt,
+        idempotencyKey: this.state.revisionKey(),
+      },
+    });
+  }
+
+  readonly selectedRecipients$ = this.state.selectedRecipients.asReadonly();
+  readonly bulkResults$ = this.state.bulkResults.asReadonly();
+  readonly bulkSaving$ = computed(() => this.bulkTransferMutation.isPending());
+
+  toggleRecipient(id: number, checked: boolean): void {
+    this.state.selectedRecipients.update((ids) =>
+      checked
+        ? [...new Set([...ids, id])]
+        : ids.filter((value) => value !== id),
+    );
+  }
+
+  selectAllRecipients(ids: readonly number[], checked: boolean): void {
+    this.state.selectedRecipients.set(checked ? [...ids] : []);
+  }
+
+  private readonly bulkTransferMutation = serverMutation(
+    (input: { ids: readonly number[]; reason: string }) =>
+      from(input.ids).pipe(
+        concatMap((id) =>
+          this.client
+            .call(assignmentEndpoints.revisionChangePreview, {
+              params: { recipientId: id },
+            })
+            .pipe(
+              concatMap((preview) => {
+                if (!preview.canTransfer || !preview.targetRevisionId) {
+                  return of({
+                    id,
+                    message:
+                      preview.blockReason ||
+                      'Không đủ điều kiện chuyển phiên bản.',
+                  });
+                }
+                return this.client
+                  .call(assignmentEndpoints.changeRevision, {
+                    params: { recipientId: id },
+                    body: {
+                      impactToken: preview.impactToken,
+                      enrollmentId: preview.enrollmentId,
+                      expectedVersion: preview.expectedVersion,
+                      targetRevisionId: preview.targetRevisionId,
+                      mode: 'transfer_unstarted' as const,
+                      reason: input.reason,
+                      dueAt: null,
+                      idempotencyKey: newIdempotencyKey(),
+                    },
+                  })
+                  .pipe(
+                    map(() => ({
+                      id,
+                      message: 'Đã chuyển sang phiên bản mới.',
+                    })),
+                  );
+              }),
+              catchError((error: unknown) =>
+                of({ id, message: toAppError(error).message }),
+              ),
+            ),
+        ),
+        toArray(),
+      ),
+    {
+      errors: 'alert',
+      onSuccess: (results) => {
+        this.state.bulkResults.set(results);
+        this.state.selectedRecipients.set([]);
+      },
+      invalidates: this.assignmentChanges,
+    },
+  );
+
+  transferSelected(reason: string): void {
+    const text = reason.trim();
+    if (
+      !text ||
+      !this.state.selectedRecipients().length ||
+      this.bulkTransferMutation.isPending()
+    )
+      return;
+    this.state.bulkResults.set([]);
+    this.bulkTransferMutation.run({
+      ids: this.state.selectedRecipients(),
+      reason: text,
+    });
+  }
 
   private readonly detailData = serverData(
     (assignmentId: number) =>
@@ -454,6 +628,8 @@ export class AssignmentsStore {
 
   private setViewingId(id: number | null): void {
     this.state.viewingId.set(id);
+    this.state.selectedRecipients.set([]);
+    this.state.bulkResults.set([]);
   }
 
   private setRevokingId(id: number | null): void {
@@ -525,11 +701,13 @@ export class AssignmentsStore {
   }
 
   view(assignmentId: number): void {
+    this.cancelRevisionChange();
     this.setRevokingId(null);
     this.setViewingId(assignmentId);
   }
 
   closeView(): void {
+    this.cancelRevisionChange();
     this.setRevokingId(null);
     this.setViewingId(null);
   }

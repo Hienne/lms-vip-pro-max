@@ -62,6 +62,8 @@ describe('route table', () => {
         'change-password',
         'profile',
         'learn',
+        'scorm',
+        'scorm/:id',
         'catalog',
         'course/:id',
         'lesson/:courseId/:lessonId',
@@ -78,6 +80,7 @@ describe('route table', () => {
         'flashcards',
         'admin/flashcards',
         'assistant',
+        'assistant/tai-lieu',
         'chat-room',
         'notifications',
         'instructor',
@@ -86,6 +89,7 @@ describe('route table', () => {
         'admin/catalog',
         'admin/courses',
         'admin/courses/new',
+        'admin/courses/ai-drafts/:jobId',
         'admin/courses/:id/edit',
         'admin/lessons',
         'admin/questions',
@@ -134,6 +138,19 @@ describe('route table', () => {
   it('declares each path once', () => {
     const paths = SCREEN_ENTRIES.map(({ screen }) => screen.path);
     expect(paths.filter((path, i) => paths.indexOf(path) !== i)).toEqual([]);
+  });
+
+  it('forwards old knowledge and incident URLs to guarded community screens', async () => {
+    expect(
+      router.config.find((route) => route.path === 'knowledge')?.redirectTo,
+    ).toBe('community/questions');
+    expect(
+      router.config.find((route) => route.path === 'issues')?.redirectTo,
+    ).toBe('community/articles?type=lesson');
+    await harness.navigateByUrl('/knowledge');
+    expect(router.url).toBe('/login?next=%2Fknowledge');
+    await harness.navigateByUrl('/issues');
+    expect(router.url).toBe('/login?next=%2Fissues');
   });
 
   it('starts every menu on a screen without a route parameter', () => {
@@ -207,7 +224,6 @@ describe('route table', () => {
     ['learner', '/admin/catalog', 'TRAINING_CATALOG'],
     ['learner', '/instructor', 'COURSE_MANAGEMENT'],
     ['reportViewer', '/catalog', 'COURSE_LEARNING'],
-    ['reportViewer', '/leaderboard', 'LEARNING_PROGRESS'],
     ['reportViewer', '/saved', 'COURSE_LEARNING'],
     ['admin', '/certificates', 'LEARNING_PROGRESS'],
   ] as const)(

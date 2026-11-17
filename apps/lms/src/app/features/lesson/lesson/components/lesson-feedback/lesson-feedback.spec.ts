@@ -136,7 +136,7 @@ function probe(
 
 describe('LessonFeedback', () => {
   describe('closed by default', () => {
-    it('starts as one row: the title, the stars and how many comments and questions', async () => {
+    it('starts closed: a titled section card with its open button in the header, then the stars and the counts', async () => {
       const { el, toggle, text } = await render(
         {
           rating: { average: 4.5, count: 12 },
@@ -146,7 +146,11 @@ describe('LessonFeedback', () => {
         { closed: true },
       );
       expect(toggle().getAttribute('aria-expanded')).toBe('false');
-      expect(toggle().closest('h2')).not.toBeNull();
+      expect(el.querySelector('ui-section-card h2')?.textContent?.trim()).toBe(
+        'Đánh giá & trao đổi',
+      );
+      expect(toggle().closest('.section-card__action')).not.toBeNull();
+      expect(toggle().textContent?.trim()).toBe('Mở');
       expect(text()).toContain('Đánh giá & trao đổi');
       expect(text()).toContain('2 nhận xét · 1 câu hỏi');
       expect(el.querySelector('ui-stars')).not.toBeNull();

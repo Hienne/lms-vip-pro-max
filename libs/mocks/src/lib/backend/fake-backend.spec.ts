@@ -557,10 +557,30 @@ describe('FakeBackend', () => {
       });
     });
 
+    it('rejects creating a team directly under a unit', () => {
+      const root = login('super.admin');
+      const result = call(organizationEndpoints.createTeam, root, {
+        params: { orgId: '1' },
+        body: { name: 'Nhóm thử' },
+      });
+      expect(result.body.status).toBe('ERROR');
+      expect(result.body.message).toContain(
+        'Nhóm chỉ được tạo trong ban hoặc phòng',
+      );
+    });
     it('previews five members of a team and counts them all', () => {
       const root = login('super.admin');
+      const department = call(organizationEndpoints.createOrg, root, {
+        body: {
+          orgType: 'DEPARTMENT',
+          parentId: 1,
+          code: 'PB_NEW',
+          name: 'Phòng mới',
+          sortNo: 0,
+        },
+      }).body.data as { id: number };
       const created = call(organizationEndpoints.createTeam, root, {
-        params: { orgId: '1' },
+        params: { orgId: String(department.id) },
         body: { name: 'Nhóm thử' },
       });
       const team = created.body.data as {
@@ -571,16 +591,25 @@ describe('FakeBackend', () => {
       expect(team.code).toBeNull();
       expect(team.memberCount).toBe(0);
       const teams = call(organizationEndpoints.listTeams, root, {
-        params: { orgId: '1' },
+        params: { orgId: String(department.id) },
         query: { size: '100' },
       }).body.data as Page<{ id: number }>;
-      expect(teams.totalElements).toBe(16);
+      expect(teams.totalElements).toBe(1);
     });
 
     it('deletes an empty team but not one with members or grants', () => {
       const root = login('super.admin');
+      const department = call(organizationEndpoints.createOrg, root, {
+        body: {
+          orgType: 'DEPARTMENT',
+          parentId: 1,
+          code: 'PB_NEW',
+          name: 'Phòng mới',
+          sortNo: 0,
+        },
+      }).body.data as { id: number };
       const created = call(organizationEndpoints.createTeam, root, {
-        params: { orgId: '1' },
+        params: { orgId: String(department.id) },
         body: { name: 'Nhóm thử' },
       });
       const { id } = created.body.data as { id: number };
@@ -809,6 +838,16 @@ describe('FakeBackend', () => {
     });
 
     it('lets an org admin import teams only, in scope', () => {
+      const root = login('super.admin');
+      call(organizationEndpoints.createOrg, root, {
+        body: {
+          orgType: 'DEPARTMENT',
+          parentId: 1,
+          code: 'PB_IMPORT',
+          name: 'Phòng nhập',
+          sortNo: 0,
+        },
+      });
       const orgAdmin = login('quantri.ban');
       const result = OrganizationImportResultSchema.parse(
         importFile(orgAdmin, xlsx('nhom.xlsx'), false).body.data,
@@ -959,6 +998,154 @@ describe('FakeBackend', () => {
       expect(names).toContain('chung.md');
     });
 
+    it('keeps a personal document to its uploader and lets only admins share with everyone', () => {
+      const instructor = login('giangvien');
+      const created = call(knowledgeEndpoints.uploadDocument, instructor, {
+        body: { file: file('rieng.md'), scope: 'personal' },
+      });
+      const document = created.body.data as KnowledgeDocument;
+      expect(document.scope).toBe('personal');
+      const names = (token: string) =>
+        items(call(knowledgeEndpoints.documents, token)).map((d) => d.fileName);
+      expect(names(instructor)).toContain('rieng.md');
+      expect(names(login('hocvien'))).not.toContain('rieng.md');
+      expect(
+        code(
+          call(knowledgeEndpoints.uploadDocument, instructor, {
+            body: { file: file('chung.md'), scope: 'global' },
+          }),
+        ),
+      ).toBe('CORE-ACCESS_DENIED');
+      const shared = call(knowledgeEndpoints.uploadDocument, login('quantri'), {
+        body: { file: file('chung.md'), scope: 'global' },
+      });
+      expect((shared.body.data as KnowledgeDocument).scope).toBe('global');
+    });
+
+    it('deletes a document for its owner, refuses another learner and hides it afterwards', () => {
+      const owner = login('giangvien');
+      const document = call(knowledgeEndpoints.uploadDocument, owner, {
+        body: { file: file('xoa.md') },
+      }).body.data as KnowledgeDocument;
+      const params = { documentId: String(document.id) };
+      expect(
+        code(
+          call(knowledgeEndpoints.deleteDocument, login('hocvien'), { params }),
+        ),
+      ).toBe('CORE-ACCESS_DENIED');
+      expect(
+        call(knowledgeEndpoints.deleteDocument, owner, { params }).status,
+      ).toBe(200);
+      expect(code(call(knowledgeEndpoints.document, owner, { params }))).toBe(
+        'CORE-RESOURCE_NOT_FOUND',
+      );
+    });
+
+    it('answers the same file again with the existing document marked duplicate, for its uploader only', () => {
+      const owner = login('giangvien');
+      const first = call(knowledgeEndpoints.uploadDocument, owner, {
+        body: { file: file('lap.md') },
+      });
+      expect(first.status).toBe(201);
+      const again = call(knowledgeEndpoints.uploadDocument, owner, {
+        body: { file: file('lap.md') },
+      });
+      expect(again.status).toBe(200);
+      expect(again.body.data).toMatchObject({
+        id: (first.body.data as KnowledgeDocument).id,
+        duplicate: true,
+      });
+      // Another user's identical file is a document of their own.
+      const other = call(knowledgeEndpoints.uploadDocument, login('quantri'), {
+        body: { file: file('lap.md') },
+      });
+      expect(other.status).toBe(201);
+    });
+
+    it('titles a document with the file name unless one is given, and renames it for the owner or an admin only', () => {
+      const owner = login('giangvien');
+      const plain = call(knowledgeEndpoints.uploadDocument, owner, {
+        body: { file: file('a.md') },
+      }).body.data as KnowledgeDocument;
+      expect(plain.title).toBe('a.md');
+      const named = call(knowledgeEndpoints.uploadDocument, owner, {
+        body: { file: file('b.md'), title: ' Quy trình ' },
+      }).body.data as KnowledgeDocument;
+      expect(named.title).toBe('Quy trình');
+
+      const params = { documentId: String(plain.id) };
+      expect(
+        code(
+          call(knowledgeEndpoints.renameDocument, login('hocvien'), {
+            params,
+            body: { title: 'Của tôi' },
+          }),
+        ),
+      ).toBe('CORE-ACCESS_DENIED');
+      expect(
+        code(
+          call(knowledgeEndpoints.renameDocument, owner, {
+            params,
+            body: { title: '  ' },
+          }),
+        ),
+      ).toBe('CORE-VALIDATION_FAILED');
+      const renamed = call(knowledgeEndpoints.renameDocument, owner, {
+        params,
+        body: { title: 'Tên mới' },
+      });
+      expect(renamed.body.data).toMatchObject({
+        title: 'Tên mới',
+        fileName: 'a.md',
+      });
+    });
+
+    it('replaces a ready document: the id and the old file stay until the new one is done, then the file name changes', () => {
+      const owner = login('giangvien');
+      const document = call(knowledgeEndpoints.uploadDocument, owner, {
+        body: { file: file('cu.md') },
+      }).body.data as KnowledgeDocument;
+      const params = { documentId: String(document.id) };
+      const read = () =>
+        call(knowledgeEndpoints.document, owner, { params }).body
+          .data as KnowledgeDocument;
+      const replace = (name: string, content?: string) =>
+        call(knowledgeEndpoints.replaceDocument, owner, {
+          params,
+          body: { file: file(name, content) },
+        });
+      // Still being processed: nothing to keep answering yet.
+      expect(code(replace('moi.md'))).toBe('CORE-VALIDATION_FAILED');
+      read();
+      expect(read().status).toBe('ready');
+
+      const queued = replace('moi.md').body.data as KnowledgeDocument;
+      expect(queued).toMatchObject({
+        id: document.id,
+        fileName: 'cu.md',
+        replacement: { status: 'queued', fileName: 'moi.md' },
+      });
+      expect(code(replace('nua.md'))).toBe('CORE-VALIDATION_FAILED');
+      expect(read()).toMatchObject({
+        fileName: 'moi.md',
+        status: 'ready',
+        replacement: null,
+      });
+    });
+
+    it('lists no group of repeated documents while uploads are refused as duplicates', () => {
+      const owner = login('giangvien');
+      call(knowledgeEndpoints.uploadDocument, owner, {
+        body: { file: file('trung.md'), scope: 'personal' },
+      });
+      call(knowledgeEndpoints.uploadDocument, owner, {
+        body: { file: file('trung.md'), scope: 'personal' },
+      });
+      expect(
+        call(knowledgeEndpoints.duplicateDocuments, owner).body.data,
+      ).toEqual([]);
+    });
+
     it('refuses an unsupported, empty or oversized file with the backend codes', () => {
       const token = login('giangvien');
       const upload = (body: unknown) =>
@@ -1003,6 +1190,7 @@ describe('FakeBackend', () => {
         body: { question: 'EOD là gì?' },
       });
       expect(stream.events?.map((e) => (e as { type: string }).type)).toEqual([
+        'conversation',
         'retrieved',
         'delta',
         'delta',
@@ -1041,10 +1229,13 @@ describe('FakeBackend', () => {
   describe('the quick assistant', () => {
     const turn = (token: string | null, content: string) =>
       call(agentEndpoints.stream, token, {
-        body: { messages: [{ role: 'user', content }] },
+        body: { message: content },
       });
     const events = (reply: FakeReply) =>
-      (reply.events ?? []).map((e) => AgentStreamEventSchema.parse(e));
+      (reply.events ?? [])
+        .map((e) => AgentStreamEventSchema.parse(e))
+        // The opening `conversation` line has its own test; the rest read what follows it.
+        .filter((e) => e.type !== 'conversation');
     const types = (reply: FakeReply) => events(reply).map((e) => e.type);
     const actionOf = (reply: FakeReply) => {
       const event = events(reply).find((e) => e.type === 'action_required');
@@ -1076,6 +1267,7 @@ describe('FakeBackend', () => {
         type: 'done',
         answer: 'Không tìm thấy thông tin này trong tài liệu.',
         citations: [],
+        turnId: expect.any(Number),
       });
     });
 
@@ -1097,6 +1289,7 @@ describe('FakeBackend', () => {
           type: 'done',
           answer: 'Đã mở trang Quản lý người dùng.',
           citations: [],
+          turnId: expect.any(Number),
         },
       ]);
     });
@@ -1110,6 +1303,7 @@ describe('FakeBackend', () => {
         answer:
           'Bạn không có quyền mở màn hình này hoặc màn hình không tồn tại.',
         citations: [],
+        turnId: expect.any(Number),
       });
     });
 
@@ -1134,6 +1328,23 @@ describe('FakeBackend', () => {
         ],
       });
       expect(meOf(token).user.positionName).toBe(before);
+    });
+
+    it('answers a read-only suggestion sent with the Q&A skill instead of proposing the change', () => {
+      const token = login('hocvien');
+      const suggested = events(turn(token, 'một câu hỏi, gợi ý')).at(-1);
+      expect(suggested).toMatchObject({
+        suggestionsReadOnly: true,
+        suggestions: ['Đổi chức danh của tôi thành Chuyên viên chính'],
+      });
+      const reply = call(agentEndpoints.stream, token, {
+        body: {
+          message: 'Đổi chức danh của tôi thành Chuyên viên chính',
+          skill: 'qa_tai_lieu',
+        },
+      });
+      expect(types(reply)).not.toContain('action_required');
+      expect(types(reply).at(-1)).toBe('done');
     });
 
     it('proposes the email and the full name too, and refuses a value the profile rules reject', () => {
@@ -1281,22 +1492,18 @@ describe('FakeBackend', () => {
 
     it('refuses an invalid command before streaming and needs a signed-in user', () => {
       const token = login('hocvien');
-      const bad = (messages: unknown) =>
-        code(call(agentEndpoints.stream, token, { body: { messages } }));
-      expect(bad([])).toBe('CORE-VALIDATION_FAILED');
-      expect(bad([{ role: 'assistant', content: 'x' }])).toBe(
-        'CORE-VALIDATION_FAILED',
-      );
-      expect(bad([{ role: 'user', content: '  ' }])).toBe(
-        'CORE-VALIDATION_FAILED',
-      );
-      expect(bad([{ role: 'user', content: 'x'.repeat(501) }])).toBe(
+      const bad = (body: unknown) =>
+        code(call(agentEndpoints.stream, token, { body }));
+      expect(bad({})).toBe('CORE-VALIDATION_FAILED');
+      expect(bad({ message: '  ' })).toBe('CORE-VALIDATION_FAILED');
+      expect(bad({ message: 'x'.repeat(501) })).toBe('CORE-VALIDATION_FAILED');
+      expect(bad({ conversationId: 0, message: 'x' })).toBe(
         'CORE-VALIDATION_FAILED',
       );
       for (const endpoint of Object.values(agentEndpoints)) {
         const reply = call(endpoint, null, {
           params: { actionId: 'a' },
-          body: { messages: [{ role: 'user', content: 'a' }] },
+          body: { message: 'a' },
         });
         expect(reply.status, endpoint.path).toBe(401);
       }

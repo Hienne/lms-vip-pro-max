@@ -11,11 +11,17 @@ import {
   FmtDatePipe,
   FmtPctPipe,
   Icon,
+  IconButton,
+  Menu,
+  type MenuEntry,
   Progress,
   Skeleton,
+  Stat,
+  StatStrip,
   TabPanel,
   Tabs,
   PageHeader,
+  SectionCard,
 } from '@lms/ui';
 import { QuizCard } from '../../../shared/quiz/quiz-card/quiz-card';
 import { AttachmentBlock } from './components/attachment-block/attachment-block';
@@ -29,12 +35,16 @@ import { ProcessBlock } from './components/process-block/process-block';
 import { SessionAlert } from './components/session-alert/session-alert';
 import { TextBlock } from './components/text-block/text-block';
 import { VideoBlock } from './components/video-block/video-block';
+import { AgentChatStore } from '../../../core/assistant/agent-chat.store';
 import { LessonStore } from './data-access/lesson.store';
+import { ScormBlock } from './components/scorm-block/scorm-block';
 
 /** The lesson player (the mockup's `lesson` page): one active block at a time, saved as it is studied. */
 @Component({
   selector: 'app-lesson',
   imports: [
+    ScormBlock,
+    SectionCard,
     PageHeader,
     AttachmentBlock,
     BlockList,
@@ -47,10 +57,12 @@ import { LessonStore } from './data-access/lesson.store';
     FmtDatePipe,
     FmtPctPipe,
     Icon,
+    IconButton,
     ImageBlock,
     LessonFeedback,
     LessonNotes,
     LessonOutline,
+    Menu,
     NgTemplateOutlet,
     PdfBlock,
     ProcessBlock,
@@ -59,6 +71,8 @@ import { LessonStore } from './data-access/lesson.store';
     RouterLink,
     SessionAlert,
     Skeleton,
+    Stat,
+    StatStrip,
     TabPanel,
     Tabs,
     TextBlock,
@@ -71,7 +85,73 @@ import { LessonStore } from './data-access/lesson.store';
 export class Lesson {
   protected readonly store = inject(LessonStore);
 
+  protected readonly agent = inject(AgentChatStore);
+
   private readonly video = viewChild(VideoBlock);
+  private readonly scorm = viewChild(ScormBlock);
+
+  hasUnsavedChanges(): boolean {
+    return this.scorm()?.hasUnsavedChanges() ?? false;
+  }
+
+  leaveMessage(): string | undefined {
+    return this.hasUnsavedChanges()
+      ? 'Tiến độ SCORM chưa được lưu xong. Bạn có muốn rời bài học?'
+      : undefined;
+  }
+
+  /** The lesson as the assistant is told about it; null until the lesson and its revision are read. */
+  private readonly assistContext = computed(() => {
+    const lesson = this.store.lesson$()?.lesson;
+    const courseId = this.store.courseId$();
+    const revisionId = this.store.detail$()?.content.revision.id;
+    if (!lesson || courseId === undefined || revisionId === undefined) {
+      return null;
+    }
+    const course = this.store.card$()?.title;
+    return {
+      courseId,
+      revisionId,
+      lessonId: lesson.id,
+      label: course ? `${course} › ${lesson.title}` : lesson.title,
+    };
+  });
+
+  /** The assistant shortcuts show once the lesson is read and the user has the assistant. */
+  protected readonly canAsk = computed(
+    () => this.agent.available$() && this.assistContext() !== null,
+  );
+
+  /** The assistant menu in the bar: one trigger for both shortcuts, so the bar fits a phone. */
+  protected readonly assistEntries: readonly MenuEntry<'ask' | 'summarise'>[] =
+    [
+      { kind: 'item', value: 'ask', label: 'Hỏi về bài này', icon: 'sparkles' },
+      {
+        kind: 'item',
+        value: 'summarise',
+        label: 'Tóm tắt bài này',
+        icon: 'file-text',
+      },
+    ];
+
+  protected assist(choice: 'ask' | 'summarise'): void {
+    if (choice === 'ask') this.askAssistant();
+    else this.summarise();
+  }
+
+  /** Opens the quick chat on this lesson; the server checks the user may read it. */
+  protected askAssistant(): void {
+    const context = this.assistContext();
+    if (context) this.agent.askAboutLesson(context, 'Bài này nói gì?');
+  }
+
+  /** Same path, with the summarise skill. */
+  protected summarise(): void {
+    const context = this.assistContext();
+    if (context) {
+      this.agent.askAboutLesson(context, 'Tóm tắt bài này', 'tom_tat_bai');
+    }
+  }
 
   /** Hands the store the player on screen, so leaving the block closes the range being watched. */
   private readonly watchVideo = effect(() => {

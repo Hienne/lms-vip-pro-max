@@ -2,10 +2,28 @@ import {
   QuizRequestV1Schema,
   type QuizDetailV1,
   type QuizRequestV1,
+  type QuestionSummaryV1,
 } from '@lms/contracts';
+
+export type ExamQuestion = Pick<
+  QuestionSummaryV1,
+  'id' | 'code' | 'contentPreview' | 'questionType' | 'difficulty'
+>;
 
 /** The settings editable directly from the course editor. */
 export interface ExamFormValue {
+  readonly description?: string | null;
+  readonly selectionMode?: QuizRequestV1['selectionMode'];
+  readonly shuffleQuestions?: boolean;
+  readonly shuffleOptions?: boolean;
+  readonly openAt?: string | null;
+  readonly closeAt?: string | null;
+  readonly graceSeconds?: number;
+  readonly scoringMode?: QuizRequestV1['scoringMode'];
+  readonly scoreMethod?: QuizRequestV1['scoreMethod'];
+  readonly reviewPolicy?: QuizRequestV1['reviewPolicy'];
+  readonly requireLessonsCompleted?: boolean;
+  readonly questionIds?: readonly number[];
   readonly title: string;
   readonly timeLimitMinutes: number;
   readonly questionCount: number;
@@ -18,7 +36,6 @@ export interface ExamFormValue {
 /** A quiz pool takes at most this many questions (backend `MAX_POOL_SIZE`). */
 export const POOL_LIMIT = 2000;
 const POOL_PAGE_SIZE = 100;
-export const POOL_PAGES = POOL_LIMIT / POOL_PAGE_SIZE;
 export { POOL_PAGE_SIZE };
 
 export const EXAM_LIMITS = {
@@ -43,6 +60,7 @@ export function newExamValue(
     maxAttempts: 3,
     retakeWaitHours: 0,
     allowRetakeAfterPass: false,
+    requireLessonsCompleted: true,
   };
 }
 
@@ -54,24 +72,24 @@ export function toNewQuizRequest(
   return {
     courseId,
     title: value.title.trim(),
-    description: null,
+    description: value.description?.trim() || null,
     quizType: 'FINAL_EXAM',
-    selectionMode: 'RANDOM_POOL',
+    selectionMode: value.selectionMode ?? 'RANDOM_POOL',
     questionCount: value.questionCount,
-    shuffleQuestions: true,
-    shuffleOptions: true,
+    shuffleQuestions: value.shuffleQuestions ?? true,
+    shuffleOptions: value.shuffleOptions ?? true,
     timeLimitMinutes: value.timeLimitMinutes,
-    openAt: null,
-    closeAt: null,
-    graceSeconds: 0,
+    openAt: value.openAt ? new Date(value.openAt).toISOString() : null,
+    closeAt: value.closeAt ? new Date(value.closeAt).toISOString() : null,
+    graceSeconds: value.graceSeconds ?? 0,
     passPercent: value.passPercent,
-    scoringMode: 'ALL_OR_NOTHING',
-    scoreMethod: 'BEST',
-    reviewPolicy: 'AFTER_SUBMIT',
+    scoringMode: value.scoringMode ?? 'ALL_OR_NOTHING',
+    scoreMethod: value.scoreMethod ?? 'BEST',
+    reviewPolicy: value.reviewPolicy ?? 'AFTER_SUBMIT',
     maxAttempts: value.maxAttempts,
     retakeWaitHours: value.retakeWaitHours,
     allowRetakeAfterPass: value.allowRetakeAfterPass,
-    requireLessonsCompleted: false,
+    requireLessonsCompleted: value.requireLessonsCompleted ?? true,
   };
 }
 
@@ -79,6 +97,7 @@ export function toNewQuizRequest(
 export function toExamValue(detail: QuizDetailV1): ExamFormValue {
   const { quiz } = detail;
   return {
+    ...QuizRequestV1Schema.parse(quiz),
     title: quiz.title,
     timeLimitMinutes: quiz.timeLimitMinutes,
     questionCount: quiz.questionCount,
@@ -95,13 +114,9 @@ export function toUpdatedQuizRequest(
   value: ExamFormValue,
 ): QuizRequestV1 {
   return {
-    ...QuizRequestV1Schema.parse(detail.quiz),
-    title: value.title.trim(),
-    timeLimitMinutes: value.timeLimitMinutes,
-    questionCount: value.questionCount,
-    passPercent: value.passPercent,
-    maxAttempts: value.maxAttempts,
-    retakeWaitHours: value.retakeWaitHours,
-    allowRetakeAfterPass: value.allowRetakeAfterPass,
+    ...toNewQuizRequest(detail.quiz.courseId, {
+      ...toExamValue(detail),
+      ...value,
+    }),
   };
 }

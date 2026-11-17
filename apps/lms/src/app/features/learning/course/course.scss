@@ -13,47 +13,77 @@
     @include ui.row(3);
     @include ui.text(sm, muted);
     margin: 0 0 ui.space(5);
-  }
 
-  &__next {
-    margin: 0 0 ui.space(3);
-  }
-
-  &__overview {
-    > summary {
-      cursor: pointer;
-      font-weight: ui.weight(semibold);
-    }
-
-    &[open] > summary {
-      margin-bottom: ui.space(3);
+    strong {
+      color: ui.color(text);
+      font-weight: ui.weight(medium);
     }
   }
 
-  &__alert {
-    margin-bottom: ui.space(5);
+  // The figures sit under the title on every width, so a phone sees progress before the outline.
+  &__status {
+    margin-bottom: ui.space(6);
   }
 
+  // The outline and quizzes on the left; the introduction beside them from `lg`, under them
+  // (enrolled) or above them (not enrolled) on a narrower screen, in the template's order.
   &__layout {
     display: grid;
     gap: ui.space(6);
     align-items: start;
 
     @include ui.bp(lg) {
-      grid-template-columns: minmax(0, 1fr) 20rem;
+      &--intro {
+        grid-template-columns: minmax(0, 1fr) 22rem;
+      }
     }
   }
 
   &__main {
     @include ui.stack(6);
+    min-width: 0;
+
+    @include ui.bp(lg) {
+      grid-row: 1;
+      grid-column: 1;
+    }
   }
 
   &__side {
-    @include ui.stack(5);
+    @include ui.bp(lg) {
+      grid-row: 1;
+      grid-column: 2;
+    }
   }
 
-  // The course's one real image, at the top of the main column (SPEC-learning-ui): 16:9, kept short
-  // on a wide screen so the outline stays in the first screenful.
+  &__tally {
+    @include ui.text(sm, muted);
+    @include ui.num;
+    white-space: nowrap;
+  }
+
+  // The section card is flush so the chapters' rules run edge to edge; the text keeps the inset.
+  &__outline {
+    padding-inline: ui.space(5);
+  }
+
+  &__quiz-rule {
+    @include ui.text(sm, muted);
+    margin: 0;
+    padding: ui.space(3) ui.space(5);
+    border-bottom: 1px solid ui.color(border);
+  }
+
+  &__quiz {
+    @include ui.grow;
+    min-width: 0;
+  }
+
+  &__intro {
+    @include ui.stack(4);
+  }
+
+  // The course's one real image: 16:9, kept short so the text below stays in view.
   &__cover {
     display: block;
     width: 100%;
@@ -65,9 +95,13 @@
     background: ui.color(surface-2);
   }
 
-  &__heading {
-    margin: 0 0 ui.space(3);
-    font-size: ui.text-size(lg);
+  &__summary {
+    margin: 0;
+  }
+
+  &__subheading {
+    @include ui.text(md);
+    margin: 0 0 ui.space(2);
     font-weight: ui.weight(semibold);
   }
 
@@ -78,87 +112,9 @@
     list-style: disc;
   }
 
-  &__tally {
-    @include ui.text(sm, muted);
-    @include ui.num;
-    margin: 0 0 ui.space(3);
-  }
-
-  &__outline {
-    padding: ui.space(2) ui.space(4);
-  }
-
-  &__final {
-    margin-bottom: ui.space(3);
-  }
-
-  &__quizzes {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-
-    > li {
-      padding-block: ui.space(3);
-      border-bottom: 1px solid ui.color(border);
-    }
-  }
-
-  &__note {
-    @include ui.text(md, muted);
-    margin: 0;
-  }
-
-  &__progress {
-    min-width: 0;
-  }
-
-  // The figure and the state beside it, then the bar, with no empty space between.
-  &__percent {
-    @include ui.row-between(3);
-    margin: 0 0 ui.space(2);
-
-    strong {
-      @include ui.num;
-      font-size: ui.text-size(2xl);
-      font-weight: ui.weight(semibold);
-      line-height: ui.leading(tight);
-    }
-
-    span {
-      @include ui.text(sm, muted);
-    }
-  }
-
-  // The completion rule: no bullets, so its notes and button start where its lines do.
-  &__rule {
-    @include ui.stack(2);
-    margin: 0 0 ui.space(3);
-    padding: 0;
-    list-style: none;
-  }
-
-  &__facts {
-    @include ui.stack(2);
-    margin: ui.space(4) 0 0;
-
-    div {
-      @include ui.row-between(3);
-    }
-
-    dt {
-      @include ui.text(sm, muted);
-    }
-
-    dd {
-      @include ui.num;
-      margin: 0;
-      font-weight: ui.weight(medium);
-    }
-  }
-
   &__reward {
     @include ui.text(sm, accent);
-    margin: ui.space(2) 0 0;
+    margin: 0;
     font-weight: ui.weight(medium);
   }
 
@@ -171,7 +127,15 @@
     height: 2rem;
   }
 
+  &__skeleton-strip {
+    height: 6rem;
+  }
+
   &__skeleton-body {
     height: 18rem;
+  }
+
+  &__skeleton-quizzes {
+    height: 8rem;
   }
 }

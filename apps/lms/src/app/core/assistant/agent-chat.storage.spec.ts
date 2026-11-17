@@ -1,135 +1,94 @@
 import { TestBed } from '@angular/core/testing';
 import { SESSION_STORAGE } from '../storage/session-storage';
-import type { AgentTurn } from './agent-chat.model';
 import { AgentChatStorage } from './agent-chat.storage';
 
-const KEY = 'lms.agent-chat.v1.000004';
-
-const turn = (
-  id: number,
-  patch: Partial<AgentTurn['reply']> = {},
-): AgentTurn => ({
-  id,
-  question: `Câu hỏi ${id}`,
-  reply: {
-    status: 'done',
-    toolName: null,
-    text: `Trả lời ${id}`,
-    citations: [],
-    navigatedTo: null,
-    action: null,
-    error: null,
-    ...patch,
-  },
-});
-
-const card = (status: 'pending' | 'confirming' | 'confirmed') => ({
-  pending: {
-    id: 'a1',
-    tool: 'update_profile' as const,
-    title: 'Cập nhật hồ sơ cá nhân',
-    changes: [
-      {
-        field: 'positionName' as const,
-        label: 'Chức danh',
-        from: null,
-        to: 'Chuyên viên',
-      },
-    ],
-    expiresAt: '2026-10-24T09:10:00Z',
-  },
-  status,
-  message: null,
-});
+const KEY = 'lms.agent-chat.v2.000004';
+const LEGACY_KEY = 'lms.agent-chat.v1.000004';
 
 describe('AgentChatStorage', () => {
   it('reads back what it wrote, per user, under a versioned key', () => {
     const storage = TestBed.inject(AgentChatStorage);
-    storage.write('000004', { open: true, turns: [turn(1), turn(2)] });
+    storage.write('000004', { open: true, conversationId: 7 });
     expect(sessionStorage.getItem(KEY)).not.toBeNull();
-    expect(storage.read('000004')).toEqual({
+    expect(storage.read('000004')).toEqual({ open: true, conversationId: 7 });
+    expect(storage.read('000005')).toEqual({ open: false });
+  });
+
+  it('stores nothing but the panel state and the conversation id', () => {
+    const storage = TestBed.inject(AgentChatStorage);
+    storage.write('000004', {
       open: true,
-      turns: [turn(1), turn(2)],
+      docked: true,
+      conversationId: 7,
+      // A caller that still passes turns must not leak them into the tab.
+      ...({ turns: [{ id: 1, question: 'Bí mật' }] } as object),
     });
-    expect(storage.read('000005')).toEqual({ open: false, turns: [] });
+    const raw = sessionStorage.getItem(KEY) ?? '';
+    expect(Object.keys(JSON.parse(raw)).sort()).toEqual([
+      'conversationId',
+      'docked',
+      'open',
+    ]);
+    expect(raw).not.toContain('Bí mật');
   });
 
   it('stores docked only when it is on, and reads an entry without it as floating', () => {
     const storage = TestBed.inject(AgentChatStorage);
-    storage.write('000004', { open: true, docked: false, turns: [] });
+    storage.write('000004', { open: true, docked: false });
     expect(sessionStorage.getItem(KEY)).not.toContain('docked');
-    expect(storage.read('000004')).toEqual({ open: true, turns: [] });
-    storage.write('000004', { open: true, docked: true, turns: [] });
-    expect(storage.read('000004')).toEqual({
-      open: true,
-      docked: true,
-      turns: [],
-    });
-  });
-
-  it('keeps the newest 30 turns', () => {
-    const storage = TestBed.inject(AgentChatStorage);
-    const turns = Array.from({ length: 35 }, (_, i) => turn(i + 1));
-    storage.write('000004', { open: false, turns });
-    const read = storage.read('000004').turns;
-    expect(read).toHaveLength(30);
-    expect(read[0].id).toBe(6);
-    expect(read.at(-1)?.id).toBe(35);
+    expect(storage.read('000004')).toEqual({ open: true });
+    storage.write('000004', { open: true, docked: true });
+    expect(storage.read('000004')).toEqual({ open: true, docked: true });
   });
 
   it.each([
     'not json',
     'null',
     '[]',
-    '{"open":true}',
-    '{"open":true,"turns":[{"id":1}]}',
+    '{}',
+    '{"open":"yes"}',
+    '{"open":true,"conversationId":0}',
   ])('discards the entry %s and starts empty', (entry) => {
     sessionStorage.setItem(KEY, entry);
     expect(TestBed.inject(AgentChatStorage).read('000004')).toEqual({
       open: false,
-      turns: [],
     });
     expect(sessionStorage.getItem(KEY)).toBeNull();
   });
 
-  it('restores a turn that was still streaming as stopped, and a card that was confirming as pending', () => {
-    const storage = TestBed.inject(AgentChatStorage);
-    storage.write('000004', {
-      open: true,
-      turns: [
-        turn(1, { status: 'composing', text: 'Một nửa' }),
-        turn(2, { status: 'done', action: card('confirming') }),
-        turn(3, { status: 'done', action: card('confirmed') }),
-      ],
+  it('ignores and removes an entry of the first shape, the one that kept turns in the tab', () => {
+    sessionStorage.setItem(
+      LEGACY_KEY,
+      JSON.stringify({
+        open: true,
+        turns: [{ id: 1, question: 'Câu hỏi cũ', reply: {} }],
+      }),
+    );
+    expect(TestBed.inject(AgentChatStorage).read('000004')).toEqual({
+      open: false,
     });
-    const turns = storage.read('000004').turns;
-    expect(turns[0].reply).toMatchObject({
-      status: 'stopped',
-      text: 'Một nửa',
-    });
-    expect(turns[1].reply.action?.status).toBe('pending');
-    expect(turns[2].reply.action?.status).toBe('confirmed');
+    expect(sessionStorage.getItem(LEGACY_KEY)).toBeNull();
   });
 
   it('removes the entry on clear', () => {
     const storage = TestBed.inject(AgentChatStorage);
-    storage.write('000004', { open: true, turns: [turn(1)] });
+    storage.write('000004', { open: true, conversationId: 7 });
     storage.clear('000004');
     expect(sessionStorage.getItem(KEY)).toBeNull();
-    expect(storage.read('000004').turns).toEqual([]);
+    expect(storage.read('000004')).toEqual({ open: false });
   });
 
-  it('removes every other user’s conversation and leaves this user’s and other keys', () => {
+  it('removes every other user’s entry, and any entry of the first shape, and leaves this user’s and other keys', () => {
     const storage = TestBed.inject(AgentChatStorage);
-    storage.write('000004', { open: true, turns: [turn(1)] });
-    storage.write('000005', { open: true, turns: [turn(1)] });
+    storage.write('000004', { open: true });
+    storage.write('000005', { open: true });
     sessionStorage.setItem('lms.agent-chat.v1.000006', '{}');
     sessionStorage.setItem('lms.other', 'kept');
 
     storage.clearOthers('000004');
 
     expect(sessionStorage.getItem(KEY)).not.toBeNull();
-    expect(sessionStorage.getItem('lms.agent-chat.v1.000005')).toBeNull();
+    expect(sessionStorage.getItem('lms.agent-chat.v2.000005')).toBeNull();
     expect(sessionStorage.getItem('lms.agent-chat.v1.000006')).toBeNull();
     expect(sessionStorage.getItem('lms.other')).toBe('kept');
     sessionStorage.removeItem('lms.other');
@@ -161,13 +120,13 @@ describe('AgentChatStorage', () => {
         providers: [{ provide: SESSION_STORAGE, useValue: blocked }],
       });
       const storage = TestBed.inject(AgentChatStorage);
-      storage.write('000004', { open: true, turns: [turn(1)] });
-      expect(storage.read('000004')).toEqual({ open: true, turns: [turn(1)] });
+      storage.write('000004', { open: true, conversationId: 3 });
+      expect(storage.read('000004')).toEqual({ open: true, conversationId: 3 });
       storage.clear('000004');
-      expect(storage.read('000004').turns).toEqual([]);
-      storage.write('000005', { open: true, turns: [turn(1)] });
+      expect(storage.read('000004')).toEqual({ open: false });
+      storage.write('000005', { open: true });
       storage.clearOthers('000004');
-      expect(storage.read('000005').turns).toEqual([]);
+      expect(storage.read('000005')).toEqual({ open: false });
     }
   });
 });

@@ -23,7 +23,7 @@
       <a
         slot="action"
         routerLink="/catalog"
-        [queryParams]="{ scope: 'assigned' }"
+        [queryParams]="store.allCoursesQuery$()"
         >Xem tất cả <ui-icon name="arrow-right" size="sm"
       /></a>
       <ui-tabs
@@ -166,6 +166,7 @@
               <app-reminder-item
                 [reminder]="item.reminder"
                 [overdue]="item.isOverdue"
+                [showCourseLink]="true"
               />
             </li>
             }

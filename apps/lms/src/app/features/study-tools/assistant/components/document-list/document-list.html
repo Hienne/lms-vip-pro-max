@@ -16,24 +16,101 @@
     Chưa có tài liệu nào. Tải lên tệp đầu tiên để bắt đầu hỏi đáp.
   </p>
   } @else {
+  <input
+    #picker
+    type="file"
+    hidden
+    tabindex="-1"
+    aria-label="Chọn tệp thay bản mới"
+    [accept]="accept"
+    (change)="picked($event)"
+  />
   <ul class="docs__list">
     @for (doc of documents(); track doc.id) {
-    <li class="doc">
-      <span class="doc__name" [title]="doc.fileName">{{ doc.fileName }}</span>
+    <li class="doc" [class.doc--highlight]="doc.id === highlightId()">
+      @if (editingId() === doc.id) {
+      <span class="doc__edit">
+        <input
+          #editor
+          uiInput
+          class="doc__editor"
+          type="text"
+          maxlength="255"
+          aria-label="Tên mới của tài liệu"
+          [value]="doc.title"
+          (keydown.enter)="saveRename(doc, editor.value)"
+          (keydown.escape)="$event.stopPropagation(); cancelRename()"
+        />
+        <button
+          uiIconButton
+          size="sm"
+          type="button"
+          label="Lưu tên"
+          (click)="saveRename(doc, editor.value)"
+        >
+          <ui-icon name="check" size="sm" />
+        </button>
+        <button
+          uiIconButton
+          size="sm"
+          type="button"
+          label="Huỷ đổi tên"
+          (click)="cancelRename()"
+        >
+          <ui-icon name="x" size="sm" />
+        </button>
+      </span>
+      } @else {
+      <span class="doc__name" [title]="doc.title">{{ doc.title }}</span>
       <span uiBadge dot [tone]="statusView[doc.status].tone"
         >{{ statusView[doc.status].label }}</span
       >
+      <span class="doc__actions">
+        @if (canEdit()(doc)) {
+        <ui-menu
+          iconOnly
+          size="sm"
+          variant="ghost"
+          [label]="'Thao tác với ' + doc.title"
+          [entries]="rowActions"
+          (selected)="act($event, doc)"
+        />
+        } @if (canRemove()(doc)) {
+        <button
+          uiIconButton
+          type="button"
+          class="doc__remove"
+          [label]="'Xoá ' + doc.title"
+          (click)="remove.emit(doc)"
+        >
+          <ui-icon name="trash-2" />
+        </button>
+        }
+      </span>
+      }
       <span class="doc__meta">
-        {{ doc.uploadedBy.fullName }} ·
+        {{ doc.uploadedBy.fullName }} · {{ scopeLabel[doc.scope] }} ·
         <time
           [attr.datetime]="doc.createdAt"
           [title]="doc.createdAt | fmtDatetime"
           >{{ doc.createdAt | fmtRelative }}</time
         >
+        @if (doc.title !== doc.fileName) { · {{ doc.fileName }} }
       </span>
       @if (doc.status === 'failed' && doc.errorMessage) {
       <span class="doc__error">{{ doc.errorMessage }}</span>
-      }
+      } @if (doc.replacement; as replacement) { @if (replacement.status ===
+      'failed') {
+      <span class="doc__error"
+        >Thay bản mới không thành công, bản cũ vẫn được dùng. {{
+        replacement.errorMessage }}</span
+      >
+      } @else {
+      <span class="doc__note" role="status"
+        >Đang xử lý bản mới{{ replacement.fileName ? ' “' + replacement.fileName
+        + '”' : '' }}; bản cũ vẫn trả lời trong lúc này.</span
+      >
+      } }
     </li>
     }
   </ul>

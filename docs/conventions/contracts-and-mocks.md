@@ -1,5 +1,74 @@
 # Contracts, zod and the in-app mock API
 
+Course SCORM lessons optionally send `scormCompletionRule: "completed_or_passed" | "passed"` in the
+existing course/draft tree payload. The response preserves it per lesson/revision. Omission retains the
+legacy completed-or-passed policy. The backend alone applies this status requirement; raw score is never
+used by the FE to award completion. A passed-only lesson whose SCO ended as completed/browsed may restart,
+as may a failed registration; preview and passed registrations cannot reset. Deploy backend upgrade
+`2026-11-14-scorm-completion-rule.sql` before enabling the matching FE. Existing completions are preserved.
+
+The shell bell counts pending reminders from the actual learner feed plus new instructor feedback,
+including in development. It no longer uses the mock `navCounts.notifications`. Read/delete actions
+invalidate both the list and count; read/cancelled rows do not light the bell. The inbox still shows up to
+20 recent items, unread first, and keeps read rows visible.
+
+Usage help is local to each account/browser. The first-use introduction is at most three steps; the
+visible header help opens a short guide for the current screen without leaving it. The account menu
+opens the complete role guide and its automatic-introduction switch. Viewing page help does not mark
+the complete guide finished or change permissions. Catalogue filters use a drawer below 720px and retain
+their server query/URL; removing a field also clears its dependent programme/module choices.
+
+The learner catalogue has three explicit scopes: all (catalog endpoint), mine (myCourses endpoint,
+including self-enrolment) and assigned (myCourses with assigned=true). Dashboard “Xem tất cả” keeps
+the selected status or mandatory requirement. Both catalogue queries support withoutModule=true.
+Deploy the matching backend for myCourses withoutModule and lastAccessAt NULLS LAST before pagination.
+Reminder responses add nullable courseId/courseTitle/enrollmentId/courseAvailable. Never infer these IDs
+from the current course list. An unavailable reminder has no course link; an older backend without
+context falls back to the progress list. These changes need no SQL migration.
+Results-report KPI/charts use the shared scope; userId/status/passed apply only to table and CSV.
+The UI identifies both scopes; it must not calculate a global total by filtering a single page.
+The course-editor SCORM library fetches every backend page (size 100) before exposing its searchable
+dropdown. It preserves existing manage/owner scope, does not add query calls while typing, and exposes
+retry only after a loading error. UI pagination is intentionally absent.
+
+The training catalogue field form manages business modules inline. Field POST/PUT optionally sends
+`modules[]` as explicit operations (`id` + `expectedVersion` for existing rows, `deleted:true` to delete).
+The matching backend saves field and modules atomically; omission never implicitly deletes modules.
+Used modules cannot be deleted. Deploy the matching backend before using the aggregate field save;
+older backends can ignore an unknown `modules` property. No SQL migration is required.
+The tree is ordered by creation time ascending at the backend. Learner catalogue lists, and mandatory/
+assigned my-course lists, prioritize unfinished courses in SQL before pagination, using completion status
+rather than the content percentage. Assessment previous/next buttons select adjacent dropdown courses;
+the dropdown loads every filtered course page and keeps program/search filters stable.
+
+SCORM lecture endpoints live in `lib/scorm/scorm.endpoints.ts` and are real backend contracts.
+Learners with `lessonStatus: "failed"` can confirm **Học lại**. Launch sends `restart:true` with
+the same enrollment/lesson context. The backend atomically clears the failed attempt's score, answers,
+bookmark and time, audits its previous result, and replaces its capability; retakes have no quota.
+Normal launch/resume omits restart or sends false. Preview reset requests are rejected. Nonfailed
+registrations may reset only for a passed-only course lesson whose status is completed/browsed.
+Deploy the matching backend before enabling this flow; no new database migration is required.
+`/admin/lessons` imports a ZIP to a draft package and previews it; `/scorm` lists published lectures
+available to the learner; `/scorm/:id` remains for standalone launches and library previews. Course
+lessons embed the player inside `/lesson/:courseId/:lessonId`, preserving the course tree and navigation.
+Course SCORM launches carry enrollmentId and lessonId; standalone and preview results never complete course lessons. `lessonLocation` is an opaque
+SCO bookmark, never a locally calculated page or percentage. Score/status come from the authenticated
+progress endpoint; iframe messages only trigger a refresh after checking exact source and origin.
+Executable packages must use the backend's separate SCORM player origin; embedding on the LMS origin
+is refused. Deploy the SCORM SQL upgrade and configure both origins before using this feature.
+
+The course editor authors its final exam inline through
+`assessmentV1Endpoints.saveCourseExam` (`POST /api/v1/course-exams`). A new course sends
+`{ course, quiz, pool }`; an existing draft sends `{ courseId, revisionId, draft, quiz, pool }`
+and, when editing an exam, `quizId` plus `expectedQuizVersion`. `draft.expectedVersion`
+protects the revision. `quiz.courseId` can be omitted: the server supplies the saved course ID.
+`pool.items` contains the selected program-bank `questionId`, `sortNo` and optional `points` overrides.
+The real backend atomically saves the course/draft, exam configuration, selected pool and
+`finalQuizId`, returning the existing `CourseDetail` envelope. Failed scope, version or question
+validation rolls everything back. Deploy that backend endpoint together with this FE change;
+this addition needs no SQL migration. The dev mock checkpoints both in-memory stores to model
+rollback. Publishing the course publishes its saved DRAFT final exam without replacing its pool.
+
 Question Excel import on `/admin/questions` uses the program selected outside the drawer.
 `programAssessmentEndpoints.importQuestions` calls the existing multipart endpoint
 `POST /api/v1/questions/import?programId&dryRun&overwrite`, part `file`, without `courseId`.
@@ -659,7 +728,7 @@ creation and runtime parsing; the route's `ChatRoomStore` owns presence, transie
 reconnection. A new connection always obtains a fresh ticket through `serverMutation`, so bearer/session
 expiry handling stays on the existing HTTP path. No JWT is sent in the socket URL.
 
-The `/chat-room` screen is in the signed-in `open` screen table. It appears as “Giải trí” in the
+The `/chat-room` screen is in the signed-in `open` screen table. It appears as “Giờ ra chơi” in the
 “Cộng đồng” menu in both the learner header and the staff sidebar. It uses the existing shell, Signal Forms
 and `@lms/ui`. Three.js is loaded when
 the canvas mounts. World coordinates and colours belong to the renderer, while Angular controls
@@ -677,23 +746,26 @@ The join form sends an optional `avatar` style and opts in to seating and high f
 accepted high-five event for paired animation. The server owns chair occupancy and validates the
 recipient, expiry and reach of every high-five invitation.
 
-There is no chat sidebar or chat log. Enter or the mobile-friendly "Nhắn tin" button opens the
-composer immediately above the instructions; sending or Escape closes it. Only active overhead
-bubbles (5.5 seconds) are held in the store and expired by per-player timers. Welcome history from
-older servers is ignored. The updated backend does not retain messages and sends an empty compatibility
-`history` field, so late arrivals/reconnects cannot receive previous speech.
+The chat overlay shows the last 50 messages of the current room session, including `welcome.history`.
+The server clears the history when the room empties. Enter or “Nhắn tin” opens the overlay composer.
+Sending or Escape closes it. Overhead bubbles expire after 5.5 seconds.
 
 The client opts in to the CPoint wallet, shared dice rounds and Caro with `roomGames: true` on join.
 `RoomGamesStore` owns game panel state and consumes socket events through `ChatRoomStore`.
 The 3D view marks `diceArea` for the 30-second Trên/Dưới rounds. The server settles bets, publishes
 the same result and history to viewers and sends each account its own wallet. Caro uses a server-owned
 50 × 50 board. Its three room tables start from their seats and use `caro-table` to report occupancy.
-New matches require a stake of at least 10 CPoint per player. State events still accept the stake
-from existing matches.
-The board view starts in the center and supports panning without sending moves. Position updates
-include `approaching` while the server walks a player toward an interaction target.
+The two chairs at each table face each other. Each player contributes at least 10 CPoint. The backend
+keeps matches and timers in memory and records only the final wallet transfer. The turn deadline
+continues while a player is away. The absent player forfeits if the turn expires before they return.
+The board view starts in the center and supports panning without sending moves. On an automatic approach,
+the server sends a route and speed for frame-by-frame rendering and confirms arrival.
 
 Deploy the matching `corebanking-academy` module and configure WebSocket upgrade for
 `/api/v1/chat-room/socket` on the FE reverse proxy. The development `/api` proxy enables WebSocket.
 Apply the backend's `2026-11-09-chat-room-games.sql` upgrade first. Presence and invitations belong to one
 backend instance. Wallets and game data persist in PostgreSQL.
+
+Course lesson authoring accepts `lessonType: "scorm"` and nullable `scormPackageId` on a draft (required for publication). The lesson form uploads a ZIP directly, or opens the optional lesson-library picker; uploaded draft packages publish with the course. Manual content and quiz authoring stay available, including mixed courses. SCORM lessons send no manual blocks. The embedded lesson player uses the exact enrollmentId and lessonId for progress and launch. A save receipt triggers authenticated progress reads without relaunching the iframe. Completion is server-owned and follows the lesson's `scormCompletionRule`; a configured final exam remains required. Each lesson/enrollment has its own score and bookmark, even when sharing a package. Apply backend `2026-11-13-scorm-course-lessons.sql` after the SCORM 1.2 base upgrade, then `2026-11-14-scorm-completion-rule.sql`, before deploying both applications.
+
+Course republishing leaves existing learning cycles unchanged. Assignment details use the real backend GET/POST recipient revision-change endpoints to preview and explicitly transfer untouched learning or create a relearning assignment. Eligibility, affected obligation snapshots, version conflicts and history preservation are server-owned. The seeded assignment mock has no real enrollment history and does not implement these transitions; component specs stub the endpoint contract, and backend integration tests cover the state changes. Published exam edits in the course editor create a new draft quiz, retaining the old quiz for previous enrollments. Deploy with backend upgrade 2026-11-13-course-revision-learning.sql.

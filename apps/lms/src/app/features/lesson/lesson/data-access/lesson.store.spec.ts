@@ -7,7 +7,7 @@ import {
   learnerEndpoints,
   type EnrollmentDetail,
 } from '@lms/contracts';
-import { backendRefusal } from '@lms/mocks';
+import { backendRefusal, type FakeReply } from '@lms/mocks';
 import type { MockInstance } from 'vitest';
 import {
   parseAppConfig,
@@ -449,6 +449,77 @@ describe('LessonStore', () => {
       previousSessionId: JSON.parse(stored!).sessionId,
     });
     expect(reopened.phase$()).toBe('ready');
+  });
+
+  describe('what the course still needs', () => {
+    /** The enrolment as a server that evaluates completion sends it; `done` counts its reads. */
+    function serveCompletion(): { readonly reads: () => number } {
+      let reads = 0;
+      handle.mockImplementation((endpoint, request) => {
+        const reply = real()(endpoint, request);
+        if (endpoint !== learnerEndpoints.enrollment || !reply) return reply;
+        reads += 1;
+        const body = reply.body as { data: EnrollmentDetail };
+        return {
+          ...reply,
+          body: {
+            ...body,
+            data: {
+              ...body.data,
+              completion: {
+                completedRequiredLessons: reads,
+                requiredLessons: 3,
+                lessonsSatisfied: false,
+                finalQuizId: 2,
+                finalExamStatus: 'NOT_PASSED',
+                allSatisfied: false,
+              },
+            },
+          },
+        } as FakeReply;
+      });
+      return { reads: () => reads };
+    }
+
+    it('shows the evaluation the enrolment came with, and reads it only once while nothing completes', async () => {
+      const server = serveCompletion();
+      const store = await open(1);
+      expect(store.courseCompletion$()).toMatchObject({
+        required: { done: 1, total: 3 },
+        finalExam: { label: 'Chưa đạt', failed: true },
+      });
+      expect(server.reads()).toBe(1);
+    });
+
+    it('reads the evaluation again once a lesson completes here', async () => {
+      const server = serveCompletion();
+      const store = await open(2);
+      store.advance();
+      settle();
+      expect(server.reads()).toBe(2);
+      expect(store.courseCompletion$().required).toEqual({ done: 2, total: 3 });
+    });
+
+    it('says nothing it was not told: no evaluation, no count and no exam', async () => {
+      const store = await open(2);
+      expect(store.courseCompletion$()).toMatchObject({
+        required: null,
+        finalExam: null,
+      });
+      expect(store.courseCompletion$().percent).toBe(store.courseProgress$());
+    });
+  });
+
+  describe('the session alert', () => {
+    it('is up, so the step bar steps back from primary, only while the learner must act on it', async () => {
+      takeOverElsewhere(blocksOf(lessonIds()[2])[0]);
+      const store = await open(2);
+      expect(store.phase$()).toBe('takeover');
+      expect(store.sessionBlocked$()).toBe(true);
+      store.takeOver();
+      settle();
+      expect(store.sessionBlocked$()).toBe(false);
+    });
   });
 
   describe('a lesson with nothing to study', () => {

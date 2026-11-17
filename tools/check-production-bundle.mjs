@@ -11,6 +11,8 @@ import { join, relative } from 'node:path';
 
 const FIXTURE_MARKERS = [['mock API fixtures', 'admin@demo.cb']];
 const DEV_TOOL_MARKERS = [
+  ['SCORM dev relay', 'LMS_SCORM_DEV_PROXY'],
+  ['SCORM dev relay', 'SCORM dev proxy: request unavailable.'],
   ['dev toolbar', 'Mô phỏng hết phiên đăng nhập'],
   ['dev toolbar', 'Đổi vai trò dữ liệu mô phỏng'],
   ['mock role storage', 'lms.mockRole'],

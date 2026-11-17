@@ -99,6 +99,37 @@ export type SaveCatalogItemCommand = z.infer<
   typeof SaveCatalogItemCommandSchema
 >;
 
+export const CatalogModuleChangeSchema = z
+  .object({
+    id: z.number().int().positive().optional(),
+    expectedVersion: z.number().int().nonnegative().optional(),
+    code: z.string().trim().min(1).max(CATALOG_LIMITS.code),
+    name: z.string().trim().min(1).max(CATALOG_LIMITS.name),
+    status: CatalogStatusSchema,
+    sortNo: z.number().int().nonnegative().optional(),
+    deleted: z.boolean(),
+  })
+  .superRefine((value, context) => {
+    if (
+      (value.id !== undefined && value.expectedVersion === undefined) ||
+      (value.deleted && !value.id)
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['expectedVersion'],
+        message: 'Version required for an existing module.',
+      });
+  });
+
+/** Atomic field + explicit module operations; omitting modules preserves existing modules. */
+export const SaveTrainingFieldCommandSchema =
+  SaveCatalogItemCommandSchema.extend({
+    modules: z.array(CatalogModuleChangeSchema).max(200).optional(),
+  });
+export type SaveTrainingFieldCommand = z.infer<
+  typeof SaveTrainingFieldCommandSchema
+>;
+
 /** The row's `rowVersion`, as read; a stale one is refused. */
 export const ExpectedVersionQuerySchema = z.object({
   expectedVersion: z.number().int().nonnegative(),
@@ -151,7 +182,7 @@ export const CatalogTreeFieldSchema = z.object({
 });
 export type CatalogTreeField = z.infer<typeof CatalogTreeFieldSchema>;
 
-/** Fields, programs and courses of one owner org in one call, ordered by sort number then id. */
+/** Fields, programs and courses of one owner org, oldest creation first, then id. */
 export const CatalogTreeSchema = z.object({
   fields: z.array(CatalogTreeFieldSchema),
 });

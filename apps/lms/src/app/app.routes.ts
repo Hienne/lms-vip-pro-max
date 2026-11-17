@@ -30,6 +30,14 @@ const routeData = (meta: RouteMeta): Route['data'] => ({ ...meta });
 
 function toRoute(entry: ScreenEntry): Route {
   const { screen } = entry;
+  if (screen.redirectTo) {
+    // Authorization belongs to the destination's guards, including COMMUNITY access.
+    return {
+      path: screen.path,
+      pathMatch: 'full',
+      redirectTo: screen.redirectTo,
+    };
+  }
   return {
     path: screen.path,
     // `full`, or `/admin/courses` would run the guards of the `admin` route first.

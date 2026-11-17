@@ -8,6 +8,8 @@ import { Stepper, type StepperItem } from './stepper';
     label="Các bước tạo khóa học"
     [steps]="steps()"
     [linear]="linear()"
+    [controlled]="controlled()"
+    (stepRequested)="requested.set($event)"
     [(selectedIndex)]="current"
   />`,
 })
@@ -20,6 +22,8 @@ class Host {
   ]);
   readonly linear = signal(false);
   readonly current = signal(1);
+  readonly controlled = signal(false);
+  readonly requested = signal<number | undefined>(undefined);
 }
 
 async function render() {
@@ -40,6 +44,19 @@ const text = (el: Element | null | undefined) =>
   el?.textContent?.replace(/\s+/g, ' ').trim();
 
 describe('Stepper', () => {
+  it('keeps the active step until the host accepts a controlled navigation request', async () => {
+    const { host, steps, settle } = await render();
+    host.controlled.set(true);
+    await settle();
+    steps()[3].click();
+    await settle();
+    expect(host.requested()).toBe(3);
+    expect(host.current()).toBe(1);
+    expect(steps()[1].getAttribute('aria-current')).toBe('step');
+    host.current.set(3);
+    await settle();
+    expect(steps()[3].getAttribute('aria-current')).toBe('step');
+  });
   it('is a named ordered list with a title (and optional subtitle) per step', async () => {
     const { root, steps } = await render();
     expect(root.querySelector('ol.stepper')?.getAttribute('aria-label')).toBe(

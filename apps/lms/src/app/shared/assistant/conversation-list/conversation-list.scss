@@ -1,0 +1,90 @@
+@use 'ui';
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: ui.space(3);
+  min-height: 0;
+}
+
+.history {
+  &__bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.space(2);
+    align-items: center;
+  }
+
+  &__search {
+    flex: 1 1 8rem;
+    min-width: 0;
+  }
+
+  &__loading {
+    display: flex;
+    flex-direction: column;
+    gap: ui.space(2);
+  }
+
+  &__list {
+    min-height: 0;
+    overflow-y: auto;
+
+    &:focus-visible {
+      outline: 2px solid ui.color(primary);
+      outline-offset: 2px;
+    }
+  }
+
+  &__row {
+    display: flex;
+    gap: ui.space(1);
+    align-items: center;
+
+    &--active {
+      font-weight: ui.weight(semibold);
+    }
+  }
+
+  // The title and the time are one button: opening is the row's main action.
+  &__open {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: ui.space(1);
+    min-width: 0;
+    padding: ui.space(2) ui.space(3);
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    background: none;
+    border: 0;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid ui.color(primary);
+      outline-offset: -2px;
+    }
+  }
+
+  &__title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__time {
+    @include ui.text(sm, muted);
+    font-weight: ui.weight(regular);
+  }
+
+  &__editor {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__foot {
+    display: flex;
+    justify-content: flex-end;
+  }
+}

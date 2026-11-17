@@ -43,9 +43,13 @@ export interface Screen {
   readonly guestOnly?: boolean;
   /** The migrated component; absent means the route placeholder. */
   readonly load?: ScreenLoad;
+  /** Retired destinations forward to the existing screen that owns their content. */
+  readonly redirectTo?: string;
 }
 
 export interface MenuNav {
+  /** Retain server function codes and old URLs without showing a duplicate destination. */
+  readonly hidden?: boolean;
   readonly icon: IconName;
   readonly section: string;
   /** Count shown beside the label; the shell fills it from the server's nav counts. */
@@ -115,6 +119,15 @@ export const SCREEN_TABLE = {
           load: () =>
             import('../../features/learning/course/course').then(
               (m) => m.Course,
+            ),
+        },
+        {
+          path: 'scorm',
+          title: 'Bài giảng SCORM',
+          mockupPage: 'lessons',
+          load: () =>
+            import('../../features/scorm/scorm-library/scorm-library').then(
+              (m) => m.ScormLibrary,
             ),
         },
         {
@@ -235,6 +248,15 @@ export const SCREEN_TABLE = {
             ).then((m) => m.CourseEditor),
         },
         {
+          path: 'admin/courses/ai-drafts/:jobId',
+          title: 'Công việc tạo khóa học',
+          mockupPage: 'courseWizard',
+          load: () =>
+            import(
+              '../../features/admin-content/ai-course/legacy-course-job/legacy-course-job'
+            ).then((m) => m.LegacyCourseJob),
+        },
+        {
           path: 'admin/courses/:id/edit',
           title: 'Sửa khóa học',
           mockupPage: 'courseWizard',
@@ -250,8 +272,12 @@ export const SCREEN_TABLE = {
       screens: [
         {
           path: 'admin/lessons',
-          title: 'Quản lý bài giảng',
+          title: 'Thư viện bài giảng',
           mockupPage: 'lessons',
+          load: () =>
+            import('../../features/scorm/scorm-library/scorm-library').then(
+              (m) => m.ScormLibrary,
+            ),
         },
       ],
     },
@@ -270,6 +296,15 @@ export const SCREEN_TABLE = {
             import(
               '../../features/quiz/assessment-screen/assessment-screen'
             ).then((m) => m.AssessmentScreen),
+        },
+        {
+          path: 'admin/competencies',
+          title: 'Danh mục nhóm năng lực',
+          mockupPage: 'competencies',
+          load: () =>
+            import(
+              '../../features/quiz/competency-catalog/competency-catalog'
+            ).then((m) => m.CompetencyCatalog),
         },
       ],
     },
@@ -422,12 +457,13 @@ export const SCREEN_TABLE = {
       ],
     },
     KNOWLEDGE_HUB: {
-      nav: { icon: 'graduation-cap', section: 'Công cụ học' },
+      nav: { icon: 'graduation-cap', section: 'Cộng đồng', hidden: true },
       screens: [
         {
           path: 'knowledge',
           title: 'Kho tri thức',
           mockupPage: 'knowledge',
+          redirectTo: 'community/questions',
         },
       ],
     },
@@ -443,6 +479,14 @@ export const SCREEN_TABLE = {
             import('../../features/study-tools/assistant/assistant').then(
               (m) => m.Assistant,
             ),
+        },
+        {
+          // The documents open in a drawer on the chat; the old page's URL opens that drawer.
+          path: 'assistant/tai-lieu',
+          title: 'Tài liệu của trợ lý',
+          mockupPage: 'assistant',
+          // Absolute: a relative redirect keeps the old URL's query and drops this one.
+          redirectTo: '/assistant?tai-lieu=1',
         },
       ],
     },
@@ -566,12 +610,13 @@ export const SCREEN_TABLE = {
       ],
     },
     ISSUE_HUB: {
-      nav: { icon: 'message-square', section: 'Công cụ học' },
+      nav: { icon: 'message-square', section: 'Cộng đồng', hidden: true },
       screens: [
         {
           path: 'issues',
           title: 'Tra cứu sự cố',
           mockupPage: 'issues',
+          redirectTo: 'community/articles?type=lesson',
         },
       ],
     },
@@ -584,7 +629,7 @@ export const SCREEN_TABLE = {
   open: [
     {
       path: 'chat-room',
-      title: 'Giải trí',
+      title: 'Giờ ra chơi',
       mockupPage: 'chatRoom',
       layout: 'workspace',
       load: () =>
@@ -744,6 +789,15 @@ export const SCREEN_TABLE = {
       load: () =>
         import('../../features/account/notifications/notifications').then(
           (m) => m.Notifications,
+        ),
+    },
+    {
+      path: 'scorm/:id',
+      title: 'Học bài giảng SCORM',
+      mockupPage: 'lesson',
+      load: () =>
+        import('../../features/scorm/scorm-player/scorm-player').then(
+          (m) => m.ScormPlayer,
         ),
     },
     {

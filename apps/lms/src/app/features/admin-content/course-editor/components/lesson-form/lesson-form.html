@@ -1,5 +1,10 @@
 <form id="lesson-form" class="lesson-form" [formRoot]="lessonForm">
-  @if (lessonForm().touched() && missingFiles().length) {
+  @if (lessonForm.blocks().touched() && lessonForm.blocks().errors().length) {
+  <ui-alert tone="danger">
+    @for (error of lessonForm.blocks().errors(); track $index) { {{
+    error.message }} }
+  </ui-alert>
+  } @if (lessonForm().touched() && missingFiles().length) {
   <ui-alert tone="danger">
     Khối "{{ missingFiles()[0].title }}" chưa có tệp: tải tệp lên hoặc xóa khối.
   </ui-alert>
@@ -26,6 +31,7 @@
       >
         Bài kiểm tra
       </option>
+      <option value="scorm">Bài giảng SCORM 1.2</option>
     </select>
   </ui-field>
 
@@ -58,16 +64,119 @@
   </ui-alert>
   } @else if (!quizOptions().length) {
   <ui-alert tone="info" [announce]="false">
-    Khóa học chưa có bài kiểm tra. Tạo bài kiểm tra cho khóa học ở màn Bài kiểm
-    tra rồi quay lại chọn.
+    Khóa học chưa có bài kiểm tra. Soạn bài kiểm tra ở bước Bài kiểm tra & điều
+    kiện, rồi quay lại chọn cho bài học. @if (store.canCreateQuiz$()) {
+    <button uiButton size="sm" type="button" (click)="prepareExam()">
+      <ui-icon name="plus" size="sm" />Soạn bài kiểm tra cùng khóa học
+    </button>
+    <button uiButton size="sm" type="button" (click)="store.reloadQuizzes()">
+      Tải lại danh sách
+    </button>
+    }
   </ui-alert>
+  } } } @else if (lessonForm.lessonType().value() === 'scorm') {
+  <p>
+    Tải tệp ZIP SCORM 1.2 trực tiếp vào bài học, hoặc chọn một bài giảng đã có
+    trong thư viện.
+  </p>
+  @if (!scormUpload.libraryOpen$()) {<input
+    type="hidden"
+    [formField]="lessonForm.scormPackageId"
+  />} @if (lessonForm.scormPackageId().touched()) { @for (error of
+  lessonForm.scormPackageId().errors(); track $index) {<ui-alert tone="danger"
+    >{{error.message}}</ui-alert
+  >} } @if (lessonForm.scormPackageId().value()) { @if (selectedScorm(); as
+  lecture) {
+  <ui-upload-item
+    [name]="lecture.originalName"
+    [size]="lecture.sizeBytes"
+    icon="file-text"
+  />
+  <p>Đã gắn: <strong>{{lecture.title}}</strong></p>
+  } @else {
+  <p>Đã gắn bài giảng SCORM #{{lessonForm.scormPackageId().value()}}</p>
+  } } @else {
+  <label uiDropzone accept=".zip,application/zip" (files)="importScorm($event)">
+    <ui-icon name="upload" />
+    <span>Kéo thả hoặc chọn tệp ZIP SCORM</span>
+    <span>Tối đa 100 MB · SCORM 1.2</span>
+    <input type="file" hidden [disabled]="scormUpload.pending$()" />
+  </label>
+  }
+  <div class="lesson-form__row-actions">
+    @if (lessonForm.scormPackageId().value()) {
+    <button
+      uiButton
+      type="button"
+      size="sm"
+      [disabled]="scormUpload.pending$()"
+      (click)="scormFile.click()"
+    >
+      Thay tệp ZIP
+    </button>
+    }
+    <button
+      uiButton
+      type="button"
+      size="sm"
+      [disabled]="scormUpload.pending$()"
+      (click)="openScormLibrary()"
+    >
+      Chọn từ thư viện bài giảng
+    </button>
+    <input
+      #scormFile
+      type="file"
+      accept=".zip,application/zip"
+      hidden
+      (change)="pickedScorm($event)"
+    />
+  </div>
+  @if (scormUpload.pending$()) {
+  <p role="status">Đang tải và kiểm tra bài giảng…</p>
+  } @if (scormUpload.error$(); as error) {<ui-alert tone="danger"
+    >{{error}}</ui-alert
+  >}
+  <p>Bài giảng mới được lưu vào thư viện và xuất bản cùng khóa học.</p>
+  <ui-field label="Điều kiện hoàn thành bài SCORM" required>
+    <select uiSelect [formField]="lessonForm.scormCompletionRule">
+      <option value="completed_or_passed">
+        Hoàn thành nội dung hoặc đạt bài đánh giá
+      </option>
+      <option value="passed">Phải đạt bài đánh giá trong gói</option>
+    </select>
+  </ui-field>
+  <p>
+    Trạng thái do gói SCORM cung cấp. Điểm số không tự thay thế trạng thái đạt;
+    hãy xem thử gói trước khi yêu cầu đạt bài đánh giá.
+  </p>
+  @if (scormUpload.libraryOpen$()) {
+  <ui-field label="Bài giảng trong thư viện" required>
+    <ui-search-select
+      label="Bài giảng trong thư viện"
+      placeholder="Chọn bài giảng SCORM"
+      [formField]="lessonForm.scormPackageId"
+      [options]="scormOptions()"
+      [loading]="store.scormLoading$()"
+    />
+  </ui-field>
+  @if (store.scormLoading$()) {
+  <p role="status">Đang tải thư viện…</p>
+  } @if (store.scormError$(); as error) {<ui-alert tone="danger"
+    >{{error.message}}</ui-alert
+  >} @if (!store.scormLoading$() && !store.scormPackages$().length &&
+  !store.scormError$()) {
+  <p>
+    Chưa có bài giảng trong phạm vi này. Bạn có thể tải tệp ZIP trực tiếp ở
+    trên.
+  </p>
   } } } @else {
   <section class="lesson-form__blocks" aria-label="Khối nội dung">
     <h3 class="lesson-form__heading">
       Khối nội dung ({{ lessonForm.blocks().value().length }})
     </h3>
-    @for (block of lessonForm.blocks; track block; let i = $index; let last =
-    $last) {
+    @for (value of lessonForm.blocks().value(); track value.key; let i = $index;
+    let last = $last) { @let block = lessonForm.blocks[i];
     <div class="lesson-form__block">
       <div class="lesson-form__block-head">
         <span class="lesson-form__block-type">
@@ -103,7 +212,7 @@
           size="sm"
           variant="danger"
           [label]="'Xóa khối ' + block().value().title"
-          (click)="removeBlock(i)"
+          (click)="removeBlock(value.key)"
         >
           <ui-icon name="trash-2" size="sm" />
         </button>
@@ -188,23 +297,36 @@
             Hủy
           </button>
         </div>
-        } }
+        } } @if (!files()[block().value().key]?.length) {
         <label
           uiDropzone
           [accept]="acceptOf(block().value().blockType)"
           (files)="choose(block().value(), i, $event)"
         >
           <ui-icon name="upload" />
-          <div class="lesson-form__drop-title">
-            {{ files()[block().value().key]?.length && block().value().blockType
-            !== 'attachment' ? 'Thay tệp' : 'Kéo thả hoặc chọn tệp' }}
-          </div>
+          <div class="lesson-form__drop-title">Kéo thả hoặc chọn tệp</div>
           <div class="lesson-form__drop-hint">
             {{ uploadHintOf(block().value().blockType) }}
           </div>
           <input type="file" hidden />
         </label>
+        }
         <div class="lesson-form__row-actions">
+          @if (files()[block().value().key]?.length) {
+          <button
+            uiIconButton
+            size="sm"
+            type="button"
+            [label]="block().value().blockType === 'attachment' ? 'Thêm tệp đính kèm' : 'Thay tệp'"
+            [disabled]="block().value().blockType === 'attachment' && isBusy(uploads()[block().value().key])"
+            (click)="again.click()"
+          >
+            <ui-icon
+              [name]="block().value().blockType === 'attachment' ? 'plus' : 'refresh-cw'"
+              size="sm"
+            />
+          </button>
+          }
           <button
             uiButton
             type="button"
@@ -230,12 +352,29 @@
         />
       </div>
       } @switch (block().value().blockType) { @case ('text') {
-      <ui-field label="Nội dung (Markdown: ## tiêu đề, **đậm**, - danh sách)">
-        <textarea uiTextarea rows="6" [formField]="block.body"></textarea>
+      <ui-field label="Nội dung bài học">
+        <app-lesson-text-editor
+          [formField]="block.body"
+          [format]="block.bodyFormat().value()"
+          [ownerOrgId]="store.ownerOrgId$()"
+          [assets]="block.assets().value()"
+          (imageAdded)="imageAdded(block().value().key, $event)"
+          (uploadingChange)="inlineUploading(block().value().key, $event)"
+          (valueChange)="block.bodyFormat().value.set('html')"
+        />
       </ui-field>
+
       } @case ('process') {
-      <ui-field label="Các bước (mỗi dòng: Tiêu đề | Mô tả)">
-        <textarea uiTextarea rows="5" [formField]="block.stepsText"></textarea>
+      <ui-field
+        label="Các bước (mỗi dòng: Tiêu đề | Mô tả)"
+        hint="Mỗi dòng là một bước, học viên thấy các bước đánh số theo thứ tự. Phần mô tả sau dấu | có thể bỏ trống."
+      >
+        <textarea
+          uiTextarea
+          rows="5"
+          [formField]="block.stepsText"
+          [placeholder]="processExample"
+        ></textarea>
       </ui-field>
       } @case ('image') {
       <ui-field label="Chú thích hình">

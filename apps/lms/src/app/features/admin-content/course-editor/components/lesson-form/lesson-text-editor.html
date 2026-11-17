@@ -1,0 +1,258 @@
+<div
+  uiCard
+  class="lesson-text-editor"
+  [class.lesson-text-editor--invalid]="invalid()"
+>
+  <div
+    class="lesson-text-editor__modes"
+    role="group"
+    aria-label="Chế độ nội dung"
+  >
+    <button
+      uiButton
+      type="button"
+      size="sm"
+      variant="secondary"
+      [disabled]="disabled() || media.pending$()"
+      [attr.aria-pressed]="sourceMode()"
+      (mousedown)="$event.preventDefault()"
+      (click)="toggleSource()"
+    >
+      <ui-icon name="code-2" size="sm" />{{ sourceMode() ? 'Soạn thảo' : 'HTML'
+      }}
+    </button>
+    <button
+      uiButton
+      type="button"
+      size="sm"
+      variant="ghost"
+      [disabled]="disabled() || media.pending$()"
+      [attr.aria-expanded]="markdownOpen()"
+      (mousedown)="$event.preventDefault()"
+      (click)="openMarkdown()"
+    >
+      <ui-icon name="file-text" size="sm" />Markdown
+    </button>
+    <button
+      uiButton
+      type="button"
+      size="sm"
+      variant="ghost"
+      [disabled]="media.pending$()"
+      [attr.aria-pressed]="previewMode()"
+      (mousedown)="$event.preventDefault()"
+      (click)="togglePreview()"
+    >
+      <ui-icon [name]="previewMode() ? 'pen-line' : 'eye'" size="sm" />{{
+      previewMode() ? 'Soạn thảo' : 'Preview' }}
+    </button>
+  </div>
+  @if (!sourceMode() && !previewMode()) {
+  <div
+    class="lesson-text-editor__toolbar"
+    role="group"
+    aria-label="Định dạng nội dung"
+  >
+    <div
+      class="lesson-text-editor__tool-group"
+      role="group"
+      aria-label="Định dạng và lịch sử"
+    >
+      @for (tool of tools; track tool.command) {
+      <button
+        uiIconButton
+        size="sm"
+        [label]="tool.label"
+        [disabled]="disabled()"
+        [attr.aria-pressed]="tool.command === 'undo' || tool.command === 'redo' ? null : selected().has(tool.command)"
+        (mousedown)="$event.preventDefault()"
+        (click)="formatText(tool)"
+      >
+        <ui-icon [name]="tool.icon" size="sm" />
+      </button>
+      }
+    </div>
+    <div
+      class="lesson-text-editor__tool-group"
+      role="group"
+      aria-label="Chèn nội dung"
+    >
+      <button
+        uiIconButton
+        size="sm"
+        label="Chèn ảnh"
+        [disabled]="disabled() || media.pending$()"
+        (mousedown)="$event.preventDefault()"
+        (click)="imagePicker.click()"
+      >
+        <ui-icon name="image" size="sm" />
+      </button>
+      <button
+        uiIconButton
+        size="sm"
+        label="Chèn bảng"
+        [disabled]="disabled()"
+        (mousedown)="$event.preventDefault()"
+        (click)="insertTable()"
+      >
+        <ui-icon name="table-2" size="sm" />
+      </button>
+      <button
+        uiButton
+        type="button"
+        size="sm"
+        variant="ghost"
+        [disabled]="disabled()"
+        (mousedown)="$event.preventDefault()"
+        (click)="insertCode()"
+      >
+        <ui-icon name="code-2" size="sm" />Code
+      </button>
+      @if (inTable()) {
+      <button
+        uiButton
+        type="button"
+        size="sm"
+        variant="ghost"
+        [disabled]="disabled()"
+        (mousedown)="$event.preventDefault()"
+        (click)="extendTable(false)"
+      >
+        Thêm hàng
+      </button>
+      <button
+        uiButton
+        type="button"
+        size="sm"
+        variant="ghost"
+        [disabled]="disabled()"
+        (mousedown)="$event.preventDefault()"
+        (click)="extendTable(true)"
+      >
+        Thêm cột
+      </button>
+      }
+    </div>
+  </div>
+  }
+  <input
+    #imagePicker
+    type="file"
+    accept="image/png,image/jpeg,image/webp"
+    multiple
+    hidden
+    (change)="pickedImages($event)"
+  />
+  @if (media.pending$()) {
+  <p class="lesson-text-editor__status" role="status">Đang tải và xử lý ảnh…</p>
+  } @if (media.error$()) {
+  <p class="lesson-text-editor__error" role="alert">{{ media.error$() }}</p>
+  } @if (markdownOpen()) {
+  <section
+    class="lesson-text-editor__markdown"
+    aria-label="Chèn nội dung Markdown"
+  >
+    <div class="lesson-text-editor__markdown-head">
+      <p>
+        Dán Markdown hoặc mở tệp .md, xem trước rồi chèn vào vị trí con trỏ
+        trong bài học.
+      </p>
+      <button
+        uiButton
+        size="sm"
+        type="button"
+        [disabled]="disabled()"
+        (click)="markdownPicker.click()"
+      >
+        <ui-icon name="file-text" size="sm" />Mở tệp .md
+      </button>
+      <input
+        #markdownPicker
+        type="file"
+        accept=".md,.markdown,text/markdown,text/plain"
+        hidden
+        (change)="pickedMarkdown($event)"
+      />
+    </div>
+    <div class="lesson-text-editor__markdown-grid">
+      <label class="lesson-text-editor__markdown-column"
+        >Markdown
+        <textarea
+          uiTextarea
+          rows="10"
+          class="lesson-text-editor__source"
+          aria-label="Nội dung Markdown"
+          placeholder="# Tiêu đề&#10;&#10;**Nội dung in đậm**&#10;&#10;- Ý thứ nhất&#10;- Ý thứ hai"
+          [maxLength]="bodyLimit"
+          [value]="markdownText()"
+          [disabled]="disabled()"
+          (input)="markdownChanged($event)"
+        ></textarea>
+      </label>
+      <div class="lesson-text-editor__markdown-column">
+        <span>Preview</span>
+        <div
+          uiCard
+          class="lesson-text-editor__markdown-preview lesson-html"
+          role="region"
+          aria-label="Xem trước Markdown"
+          [innerHTML]="markdownHtml()"
+        ></div>
+      </div>
+    </div>
+    @if (markdownError()) {
+    <p class="lesson-text-editor__error" role="alert">{{ markdownError() }}</p>
+    }
+    <div class="row row--gap-2">
+      <button
+        uiButton
+        type="button"
+        size="sm"
+        variant="primary"
+        [disabled]="disabled() || media.pending$() || !markdownText().trim()"
+        (click)="insertMarkdown()"
+      >
+        Chèn Markdown
+      </button>
+      <button
+        uiButton
+        type="button"
+        size="sm"
+        variant="ghost"
+        (click)="openMarkdown()"
+      >
+        Hủy
+      </button>
+    </div>
+  </section>
+  } @if (sourceMode()) {
+  <textarea
+    uiTextarea
+    class="lesson-text-editor__source"
+    rows="12"
+    aria-label="Mã HTML bài học"
+    [value]="sourceText()"
+    [disabled]="disabled()"
+    (input)="sourceChanged($event)"
+  ></textarea>
+  }
+  <div
+    #editor
+    class="lesson-text-editor__body lesson-html"
+    [attr.role]="previewMode() ? 'region' : 'textbox'"
+    [attr.aria-label]="previewMode() ? 'Xem trước nội dung bài học' : 'Nội dung bài học'"
+    [attr.aria-multiline]="previewMode() ? null : 'true'"
+    [hidden]="sourceMode()"
+    [appLessonImages]="value()"
+    [imageAssets]="imageIds()"
+    [attr.aria-invalid]="invalid() || null"
+    [attr.contenteditable]="!disabled() && !previewMode()"
+    [attr.tabindex]="disabled() || previewMode() ? -1 : 0"
+    (input)="capture()"
+    (keyup)="rememberSelection()"
+    (mouseup)="rememberSelection()"
+    (blur)="blurred()"
+    (paste)="paste($event)"
+    (drop)="$event.preventDefault()"
+  ></div>
+</div>

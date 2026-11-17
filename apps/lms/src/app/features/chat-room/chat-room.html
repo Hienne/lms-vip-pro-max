@@ -1,13 +1,13 @@
 @let balance = games.balance$(); @let panel = games.panel$(); @let caroTable =
 games.caroTable$();
-<ui-page-header title="Giải trí">
+<ui-page-header title="Giờ ra chơi">
   <div slot="actions" class="row row--gap-1">
     <button uiButton size="sm" (click)="store.share()">
       {{ store.copied$() ? 'Đã sao chép đường dẫn' : 'Mời bạn học' }}
     </button>
     @if (balance !== null) {
     <button uiButton size="sm" (click)="store.openGame('rank')">
-      Top tài phú · {{ balance }} CPoint
+      Bảng CPoint · {{ balance }} CPoint
     </button>
     } @if (store.entered$()) {
     <button uiButton size="sm" (click)="store.leave()">Rời phòng</button> }
@@ -75,7 +75,15 @@ games.caroTable$();
     }
   </div>
 </div>
-<section class="chat-room__world" aria-label="Không gian giải trí">
+@if (!caroTable && games.caro$(); as match) { @if (!match.result ||
+match.timeout === 'away') {
+<p class="chat-room__return" role="status">
+  @if (!match.result) { Ngồi lại cùng bàn để tiếp tục ván Caro. } @else if
+  (match.timeout === 'away') { {{ match.result === match.piece ? 'Bạn thắng vì
+  bạn chơi không quay lại kịp.' : 'Bạn thua vì không quay lại kịp.' }} }
+</p>
+} }
+<section class="chat-room__world" aria-label="Không gian giờ ra chơi">
   <app-room-canvas
     [map]="map"
     [view]="store.canvas$()"
@@ -133,7 +141,7 @@ games.caroTable$();
       (restarted)="games.newCaro()"
     />
     } } @case ('rank') {
-    <ui-section-card class="chat-room__rank" title="Top tài phú">
+    <ui-section-card class="chat-room__rank" title="Bảng CPoint">
       <button
         slot="action"
         uiButton
@@ -159,25 +167,55 @@ games.caroTable$();
     </ui-section-card>
     } }
   </aside>
-  } @if (store.chatOpen$()) {
-  <div class="chat-room__composer">
+  } @if (store.entered$()) {
+  <section
+    class="chat-room__chat"
+    [class.chat-room__chat--typing]="store.chatOpen$()"
+    aria-label="Trò chuyện trong phòng"
+  >
+    <div class="chat-room__chat-header">
+      <strong>Trò chuyện</strong>
+      @if (!store.chatOpen$()) {
+      <button
+        uiButton
+        size="sm"
+        [disabled]="!store.online$()"
+        (click)="store.openChat()"
+      >
+        Nhắn tin
+      </button>
+      }
+    </div>
+    <div
+      #chatLog
+      class="chat-room__chat-log"
+      role="log"
+      aria-label="Tin nhắn trong phiên"
+      tabindex="0"
+      (scroll)="trackChatScroll($event)"
+    >
+      <ul>
+        @for (message of store.messages$(); track message.id) {
+        <li><strong>{{ message.name }}</strong> {{ message.text }}</li>
+        } @empty {
+        <li>Chưa có tin nhắn.</li>
+        }
+      </ul>
+    </div>
+    @if (store.chatOpen$()) {
     <app-room-composer
       [disabled]="!store.online$() || store.sending$()"
       (sent)="store.send($event)"
-      (cancelled)="store.closeChat()"
+      (cancelled)="closeChat()"
     />
-  </div>
+    }
+  </section>
   }
   <div class="chat-room__footer">
     <p class="chat-room__hint">
       WASD hoặc phím mũi tên để đi · Enter để chat · Space để nhảy @if (balance
       !== null) { · Caro cạnh bàn Trên/Dưới ở góc dưới bên phải }
     </p>
-    @if (store.online$() && !store.chatOpen$()) {
-    <button uiButton size="sm" (click)="store.openChat()">Nhắn tin</button> }
   </div>
 </section>
-<p class="sr-only" role="status" aria-live="polite">
-  {{ store.announcement$() }}
-</p>
 }

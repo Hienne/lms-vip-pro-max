@@ -333,7 +333,7 @@ describe('LearningProgress', () => {
     it('keeps competency in its own tab after the counts, with no select', async () => {
       await open('/progress?tab=competency');
       expect(el.querySelector('#progress-competency')?.tagName).toBe('H2');
-      expect(card().textContent).toContain('Năng lực theo nhóm kiến thức');
+      expect(card().textContent).toContain('Năng lực theo nhóm năng lực');
       expect(card().querySelector('select, [role="combobox"]')).toBeNull();
       const panel = card().closest('[uiTabPanel]');
       expect(panel?.querySelector('#progress-rhythm')).toBeTruthy();
@@ -382,7 +382,7 @@ describe('LearningProgress', () => {
       );
       await open('/progress?tab=competency');
       expect(card().textContent).toContain(
-        'Không tải được năng lực theo nhóm kiến thức',
+        'Không tải được năng lực theo nhóm năng lực',
       );
       expect(card().querySelector('app-competency-view')).toBeNull();
       expect(kpi('Tổng số khóa')).toBeTruthy();
@@ -502,7 +502,7 @@ describe('LearningProgress', () => {
       answer(learnerQuizEndpoints.myAttempts, page([]));
       await open('/progress?tab=history');
       expect(card().textContent).toContain(
-        'Bạn chưa có bài thi nào được chấm.',
+        'Bạn chưa có bài kiểm tra nào được chấm.',
       );
       expect(card().textContent).not.toContain('phù hợp với bộ lọc');
       expect(card().querySelector('tbody tr')).toBeNull();
@@ -522,7 +522,7 @@ describe('LearningProgress', () => {
       await settle();
       expect(card().textContent).not.toContain('Không tải được lịch sử thi');
       expect(card().textContent).toContain(
-        'Bạn chưa có bài thi nào được chấm.',
+        'Bạn chưa có bài kiểm tra nào được chấm.',
       );
     });
 

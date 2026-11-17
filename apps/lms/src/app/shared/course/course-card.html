@@ -43,7 +43,7 @@
       size="sm"
       [value]="course().pct"
       [tone]="progressTone()"
-      [label]="'Tiến độ ' + course().title"
+      [label]="'Tiến độ nội dung ' + course().title"
     />
     }
     <div class="course-card__line">
@@ -54,10 +54,12 @@
         {{ bestScore() | fmtPct: 2 }}}</span
       >
       @if (showsProgress()) {
-      <strong class="course-card__pct">{{ course().pct }}%</strong>
+      <strong class="course-card__pct">{{ course().pct }}% nội dung</strong>
       }
     </div>
-    @if (course().dueAt; as dueAt) {
+    @if (completionNote(); as note) {
+    <p class="course-card__status">{{ note }}</p>
+    } @if (course().dueAt; as dueAt) {
     <app-due-date [dueAt]="dueAt" [done]="completed()" />
     }
   </div>

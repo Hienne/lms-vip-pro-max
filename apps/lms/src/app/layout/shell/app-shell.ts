@@ -2,6 +2,7 @@ import {
   afterRenderEffect,
   Component,
   computed,
+  effect,
   ElementRef,
   inject,
   signal,
@@ -21,8 +22,12 @@ import { NetBanner } from '../net-banner/net-banner';
 import { Owl } from '../owl/owl';
 import { Sidebar } from '../sidebar/sidebar';
 import { UploadPanel } from '../upload-panel/upload-panel';
+import { SourceViewer } from '../../shared/assistant/source-viewer/source-viewer';
 import { ShellInsets } from '../shell-insets';
 import { ShellStore } from './data-access/shell.store';
+import { UsageGuide } from './components/usage-guide/usage-guide';
+import { UsageGuideStore } from './components/usage-guide/usage-guide.store';
+import type { UserMenuValue } from '../header/header';
 
 /**
  * The frame around every page (the mockup's `shell.render`): sidebar and header for the app
@@ -41,18 +46,21 @@ import { ShellStore } from './data-access/shell.store';
     Owl,
     ChatWidget,
     UploadPanel,
+    SourceViewer,
+    UsageGuide,
   ],
   host: {
     '(window:beforeunload)': 'warnBeforeUnload($event)',
     '[style.--owl-inset.px]': 'inset()',
     '[style.--shell-gutter]': 'gutter()',
   },
-  providers: [ShellStore],
+  providers: [ShellStore, UsageGuideStore],
   templateUrl: './app-shell.html',
   styleUrl: './app-shell.scss',
 })
 export class AppShell {
   protected readonly store = inject(ShellStore);
+  protected readonly guide = inject(UsageGuideStore);
   protected readonly level = inject(MyLevelStore);
   /** Whether the quick assistant is docked, so the frame makes room for it. */
   protected readonly chat = inject(AgentChatStore);
@@ -68,6 +76,14 @@ export class AppShell {
   protected readonly devToolbar = signal<Type<unknown> | null>(null);
 
   constructor() {
+    effect(() => {
+      const profile = this.store.user$(),
+        chrome = this.store.chrome$();
+      untracked(() => {
+        if (!profile) this.guide.offer(null);
+        else if (chrome === 'app') this.guide.offer(profile);
+      });
+    });
     const load = inject(APP_CONFIG).devTools ? DEV_FEATURES.toolbar : null;
     void load?.().then((toolbar) => this.devToolbar.set(toolbar));
     // After each navigation the page heading takes focus, so a screen reader announces the new page.
@@ -79,6 +95,12 @@ export class AppShell {
 
   private main(): HTMLElement | null {
     return this.host.nativeElement.querySelector<HTMLElement>('main');
+  }
+
+  protected pick(choice: UserMenuValue): void {
+    if (choice === 'guide') this.guide.open();
+    else if (choice === 'page-guide') this.guide.openPage(this.store.path$());
+    else this.store.pick(choice);
   }
 
   private focusHeading(): void {

@@ -1,0 +1,62 @@
+@if (store.error$(); as error) {
+<ui-alert tone="danger"
+  >{{error}}
+  <button uiButton size="sm" type="button" (click)="store.open()">
+    Mở lại bài giảng
+  </button></ui-alert
+>
+} @if (store.saveState$() === 'error' || store.saveState$() === 'expired') {
+<ui-alert tone="danger"
+  >{{store.saveState$() === 'expired' ? 'Phiên bài giảng đã hết hạn. Mở lại để
+  tiếp tục từ vị trí đã lưu.' : 'Chưa lưu được tiến độ. Thử lưu lại trong bài
+  giảng trước khi chuyển bài.'}} @if (store.saveState$() === 'expired') {<button
+    uiButton
+    size="sm"
+    type="button"
+    (click)="store.open()"
+  >
+    Mở lại bài giảng</button
+  >}
+</ui-alert>
+} @if (store.progress$(); as progress) {
+<p>{{ store.requirement$() }}</p>
+<div class="row row--gap-3" aria-label="Kết quả bài giảng SCORM">
+  <span>Trạng thái gói: {{status[progress.lessonStatus]}}</span>
+  @if (progress.lessonStatus === 'failed' || store.incompleteAssessment$()) {
+  <button
+    uiButton
+    type="button"
+    size="sm"
+    [disabled]="!store.canRestart$()"
+    (click)="store.restart()"
+  >
+    Học lại
+  </button>
+  } @if (progress.scoreRaw !== null) {<span
+    >Điểm {{progress.scoreRaw}}@if (progress.scoreMax !== null) { /
+    {{progress.scoreMax}}}</span
+  >}
+</div>
+@if (store.incompleteAssessment$()) {
+<ui-alert tone="info" [announce]="false"
+  >Điều kiện bài học yêu cầu trạng thái Đạt bài đánh giá. Gói hiện chưa báo đạt;
+  bạn có thể học lại.</ui-alert
+>
+} @else if (progress.lessonStatus === 'failed') {
+<p>
+  Gói báo chưa đạt. Điểm số được giữ theo thang của gói; hãy học lại để đạt điều
+  kiện.
+</p>
+} } @if (store.loading$()) {
+<div uiSkeleton variant="block" aria-label="Đang mở bài giảng SCORM"></div>
+} @if (store.url$(); as url) {
+<iframe
+  #frame
+  class="scorm-block__frame"
+  [src]="url"
+  title="Nội dung bài giảng SCORM"
+  sandbox="allow-scripts allow-same-origin allow-forms"
+  allow="fullscreen"
+  referrerpolicy="no-referrer"
+></iframe>
+}

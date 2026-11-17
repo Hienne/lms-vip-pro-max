@@ -89,9 +89,11 @@ function toPublishAssignment(
 export function toPublishCommand(
   expectedVersion: number,
   { rows, reminderEnabled, shareOrgIds }: PublishTargets,
+  reviewConfirmed = false,
 ): PublishCourseCommand {
   return {
     expectedVersion,
+    ...(reviewConfirmed ? { reviewConfirmed: true } : {}),
     ...(rows.length
       ? {
           assignments: rows.map((row) =>

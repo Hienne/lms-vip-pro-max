@@ -78,3 +78,39 @@
   @include ui.row(3);
   justify-content: space-between;
 }
+
+.flashcards__batch-details {
+  summary {
+    cursor: pointer;
+    color: ui.color(primary);
+  }
+
+  p {
+    margin-block: ui.space(2);
+    overflow-wrap: anywhere;
+  }
+}
+
+.flashcards__course {
+  @include ui.stack(4);
+}
+
+.flashcards__filters > label,
+.flashcards__course-field {
+  display: grid;
+  gap: ui.space(2);
+  min-width: 0;
+  @include ui.text(sm);
+}
+
+.flashcards__filters {
+  flex-wrap: wrap;
+}
+
+.flashcards__actions {
+  flex-wrap: wrap;
+}
+
+.flashcards__shuffle {
+  @include ui.row(2);
+}

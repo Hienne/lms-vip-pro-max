@@ -73,6 +73,16 @@ describe('publish targets', () => {
       expect(toPublishCommand(3, targets([]))).toEqual({ expectedVersion: 3 });
     });
 
+    it('carries the review confirmation only when it is given', () => {
+      expect(toPublishCommand(3, targets([]), true)).toEqual({
+        expectedVersion: 3,
+        reviewConfirmed: true,
+      });
+      expect(toPublishCommand(3, targets([]), false)).toEqual({
+        expectedVersion: 3,
+      });
+    });
+
     it('carries a row without its label, with the dates as instants', () => {
       const body = toPublishCommand(
         3,

@@ -1,3 +1,27 @@
+<div class="scope">
+  <span class="scope__label" id="upload-scope-label"
+    >Ai tìm thấy tài liệu này</span
+  >
+  <ui-segmented
+    label="Ai tìm thấy tài liệu này"
+    [options]="scopes()"
+    [(value)]="scope"
+  />
+</div>
+<div class="title">
+  <label class="title__label" for="upload-title"
+    >Tên hiển thị (không bắt buộc)</label
+  >
+  <input
+    id="upload-title"
+    uiInput
+    type="text"
+    maxlength="255"
+    placeholder="Mặc định là tên tệp"
+    [value]="title()"
+    (input)="title.set($any($event.target).value)"
+  />
+</div>
 <label
   uiDropzone
   class="drop"
@@ -28,6 +52,30 @@
         uiIconButton
         type="button"
         [label]="'Bỏ ' + upload.name"
+        (click)="dismiss.emit(upload.id)"
+      >
+        <ui-icon name="x" />
+      </button>
+    </div>
+    } @else if (upload.state === 'duplicate' && upload.existing; as existing) {
+    <div class="uploads__duplicate" role="status">
+      <p class="uploads__notice">
+        <strong>Bạn đã tải tệp này rồi.</strong>
+        “{{ existing.title }}” đã có trong kho, không tạo thêm bản nào.
+      </p>
+      <button
+        uiButton
+        type="button"
+        variant="ghost"
+        size="sm"
+        (click)="showExisting.emit(existing.id)"
+      >
+        Xem tài liệu
+      </button>
+      <button
+        uiIconButton
+        type="button"
+        [label]="'Bỏ thông báo về ' + upload.name"
         (click)="dismiss.emit(upload.id)"
       >
         <ui-icon name="x" />

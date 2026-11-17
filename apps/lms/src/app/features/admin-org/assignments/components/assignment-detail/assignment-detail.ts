@@ -5,14 +5,20 @@ import {
   FormRoot,
   maxLength,
   required,
+  validate,
 } from '@angular/forms/signals';
 import {
   ASSIGNMENT_LIMITS,
   type AssignmentDetail as Detail,
 } from '@lms/contracts';
 import {
+  Alert,
+  Input,
+  Select,
+  SectionCard,
   Badge,
   Button,
+  Checkbox,
   ErrorState,
   Field,
   FmtDatePipe,
@@ -36,8 +42,13 @@ import { AssignmentsStore } from '../../data-access/assignments.store';
 @Component({
   selector: 'app-assignment-detail',
   imports: [
+    Alert,
+    Input,
+    Select,
+    SectionCard,
     Badge,
     Button,
+    Checkbox,
     DueDate,
     ErrorState,
     Field,
@@ -82,10 +93,60 @@ export class AssignmentDetail {
       );
   });
 
+  protected readonly activeRecipientIds = computed(() =>
+    this.recipients()
+      .filter((row) => row.active)
+      .map((row) => row.recipient.id),
+  );
+
+  protected readonly bulkResults = computed(() =>
+    this.store.bulkResults$().map((result) => ({
+      ...result,
+      name:
+        this.recipients().find((row) => row.recipient.id === result.id)?.name ??
+        'Người nhận #' + result.id,
+    })),
+  );
+
   protected readonly assignedBy = computed(() => {
     const id = this.store.detail$()?.assignment.assignedBy;
     return id ? (this.store.names$().get(id) ?? id) : '—';
   });
+
+  private readonly revisionModel = linkedSignal(() => ({
+    enrollmentId: this.store.revisionPreview$()?.enrollmentId,
+    mode: this.store.revisionPreview$()?.canTransfer
+      ? ('transfer_unstarted' as const)
+      : ('relearn' as const),
+    reason: '',
+    dueAt: '',
+  }));
+  protected readonly revisionForm = form(
+    this.revisionModel,
+    (path) => {
+      required(path.reason, { message: 'Nhập lý do thay đổi lần học.' });
+      maxLength(path.reason, 2000, { message: 'Lý do tối đa 2.000 ký tự.' });
+      validate(path.dueAt, ({ value }) =>
+        value() && Number.isNaN(Date.parse(value()))
+          ? { kind: 'date', message: 'Hạn hoàn thành không hợp lệ.' }
+          : undefined,
+      );
+    },
+    {
+      submission: {
+        action: async () => {
+          const value = this.revisionModel();
+          this.store.changeRevision(
+            value.mode,
+            value.reason.trim(),
+            value.mode === 'relearn' && value.dueAt
+              ? new Date(value.dueAt).toISOString()
+              : null,
+          );
+        },
+      },
+    },
+  );
 
   private readonly model = linkedSignal(() => ({
     recipientId: this.store.revokingId$(),

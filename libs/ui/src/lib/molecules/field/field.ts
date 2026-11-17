@@ -14,6 +14,7 @@ import { Input } from '../../atoms/input/input.directive';
 import { Select } from '../../atoms/select/select.directive';
 import { Textarea } from '../../atoms/textarea/textarea.directive';
 import { DateInput } from '../date-input/date-input';
+import { SearchSelect } from '../search-select/search-select';
 
 let nextId = 0;
 
@@ -41,6 +42,8 @@ export class Field {
   readonly label = input.required<string>();
   readonly required = input(false, { transform: booleanAttribute });
   readonly hint = input('');
+  /** Override blur-based feedback for forms that validate only after an explicit action. */
+  readonly showErrors = input<boolean | undefined>(undefined);
 
   private readonly generatedId = `ui-field-${nextId++}`;
   private readonly formField = contentChild(FormField);
@@ -49,10 +52,13 @@ export class Field {
   private readonly textarea = contentChild(Textarea, { read: ElementRef });
   private readonly checkbox = contentChild(Checkbox, { read: ElementRef });
   private readonly dateInput = contentChild(DateInput);
+  private readonly searchSelect = contentChild(SearchSelect);
   private readonly control = computed<HTMLElement | undefined>(
     () =>
       (this.textInput() ?? this.select() ?? this.textarea() ?? this.checkbox())
-        ?.nativeElement ?? this.dateInput()?.box()?.nativeElement,
+        ?.nativeElement ??
+      this.dateInput()?.box()?.nativeElement ??
+      this.searchSelect()?.box()?.nativeElement,
   );
 
   protected readonly controlId = computed(
@@ -61,7 +67,7 @@ export class Field {
   protected readonly hintId = computed(() => `${this.controlId()}-hint`);
   private readonly messages = computed(() => {
     const state = this.formField()?.state();
-    if (!state?.touched()) return [];
+    if (!state || !(this.showErrors() ?? state.touched())) return [];
     return state
       .errors()
       .map((error) => error.message)

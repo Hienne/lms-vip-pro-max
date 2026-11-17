@@ -4,7 +4,23 @@
     <p>Xin chào! Hãy hỏi mình bất kỳ điều gì về nội dung tài liệu trong kho.</p>
   </div>
   @for (turn of turns(); track turn.id) {
-  <app-chat-message [turn]="turn" (retry)="retry.emit($event)" />
+  <app-chat-message
+    [turn]="turn"
+    [ratingBusy]="ratingId() === turn.id"
+    [ratingFailed]="ratingFailedId() === turn.id"
+    (retry)="retry.emit($event)"
+    (rated)="rated.emit($event)"
+  />
+  } @if (followUps().length) {
+  <ul class="log__suggestions" aria-label="Gợi ý câu hỏi tiếp theo">
+    @for (question of followUps(); track question) {
+    <li>
+      <button uiButton size="sm" type="button" (click)="asked.emit(question)">
+        {{ question }}
+      </button>
+    </li>
+    }
+  </ul>
   }
 </div>
 <div #end></div>

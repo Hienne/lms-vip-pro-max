@@ -2,18 +2,18 @@ import { inject, Injectable } from '@angular/core';
 import { PersistedChatSchema, type PersistedChat } from './agent-chat.model';
 import { SESSION_STORAGE } from '../storage/session-storage';
 
-/** The newest turns kept; older ones are dropped on write. */
-export const MAX_STORED_TURNS = 30;
-
-const PREFIX = 'lms.agent-chat.v1.';
+const PREFIX = 'lms.agent-chat.v2.';
+/** The first shape kept every turn in the tab; the server keeps them now, so it is only removed. */
+const LEGACY_PREFIX = 'lms.agent-chat.v1.';
 const keyOf = (userId: string): string => `${PREFIX}${userId}`;
 
-const EMPTY: PersistedChat = { open: false, turns: [] };
+const EMPTY: PersistedChat = { open: false };
 
 /**
- * The conversation in `sessionStorage`, one entry per user, versioned in its key. Storage can be
- * missing or throw, and an entry can be malformed or from an older shape: a bad entry is removed
- * and counts as an empty chat, and a blocked storage keeps the chat in memory for this page.
+ * The panel's open state and open conversation id in `sessionStorage`, one entry per user,
+ * versioned in its key. Storage can be missing or throw, and an entry can be malformed: a bad entry
+ * is removed and counts as an empty chat, and a blocked storage keeps it in memory for this page.
+ * An entry of the first shape (with turns in it) is never read, only removed.
  */
 @Injectable({ providedIn: 'root' })
 export class AgentChatStorage {
@@ -21,12 +21,9 @@ export class AgentChatStorage {
   /** Stands in for storage the browser blocks. */
   private readonly memory = new Map<string, string>();
 
-  /**
-   * What the user left. A turn that was still on its way (the page closed or reloaded) comes back
-   * `stopped` with the text it had, and a card that was confirming comes back `pending`: the
-   * server answers a second confirm with "not found" if the first one did run.
-   */
+  /** What the user left; the old turn-carrying entry is removed on the way. */
   read(userId: string): PersistedChat {
+    this.remove(`${LEGACY_PREFIX}${userId}`);
     const raw = this.get(keyOf(userId));
     if (raw === null) return EMPTY;
     let parsed: PersistedChat | undefined;
@@ -44,21 +41,9 @@ export class AgentChatStorage {
     return {
       open: parsed.open,
       ...(parsed.docked ? { docked: true } : {}),
-      turns: parsed.turns.map((turn) => ({
-        ...turn,
-        reply: {
-          ...turn.reply,
-          status: ['waiting', 'working', 'composing'].includes(
-            turn.reply.status,
-          )
-            ? 'stopped'
-            : turn.reply.status,
-          action:
-            turn.reply.action?.status === 'confirming'
-              ? { ...turn.reply.action, status: 'pending' }
-              : turn.reply.action,
-        },
-      })),
+      ...(parsed.conversationId
+        ? { conversationId: parsed.conversationId }
+        : {}),
     };
   }
 
@@ -66,7 +51,7 @@ export class AgentChatStorage {
     const kept = {
       open: chat.open,
       ...(chat.docked ? { docked: true } : {}),
-      turns: chat.turns.slice(-MAX_STORED_TURNS),
+      ...(chat.conversationId ? { conversationId: chat.conversationId } : {}),
     };
     this.set(keyOf(userId), JSON.stringify(kept));
   }
@@ -93,7 +78,12 @@ export class AgentChatStorage {
       // Storage that cannot be listed holds nothing this page wrote.
     }
     for (const key of keys) {
-      if (key.startsWith(PREFIX) && key !== keep) this.remove(key);
+      if (
+        (key.startsWith(PREFIX) && key !== keep) ||
+        key.startsWith(LEGACY_PREFIX)
+      ) {
+        this.remove(key);
+      }
     }
   }
 

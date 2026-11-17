@@ -6,6 +6,7 @@ import {
   AgentStreamEventSchema,
   PendingActionSchema,
 } from './agent.schema';
+import { ChatStreamEventSchema } from '../knowledge/knowledge.schema';
 
 const citation = {
   n: 1,
@@ -37,6 +38,12 @@ describe('agent stream events', () => {
     { type: 'tool', name: 'search_documents' },
     { type: 'delta', text: 'CIF là' },
     { type: 'navigate', path: '/admin/users', title: 'Quản lý người dùng' },
+    {
+      type: 'navigate',
+      path: '/admin/courses/new',
+      title: 'Khóa học mới',
+      prefill: { title: 'Khóa thử', level: 'BEGINNER', chapters: 3 },
+    },
     { type: 'action_required', action },
     { type: 'done', answer: 'Xong.', citations: [citation] },
     {
@@ -60,6 +67,12 @@ describe('agent stream events', () => {
   it.each([
     { type: 'navigate', path: 'admin/users', title: 'x' },
     { type: 'navigate', path: 'https://evil.example', title: 'x' },
+    {
+      type: 'navigate',
+      path: '/admin/courses/new',
+      title: 'x',
+      prefill: { level: 'EXPERT' },
+    },
     { type: 'retrieved', count: 1 },
     { type: 'done', answer: 'x' },
   ])('rejects %j', (event) => {
@@ -94,33 +107,43 @@ describe('agent stream events', () => {
 });
 
 describe('AgentCommandSchema', () => {
-  const user = { role: 'user', content: 'CIF là gì?' } as const;
-  const assistant = { role: 'assistant', content: 'CIF là… [1]' } as const;
-
-  it('accepts a history that ends with the user', () => {
+  it('accepts a first question and a follow-up with the conversation id', () => {
+    expect(AgentCommandSchema.parse({ message: 'CIF là gì?' })).toEqual({
+      message: 'CIF là gì?',
+    });
     expect(
-      AgentCommandSchema.parse({ messages: [user, assistant, user] }).messages,
-    ).toHaveLength(3);
+      AgentCommandSchema.parse({
+        conversationId: 42,
+        message: 'Còn CIF khác?',
+      }),
+    ).toEqual({ conversationId: 42, message: 'Còn CIF khác?' });
   });
 
-  it('rejects a history that ends with the assistant', () => {
-    expect(() =>
-      AgentCommandSchema.parse({ messages: [user, assistant] }),
-    ).toThrow();
+  it('takes no history: the old messages field is not part of the command', () => {
+    expect(
+      AgentCommandSchema.parse({
+        message: 'x',
+        messages: [{ role: 'user', content: 'y' }],
+      }),
+    ).toEqual({ message: 'x' });
   });
 
-  it('rejects an empty history, a system role and more than 20 messages', () => {
-    expect(() => AgentCommandSchema.parse({ messages: [] })).toThrow();
+  it('rejects a blank or over-long message and a bad conversation id', () => {
+    expect(() => AgentCommandSchema.parse({ message: '   ' })).toThrow();
     expect(() =>
-      AgentCommandSchema.parse({
-        messages: [{ role: 'system', content: 'x' }],
-      }),
+      AgentCommandSchema.parse({ message: 'x'.repeat(501) }),
     ).toThrow();
     expect(() =>
-      AgentCommandSchema.parse({
-        messages: Array.from({ length: 21 }, () => user),
-      }),
+      AgentCommandSchema.parse({ conversationId: 0, message: 'x' }),
     ).toThrow();
+  });
+});
+
+describe('the conversation event', () => {
+  it('opens both kinds of stream and carries the id', () => {
+    const event = { type: 'conversation', conversationId: 42 };
+    expect(AgentStreamEventSchema.parse(event)).toEqual(event);
+    expect(ChatStreamEventSchema.parse(event)).toEqual(event);
   });
 });
 
@@ -137,10 +160,64 @@ describe('ActionResultSchema', () => {
   });
 });
 
+describe('follow-up suggestions and skill hints', () => {
+  const doneAgent = { type: 'done', answer: 'Xong.', citations: [] };
+  const doneChat = { ...doneAgent, found: true };
+
+  it('accepts a done line with and without suggestions, for both assistants', () => {
+    for (const schema of [AgentStreamEventSchema, ChatStreamEventSchema]) {
+      const base = schema === AgentStreamEventSchema ? doneAgent : doneChat;
+      expect(schema.safeParse(base).success).toBe(true);
+      expect(
+        schema.safeParse({ ...base, suggestions: ['Còn gì nữa?'] }).success,
+      ).toBe(true);
+      expect(schema.safeParse({ ...base, suggestions: [1] }).success).toBe(
+        false,
+      );
+    }
+  });
+
+  it('keeps grounded on a done line of both assistants, and a line without it stays valid', () => {
+    for (const schema of [AgentStreamEventSchema, ChatStreamEventSchema]) {
+      const base = schema === AgentStreamEventSchema ? doneAgent : doneChat;
+      expect(schema.parse({ ...base, grounded: false })).toMatchObject({
+        grounded: false,
+      });
+      expect(schema.parse(base)).not.toHaveProperty('grounded');
+      expect(schema.safeParse({ ...base, grounded: 'no' }).success).toBe(false);
+    }
+  });
+
+  it('accepts the read-only flag on an agent done line and refuses a non-boolean', () => {
+    const line = { ...doneAgent, suggestions: ['Đổi email?'] };
+    expect(
+      AgentStreamEventSchema.safeParse({ ...line, suggestionsReadOnly: true })
+        .success,
+    ).toBe(true);
+    expect(AgentStreamEventSchema.safeParse(line).success).toBe(true);
+    expect(
+      AgentStreamEventSchema.safeParse({ ...line, suggestionsReadOnly: 'yes' })
+        .success,
+    ).toBe(false);
+  });
+
+  it('accepts a command with a known skill and refuses an unknown one', () => {
+    expect(
+      AgentCommandSchema.safeParse({ message: 'Mở', skill: 'dieu_huong' })
+        .success,
+    ).toBe(true);
+    expect(AgentCommandSchema.safeParse({ message: 'Mở' }).success).toBe(true);
+    expect(
+      AgentCommandSchema.safeParse({ message: 'Mở', skill: 'bay' }).success,
+    ).toBe(false);
+  });
+});
+
 describe('agent endpoints', () => {
   it('registers the stream and the two action calls under /api/v1/assistant/agent', () => {
     expect(Object.keys(agentEndpoints)).toEqual([
       'stream',
+      'cancelTurn',
       'confirmAction',
       'cancelAction',
     ]);
@@ -152,5 +229,46 @@ describe('agent endpoints', () => {
     expect(toUrl(agentEndpoints.cancelAction, { actionId: 'abc' })).toBe(
       '/api/v1/assistant/agent/actions/abc/cancel',
     );
+  });
+
+  it('carries the lesson a question is about, and the summarise skill', () => {
+    const context = { courseId: 5, revisionId: 50, lessonId: 9 };
+    expect(
+      AgentCommandSchema.parse({
+        message: 'Tóm tắt bài này',
+        skill: 'tom_tat_bai',
+        context,
+      }).context,
+    ).toEqual(context);
+    expect(
+      AgentCommandSchema.safeParse({
+        message: 'x',
+        context: { courseId: 5, revisionId: 50 },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('reads a lesson source on a citation and still reads a document one', () => {
+    const lesson = {
+      courseId: 5,
+      courseTitle: 'Tín dụng',
+      revisionId: 50,
+      chapterTitle: 'Chương 1',
+      lessonId: 9,
+      lessonTitle: 'Lãi suất',
+      blockId: 3,
+      url: '/lesson/5/9',
+    };
+    const parse = (c: unknown) =>
+      AgentStreamEventSchema.safeParse({
+        type: 'done',
+        answer: 'x [1]',
+        citations: [c],
+      }).success;
+    expect(parse({ ...citation, documentId: 0, lesson })).toBe(true);
+    expect(parse(citation)).toBe(true);
+    expect(
+      parse({ ...citation, lesson: { ...lesson, url: 'lesson/5/9' } }),
+    ).toBe(false);
   });
 });

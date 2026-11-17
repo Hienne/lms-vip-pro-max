@@ -4,15 +4,51 @@ import {
   draftChecks,
   emptyDraftValue,
   lessonProblem,
+  mergeLive,
   newBlock,
   newLesson,
   toCreateCourseCommand,
   toDraftValue,
   toSaveDraftCommand,
+  type CourseDraftValue,
   type LessonValue,
 } from './course-draft';
 
 describe('course draft', () => {
+  it('keeps SCORM and manual lessons in the same course and serializes their own content only', () => {
+    const value = {
+      ...emptyDraftValue(),
+      chapters: [
+        {
+          key: 'chapter',
+          title: 'Mixed',
+          lessons: [
+            {
+              ...newLesson(1),
+              lessonType: 'scorm' as const,
+              scormPackageId: 42,
+              scormCompletionRule: 'passed' as const,
+              blocks: [newBlock('text')],
+            },
+            { ...newLesson(2), blocks: [newBlock('text')] },
+          ],
+        },
+      ],
+    };
+    const [scorm, manual] = toSaveDraftCommand(value, 0).chapters[0].lessons;
+    expect(scorm).toMatchObject({
+      lessonType: 'scorm',
+      scormPackageId: 42,
+      scormCompletionRule: 'passed',
+      blocks: [],
+    });
+    expect(manual.lessonType).toBe('content');
+    expect(manual.blocks).toHaveLength(1);
+    expect(lessonProblem(value.chapters[0].lessons[0])).toBeNull();
+    expect(
+      lessonProblem({ ...value.chapters[0].lessons[0], scormPackageId: null }),
+    ).toBe('Chưa chọn gói SCORM');
+  });
   const eod = courseDetailFixtures.find((d) => d.course.code === 'VH-301')!;
 
   it('round-trips a revision into the save command, minutes as seconds', () => {
@@ -238,8 +274,10 @@ describe('course draft', () => {
         { id: 2, status: 'DRAFT', selectionMode: 'FIXED' },
       ]);
       expect(find(draft, 'Đã cấu hình bài kiểm tra cuối khóa')?.ok).toBe(true);
-      expect(find(draft, 'Bài kiểm tra cuối khóa đã xuất bản')).toMatchObject({
-        ok: false,
+      expect(
+        find(draft, 'Bài kiểm tra cuối khóa sẽ được xuất bản cùng khóa học'),
+      ).toMatchObject({
+        ok: true,
         step: 2,
       });
       expect(find(draft, 'Bài kiểm tra cuối khóa đã xuất bản')?.optional).toBe(
@@ -272,17 +310,17 @@ describe('course draft', () => {
       );
     });
 
-    it.each([
-      ['a closed exam', 'CLOSED', 'RANDOM_POOL'],
-      ['a draft exam the author filled by hand', 'DRAFT', 'FIXED'],
-    ] as const)('still blocks %s', (_, status, selectionMode) => {
-      const chosen = { ...toDraftValue(eod), finalQuizId: '2' };
-      const checks = draftChecks(chosen, [{ id: 2, status, selectionMode }]);
+    it.each([['a closed exam', 'CLOSED', 'RANDOM_POOL']] as const)(
+      'still blocks %s',
+      (_, status, selectionMode) => {
+        const chosen = { ...toDraftValue(eod), finalQuizId: '2' };
+        const checks = draftChecks(chosen, [{ id: 2, status, selectionMode }]);
 
-      expect(
-        checks.find((c) => c.label === 'Bài kiểm tra cuối khóa đã xuất bản'),
-      ).toMatchObject({ ok: false, step: 2 });
-    });
+        expect(
+          checks.find((c) => c.label === 'Bài kiểm tra cuối khóa đã xuất bản'),
+        ).toMatchObject({ ok: false, step: 2 });
+      },
+    );
   });
 
   describe('a course that is not stored yet', () => {
@@ -336,5 +374,56 @@ describe('course draft', () => {
         chapters: [],
       });
     });
+  });
+});
+
+describe('mergeLive', () => {
+  const eod = courseDetailFixtures.find((d) => d.course.code === 'VH-301')!;
+  const saved = toDraftValue(eod);
+  const lessonAt = (value: CourseDraftValue, chapter: number, lesson: number) =>
+    value.chapters[chapter].lessons[lesson];
+  const retitled = (
+    value: CourseDraftValue,
+    chapter: number,
+    lesson: number,
+    title: string,
+  ): CourseDraftValue => ({
+    ...value,
+    chapters: value.chapters.map((c, ci) =>
+      ci === chapter
+        ? {
+            ...c,
+            lessons: c.lessons.map((l, li) =>
+              li === lesson ? { ...l, title } : l,
+            ),
+          }
+        : c,
+    ),
+  });
+
+  it('takes the server draft when the author changed nothing', () => {
+    const fresh = retitled(toDraftValue(eod), 0, 0, 'AI vừa viết');
+
+    expect(mergeLive(saved, toDraftValue(eod), fresh)).toBe(fresh);
+  });
+
+  it('keeps a lesson the author edited and takes the others from the server', () => {
+    const form = retitled(toDraftValue(eod), 0, 0, 'Bài tôi sửa');
+    let fresh = retitled(toDraftValue(eod), 0, 0, 'AI ghi đè');
+    fresh = retitled(fresh, 0, 1, 'AI vừa viết bài 2');
+
+    const merged = mergeLive(saved, form, fresh);
+
+    expect(lessonAt(merged, 0, 0).title).toBe('Bài tôi sửa');
+    expect(lessonAt(merged, 0, 1).title).toBe('AI vừa viết bài 2');
+  });
+
+  it('keeps the whole form when the structure differs', () => {
+    const form = {
+      ...toDraftValue(eod),
+      chapters: toDraftValue(eod).chapters.slice(1),
+    };
+
+    expect(mergeLive(saved, form, toDraftValue(eod))).toBe(form);
   });
 });

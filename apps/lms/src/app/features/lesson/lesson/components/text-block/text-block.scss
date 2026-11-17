@@ -1,5 +1,9 @@
 @use 'ui';
 
+.text-block--wide :is(p, li) {
+  max-width: none;
+}
+
 .text-block__empty {
   @include ui.text(sm, muted);
   margin: 0;

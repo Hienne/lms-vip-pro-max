@@ -1,5 +1,6 @@
 import {
   Component,
+  booleanAttribute,
   computed,
   ElementRef,
   input,
@@ -31,15 +32,17 @@ import {
     <input
       #box
       uiInput
-      type="text"
+      [type]="
+        picker() ? (kind() === 'datetime' ? 'datetime-local' : 'date') : 'text'
+      "
       inputmode="numeric"
       autocomplete="off"
       [attr.aria-label]="label()"
       [attr.aria-invalid]="invalid() || malformed() ? 'true' : null"
-      [placeholder]="placeholder()"
+      [placeholder]="picker() ? '' : placeholder()"
       [disabled]="disabled()"
       [readOnly]="readonly()"
-      [value]="shown()"
+      [value]="picker() ? value() : shown()"
       (input)="typed($event)"
       (blur)="blurred()"
     />
@@ -53,6 +56,8 @@ export class DateInput implements FormValueControl<string> {
   readonly invalid = input(false);
   /** `date` for a day, `datetime` for a day and a time (24-hour). */
   readonly kind = input<DateInputKind>('date');
+  /** Opt in to the browser's calendar/time picker while preserving the same form value format. */
+  readonly picker = input(false, { transform: booleanAttribute });
   /** Accessible name when no `<label for>` points at the box. */
   readonly label = input<string | null>(null);
   /** The native box; `ui-field` reads it to wire its label, hint and errors. */
@@ -71,6 +76,11 @@ export class DateInput implements FormValueControl<string> {
 
   protected typed(event: Event): void {
     const text = (event.target as HTMLInputElement).value;
+    if (this.picker()) {
+      this.draft.set(null);
+      this.value.set(text);
+      return;
+    }
     if (text.trim() === '') {
       this.draft.set(null);
       this.value.set('');

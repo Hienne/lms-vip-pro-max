@@ -9,9 +9,6 @@
   display: grid;
   place-items: center;
 }
-.assessment__stats {
-  margin-bottom: ui.space(4);
-}
 .assessment__section {
   margin-bottom: ui.space(6);
 }
@@ -29,46 +26,55 @@
       max-width: ui.layout(narrow);
     }
   }
-  &__count {
-    @include ui.text(sm, muted);
-    margin-bottom: ui.space(3);
+  &__scope--quizzes {
+    max-width: none;
+    gap: ui.space(5);
+    > * {
+      min-width: 0;
+    }
+    @include ui.bp(md) {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr);
+    }
   }
 }
-.assessment__kpis {
+ui-stat-strip {
   display: grid;
-  gap: ui.space(4);
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-template-columns: none;
   margin-bottom: ui.space(6);
-  @include ui.bp(md) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  @include ui.bp(lg) {
-    grid-template-columns: repeat(4, 1fr);
-  }
 }
 .assessment__result-count {
   @include ui.text(sm, muted);
 }
 .assessment__filters {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: ui.space(3);
-  select {
-    width: auto;
-    max-width: 100%;
-  }
+  @include ui.row-between(3);
+  flex-wrap: wrap;
+}
+.assessment__filter-row {
+  flex-wrap: wrap;
+  flex: 1 1 auto;
+}
+.assessment__filter {
+  width: auto;
+  min-width: 11rem;
+  max-width: 100%;
 }
 .assessment__bulk {
-  @include ui.row(3);
+  @include ui.row-between(3);
+  flex-wrap: wrap;
   padding: ui.space(3) ui.space(5);
-  background: ui.color(primary-subtle);
+  border-bottom: 1px solid ui.color(border);
+}
+.assessment__bulk-count {
+  font-weight: ui.weight(medium);
 }
 .assessment__muted {
   @include ui.text(sm, muted);
 }
 .assessment__code {
   @include ui.mono;
-  @include ui.text(xs);
+  @include ui.text(sm);
   white-space: nowrap;
 }
 .assessment__question-text {
@@ -100,11 +106,9 @@
     align-self: flex-start;
   }
 }
-.assessment__required,
 .assessment__error {
+  margin: 0;
   color: ui.color(danger);
-}
-.assessment__error {
 }
 .assessment__option-edit {
   @include ui.row(2);
@@ -124,9 +128,8 @@
   }
 }
 .assessment__preview {
-  border: 1px solid ui.color(border);
-  border-radius: ui.radius(control);
-  padding: ui.space(3);
+  padding-block: ui.space(3);
+  border-block: 1px solid ui.color(border);
   summary {
     color: ui.color(primary);
     cursor: pointer;
@@ -185,7 +188,7 @@
   }
   small {
     display: block;
-    @include ui.text(xs, muted);
+    @include ui.text(sm, muted);
     margin-top: ui.space(1);
   }
 }

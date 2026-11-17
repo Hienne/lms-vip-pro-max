@@ -1,0 +1,281 @@
+import type { FunctionCode } from '@lms/contracts';
+
+export type GuideAudience = 'learner' | 'instructor' | 'admin';
+export interface UsageGuideStep {
+  readonly title: string;
+  readonly text: string;
+  readonly path: string;
+  readonly target: string;
+  readonly permission: FunctionCode;
+}
+
+export const PAGE_GUIDE_STEPS: readonly UsageGuideStep[] = [
+  {
+    path: '/course/',
+    permission: 'COURSE_LEARNING',
+    target: 'main ui-page-header',
+    title: 'Chọn việc cần làm tiếp theo',
+    text: 'Bấm Bắt đầu học hoặc Tiếp tục học để vào bài. Khi nội dung đã đủ, nút chính dẫn tới bài kiểm tra hoặc kết quả theo điều kiện dự thi thực tế. Hết lượt thì liên hệ giảng viên; 100% nội dung chưa đồng nghĩa hoàn thành khóa.',
+  },
+  {
+    path: '/course/',
+    permission: 'COURSE_LEARNING',
+    target: '.course__status, .course__outline',
+    title: 'Đối chiếu điều kiện hoàn thành',
+    text: 'Xem số bài bắt buộc đã hoàn thành, trạng thái bài kiểm tra cuối khóa và hạn. Chọn một bài trong Nội dung khóa học để mở bài; kết quả hoàn thành được hệ thống đánh giá.',
+  },
+  {
+    path: '/quiz/',
+    permission: 'QUIZ_TAKING',
+    target: 'main ui-page-header',
+    title: 'Làm bài và xem kết quả',
+    text: 'Đọc điểm đạt, thời gian, số lượt và điều kiện trước khi bắt đầu. Trong lượt thi, dùng Quay lại / Tiếp theo để chuyển câu và xác nhận khi nộp. Khi xem kết quả, mở giải thích được phép xem và kiểm tra thời điểm được thi lại.',
+  },
+];
+
+export const GUIDE_STEPS: Record<GuideAudience, readonly UsageGuideStep[]> = {
+  admin: [
+    {
+      title: 'Không gian quản trị',
+      path: '/profile',
+      target: '.app-shell__sidebar, .header__menu',
+      permission: 'PROFILE',
+      text: 'Dùng menu bên trái để quản lý tổ chức, tài khoản và hoạt động đào tạo. Trên màn hình nhỏ, bấm nút menu ở đầu trang. Các danh sách và thao tác tuân theo phạm vi đơn vị/nhóm được cấp; quản trị đơn vị không mặc định có quyền toàn hệ thống.',
+    },
+    {
+      title: 'Thiết lập đơn vị, phòng và nhóm',
+      path: '/admin/org',
+      target: 'main ui-tree, main ui-page-header',
+      permission: 'ORGANIZATION_MANAGEMENT',
+      text: 'Chọn đơn vị hoặc phòng trên cây để xem thông tin và nhóm trực thuộc. Bấm Thêm đơn vị / phòng để bổ sung tổ chức; chọn đúng đơn vị trước khi quản lý nhóm. Dùng Nhập từ tệp khi cần nhập nhiều dòng và kiểm tra kết quả trước khi xác nhận.',
+    },
+    {
+      title: 'Quản lý tài khoản',
+      path: '/admin/users',
+      target: 'main ui-tabs',
+      permission: 'USER_MANAGEMENT',
+      text: 'Ở tab Người dùng, tìm theo tên, mã cán bộ hoặc tên đăng nhập, rồi chọn bộ lọc đơn vị và trạng thái. Bấm Thêm người dùng để tạo tài khoản; mở hồ sơ từ danh sách để sửa theo quyền được cấp. Các tab còn lại giúp xử lý đăng ký hoặc nhập danh sách theo chức năng được bật.',
+    },
+    {
+      title: 'Vai trò và phạm vi phân quyền',
+      path: '/admin/roles',
+      target: 'main ui-page-header',
+      permission: 'ROLE_MANAGEMENT',
+      text: 'Chọn vai trò để xem các chức năng được mở. Khi phân quyền cho người dùng, kiểm tra đồng thời vai trò và phạm vi áp dụng như đơn vị hoặc nhóm; mở được menu không đồng nghĩa được sửa mọi dữ liệu. Rà soát các quyền đã chọn trước khi lưu hoặc thu hồi.',
+    },
+    {
+      title: 'Tổ chức danh mục đào tạo',
+      path: '/admin/catalog',
+      target: 'main ui-tree',
+      permission: 'TRAINING_CATALOG',
+      text: 'Chọn lĩnh vực trên cây để quản lý chương trình. Thêm hoặc sửa lĩnh vực để quản lý các phân hệ nghiệp vụ bên trong. Chuẩn bị đúng chương trình/phân hệ trước khi tạo khóa; các mục mới nằm cuối cây theo thời gian tạo để dễ tìm lại.',
+    },
+    {
+      title: 'Quản lý nội dung khóa học',
+      path: '/admin/courses',
+      target: 'main ui-page-header',
+      permission: 'COURSE_MANAGEMENT',
+      text: 'Tìm khóa theo tên/mã, lĩnh vực và trạng thái. Bấm Tạo khóa học để đi qua thông tin cơ bản, nội dung, điều kiện thi và đối tượng xuất bản. Với khóa đã xuất bản, mở bản nháp trước khi sửa. Để xem kỹ cách soạn từng bước, mở lại hướng dẫn và chọn Giảng viên.',
+    },
+    {
+      title: 'Thư viện bài giảng',
+      path: '/admin/lessons',
+      target: 'main ui-page-header',
+      permission: 'LESSON_MANAGEMENT',
+      text: 'Nhập ZIP SCORM 1.2 và xem thử trước khi sử dụng. Bài giảng trong thư viện có thể được chọn lại khi soạn khóa; giảng viên cũng có thể tải ZIP ngay trong bài học. Điểm và tiến độ xem thử không thay cho kết quả học viên trong khóa.',
+    },
+    {
+      title: 'Ngân hàng câu hỏi theo chương trình',
+      path: '/admin/questions',
+      target: '.assessment__scope',
+      permission: 'QUESTION_BANK',
+      text: 'Chọn chương trình trước khi thêm hoặc nhập câu hỏi từ Excel. Các khóa trong cùng chương trình có thể dùng chung bộ câu hỏi. Kiểm tra nội dung, loại câu, đáp án và nhóm năng lực; dùng mẫu Excel của màn hình để nhập đúng cấu trúc.',
+    },
+    {
+      title: 'Quản lý bài kiểm tra và lượt thi',
+      path: '/admin/quizzes',
+      target: '.assessment__scope',
+      permission: 'QUIZ_MANAGEMENT',
+      text: 'Chọn chương trình và khóa rồi tạo hoặc cấu hình bài kiểm tra. Rà soát điểm đạt, thời gian, lịch mở/đóng, điều kiện hoàn thành bài học và số lượt thi lại. Khi học viên hết lượt, dùng chức năng cấp thêm lượt chỉ định theo quyền được cấp; không sửa kết quả cũ để thay thế lượt mới.',
+    },
+    {
+      title: 'Giao khóa học và theo dõi hạn',
+      path: '/admin/assignments',
+      target: 'main ui-page-header',
+      permission: 'COURSE_ASSIGNMENT',
+      text: 'Bấm Giao khóa học, chọn khóa đã xuất bản và đơn vị/nhóm/người nhận phù hợp. Kiểm tra ngày bắt đầu, hạn và nhắc hạn trước khi lưu. Mở đợt giao để xem tiến độ, đổi lịch hoặc thu hồi theo quyền; giữ nguyên lịch sử học và kết quả đã có.',
+    },
+    {
+      title: 'Đọc và xuất báo cáo đào tạo',
+      path: '/reports',
+      target: 'main ui-page-header',
+      permission: 'REPORTING',
+      text: 'Chọn Học tập hoặc Đánh giá, mở Bộ lọc và chọn lần lượt đơn vị, phòng/nhóm, khóa và bài kiểm tra. Bấm Áp dụng bộ lọc rồi đọc phạm vi cạnh từng khối. Mã cán bộ, trạng thái và kết quả trong báo cáo lượt thi chỉ lọc bảng cùng CSV; biểu đồ dùng phạm vi chung.',
+    },
+    {
+      title: 'Điều phối nội dung cộng đồng',
+      path: '/community/moderation',
+      target: 'main ui-page-header',
+      permission: 'COMMUNITY_MODERATION',
+      text: 'Dùng các tab và bộ lọc để tìm nội dung cần xem xét. Mở chi tiết, đọc nội dung và phản hồi trước khi chọn thao tác điều phối. Kiểm tra đúng nội dung và lý do khi hệ thống yêu cầu xác nhận.',
+    },
+    {
+      title: 'Cấu hình điểm thưởng và huy hiệu',
+      path: '/admin/gamification',
+      target: 'main ui-page-header',
+      permission: 'SYSTEM_AUDIT',
+      text: 'Tại màn cấu hình điểm thưởng, xem quy tắc XP, cấp độ, huy hiệu và lịch làm việc. Kiểm tra điều kiện và giá trị trước khi lưu để động lực học dựa trên hoạt động thực tế. Các thao tác được mở theo quyền quản trị của tài khoản.',
+    },
+    {
+      title: 'Hồ sơ và xem lại hướng dẫn',
+      path: '/profile',
+      target: '[data-guide="account-menu"]',
+      permission: 'PROFILE',
+      text: 'Mở thông tin đăng nhập ở góc trên phải để xem hồ sơ, thông báo và Hướng dẫn sử dụng. Có thể chọn lại Quản trị viên, Giảng viên hoặc Học viên theo các chức năng của tài khoản. Bỏ qua hướng dẫn không thay đổi dữ liệu hay quyền truy cập.',
+    },
+  ],
+  learner: [
+    {
+      title: 'Menu học tập',
+      path: '/learn',
+      target: '[data-guide="learner-navigation"]',
+      permission: 'COURSE_LEARNING',
+      text: 'Bấm Học tập để mở Khóa học của tôi, Danh mục khóa học, Tiến độ học tập hoặc Làm bài kiểm tra. Công cụ học chứa ghi chú và chứng nhận; Cộng đồng là nơi trao đổi với đồng nghiệp.',
+    },
+    {
+      title: 'Chọn khóa cần học',
+      path: '/learn',
+      target: '.learn__courses',
+      permission: 'COURSE_LEARNING',
+      text: 'Chọn tab Đang học, Chưa bắt đầu, Bắt buộc hoặc Được giao. Bấm vào thẻ khóa để xem nội dung và điều kiện hoàn thành. Xem tất cả mở đầy đủ danh sách theo đúng tab bạn đang chọn.',
+    },
+    {
+      title: 'Ưu tiên hạn hoàn thành',
+      path: '/learn',
+      target: '[aria-labelledby="learn-due"], #learn-due',
+      permission: 'COURSE_LEARNING',
+      text: 'Xem các khóa sắp đến hạn tại đây. Bấm tên khóa để học. Trong màn bài học, dùng Quay lại / Tiếp theo để chuyển nội dung; video, PDF và SCORM lưu tiến độ tự động. Khóa có bài kiểm tra bắt buộc còn cần đạt điểm yêu cầu.',
+    },
+    {
+      title: 'Tìm thêm khóa học',
+      path: '/catalog',
+      target: '.catalog__filters',
+      permission: 'COURSE_LEARNING',
+      text: 'Nhập tên hoặc mã khóa. Trên điện thoại, bấm Bộ lọc để chọn lĩnh vực, chương trình, phân hệ và trạng thái; bấm dấu × ở điều kiện để bỏ lọc. Đã tham gia gồm cả khóa tự đăng ký; Được giao chỉ gồm khóa được giao. Chọn thẻ khóa để xem điều kiện và học.',
+    },
+    {
+      title: 'Xem tiến độ và năng lực',
+      path: '/progress',
+      target: 'main ui-tabs',
+      permission: 'LEARNING_PROGRESS',
+      text: 'Tab Tiến độ khóa học cho biết nội dung đã học, kết quả thi và hạn. Chọn Năng lực để xem nhóm năng lực và nhịp học; chọn Lịch sử thi để xem các lần thi. 100% nội dung chưa thay thế điều kiện đạt bài kiểm tra bắt buộc.',
+    },
+    {
+      title: 'Chuẩn bị trước khi làm bài',
+      path: '/quiz',
+      target: 'main ui-page-header',
+      permission: 'QUIZ_TAKING',
+      text: 'Chọn bài kiểm tra để xem điểm đạt, lượt còn lại và lịch sử. Bấm Vào thi để đọc quy tắc trước khi bắt đầu. Khi làm bài, theo dõi đồng hồ, chọn đáp án, dùng Quay lại / Tiếp theo và xác nhận nộp bài. Hết lượt thì liên hệ giảng viên để được xem xét cấp thêm.',
+    },
+    {
+      title: 'Tìm lại ghi chú và đánh dấu',
+      path: '/saved',
+      target: 'main ui-page-header',
+      permission: 'COURSE_LEARNING',
+      text: 'Chọn bài học ở danh sách, rồi bấm ghi chú hoặc mốc đánh dấu để mở đúng vị trí. Khi đang học, bạn có thể ghi chú, đánh dấu trang PDF hoặc mốc video để quay lại sau.',
+    },
+    {
+      title: 'Nhận chứng nhận',
+      path: '/certificates',
+      target: 'main ui-page-header',
+      permission: 'COURSE_LEARNING',
+      text: 'Khóa hoàn thành đủ điều kiện sẽ có chứng nhận tại đây. Tìm theo tên khóa hoặc mã, bấm Xem chứng nhận để xem đầy đủ và tải về. Mã xác thực giúp đối chiếu chứng nhận.',
+    },
+    {
+      title: 'Thông báo và trợ giúp',
+      path: '/learn',
+      target: '[data-guide="account-menu"]',
+      permission: 'COURSE_LEARNING',
+      text: 'Bấm chuông để xem thông báo, mở đúng khóa sắp đến hạn và đánh dấu đã đọc. Bấm thông tin đăng nhập để mở Hồ sơ cá nhân. Bạn có thể mở lại toàn bộ hướng dẫn qua Hướng dẫn sử dụng trong menu này.',
+    },
+  ],
+  instructor: [
+    {
+      title: 'Không gian giảng viên',
+      path: '/admin/courses',
+      target: '.app-shell__sidebar, .header__menu',
+      permission: 'COURSE_MANAGEMENT',
+      text: 'Dùng menu Nội dung để quản lý khóa học, lĩnh vực/chương trình, thư viện bài giảng, ngân hàng câu hỏi và bài kiểm tra. Trên điện thoại, bấm biểu tượng menu ở đầu trang để mở các mục này.',
+    },
+    {
+      title: 'Chuẩn bị lĩnh vực và chương trình',
+      path: '/admin/catalog',
+      target: 'main ui-tree',
+      permission: 'TRAINING_CATALOG',
+      text: 'Chọn một lĩnh vực trên cây để xem các chương trình. Thêm lĩnh vực cho phép nhập nhiều phân hệ nghiệp vụ; mở Sửa lĩnh vực để sửa/xóa phân hệ. Tạo chương trình trong đúng lĩnh vực trước khi soạn khóa học.',
+    },
+    {
+      title: 'Chuẩn bị câu hỏi dùng chung',
+      path: '/admin/questions',
+      target: '.assessment__scope',
+      permission: 'QUESTION_BANK',
+      text: 'Chọn chương trình, rồi bấm Thêm câu hỏi hoặc Nhập từ Excel. Các khóa trong cùng chương trình dùng chung ngân hàng. Khi soạn câu hỏi, nhập phương án, chọn đáp án đúng và bổ sung giải thích để học viên ôn tập.',
+    },
+    {
+      title: 'Thư viện bài giảng SCORM',
+      path: '/admin/lessons',
+      target: 'main ui-page-header',
+      permission: 'LESSON_MANAGEMENT',
+      text: 'Nhập tệp ZIP SCORM 1.2 để xem thử. Bạn cũng có thể tải ZIP ngay khi soạn một bài học; dùng thư viện khi muốn tái sử dụng bài giảng đã có. Kiểm tra điểm, trạng thái hoàn thành và vị trí học tiếp trước khi xuất bản.',
+    },
+    {
+      title: 'Bước 1: thông tin khóa học',
+      path: '/admin/courses/new',
+      target: 'app-course-info',
+      permission: 'COURSE_MANAGEMENT',
+      text: 'Nhập tên, mã, chương trình và mức độ; chọn phân hệ nếu cần. Lưu nháp giữ nội dung để làm tiếp. Bấm Tiếp theo khi đã điền đủ các trường bắt buộc; lỗi sẽ được chỉ rõ tại từng trường.',
+    },
+    {
+      title: 'Bước 2: soạn nội dung',
+      path: '/admin/courses/new',
+      target: 'ui-stepper',
+      permission: 'COURSE_MANAGEMENT',
+      text: 'Sau khi hoàn thành bước 1, chọn Nội dung khóa học để thêm chương và bài. Mỗi bài có thể là văn bản, video, PDF, tệp đính kèm hoặc SCORM. Với SCORM, chọn từ thư viện rồi tìm ngay bên trong dropdown, hoặc tải ZIP trực tiếp.',
+    },
+    {
+      title: 'Bước 3 và 4: bài kiểm tra, đối tượng, xuất bản',
+      path: '/admin/courses/new',
+      target: 'ui-stepper',
+      permission: 'COURSE_MANAGEMENT',
+      text: 'Ở Bài kiểm tra & điều kiện, chọn không yêu cầu, bài kiểm tra hiện có hoặc tạo bài kiểm tra cuối khóa mới rồi chọn câu hỏi. Ở Đối tượng & xuất bản, chọn đơn vị/nhóm/người học, thời hạn và rà soát trước khi xuất bản. Khóa có bài kiểm tra bắt buộc chỉ hoàn thành khi học viên đạt điểm yêu cầu.',
+    },
+    {
+      title: 'Cấu hình và theo dõi bài kiểm tra',
+      path: '/admin/quizzes',
+      target: '.assessment__scope',
+      permission: 'QUIZ_MANAGEMENT',
+      text: 'Chọn chương trình và khóa học rồi tạo hoặc cấu hình bài kiểm tra. Quay lại / Tiếp theo chuyển đúng một khóa trong danh sách. Rà soát lịch mở/đóng, điểm đạt, điều kiện học trước, số lượt và thời gian chờ thi lại.',
+    },
+    {
+      title: 'Giao khóa học và quản lý hạn',
+      path: '/admin/assignments',
+      target: 'main ui-page-header',
+      permission: 'COURSE_ASSIGNMENT',
+      text: 'Bấm Giao khóa học, chọn khóa đã xuất bản và các đối tượng phù hợp. Kiểm tra ngày bắt đầu, hạn hoàn thành và nhắc hạn. Trong danh sách lượt giao, xem tiến độ và sửa hạn theo quyền được cấp.',
+    },
+    {
+      title: 'Đọc báo cáo đúng phạm vi',
+      path: '/reports',
+      target: 'main ui-page-header',
+      permission: 'REPORTING',
+      text: 'Chọn Học tập hoặc Đánh giá, rồi chọn đơn vị, phòng/nhóm, khóa và bài kiểm tra. Đọc phạm vi ghi cạnh số liệu: bộ lọc riêng của bảng có thể không áp dụng cho biểu đồ. Xuất CSV dùng cùng điều kiện của bảng chi tiết.',
+    },
+    {
+      title: 'Xem lại hướng dẫn bất kỳ lúc nào',
+      path: '/admin/courses',
+      target: '[data-guide="account-menu"]',
+      permission: 'COURSE_MANAGEMENT',
+      text: 'Menu tài khoản ở góc phải có Hướng dẫn sử dụng để mở lại các bước này. Bạn có thể bỏ qua hướng dẫn và tiếp tục thao tác bình thường; tiến độ soạn và quyền truy cập vẫn do từng chức năng quản lý.',
+    },
+  ],
+};

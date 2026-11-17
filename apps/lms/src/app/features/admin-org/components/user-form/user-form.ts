@@ -4,6 +4,8 @@ import {
   inject,
   input,
   linkedSignal,
+  signal,
+  viewChild,
 } from '@angular/core';
 import {
   form,
@@ -16,6 +18,7 @@ import { isEmptyPatch } from '@lms/contracts';
 import { Alert, Button, Field, Icon, Input, Select } from '@lms/ui';
 import { UserEditorStore } from '../../data-access/user-editor.store';
 import { GrantPicker } from '../grant-picker/grant-picker';
+import { organizationOptions } from '../org-options';
 import {
   toCreateUserCommand,
   toUpdateUserCommand,
@@ -53,6 +56,11 @@ export class UserForm {
   readonly user = input.required<ManagedUser | null>();
 
   protected readonly isEdit = computed(() => this.user() !== null);
+  protected readonly orgOptions = computed(() =>
+    organizationOptions(this.store.orgs$()),
+  );
+  protected readonly grantError = signal('');
+  private readonly grantPicker = viewChild(GrantPicker);
 
   private readonly model = linkedSignal<UserFormValue>(() =>
     toUserFormValue(this.user(), this.store.me$()?.org?.id ?? null),
@@ -89,12 +97,28 @@ export class UserForm {
   private save(): void {
     const user = this.user();
     if (!user) {
-      this.store.create(
-        toCreateUserCommand(
-          this.model(),
-          this.store.pendingGrants$().map((p) => p.request),
-        ),
-      );
+      const picker = this.grantPicker();
+      const selected = picker?.request();
+      if (picker?.hasSelection() && !selected) {
+        this.grantError.set(
+          'Vui lòng hoàn tất phạm vi của vai trò đang chọn trước khi lưu.',
+        );
+        return;
+      }
+      const grants = this.store.pendingGrants$().map((p) => p.request);
+      if (
+        selected &&
+        !grants.some(
+          (grant) =>
+            grant.roleId === selected.roleId &&
+            grant.scope === selected.scope &&
+            grant.orgId === selected.orgId &&
+            grant.teamId === selected.teamId,
+        )
+      )
+        grants.push(selected);
+      this.grantError.set('');
+      this.store.create(toCreateUserCommand(this.model(), grants));
       return;
     }
     const patch = toUpdateUserCommand(user, this.model());

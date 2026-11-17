@@ -1,16 +1,81 @@
 <div class="asset-library">
+  @if (store.editing(); as row) {
+  <section class="asset-library__edit" aria-label="Sửa thông tin tài nguyên">
+    <strong>Sửa thông tin tài nguyên</strong>
+    <p>Tên và mô tả được dùng chung ở các khóa học sử dụng tệp này.</p>
+    <ui-field label="Tên trong thư viện"
+      ><input
+        uiInput
+        #assetName
+        maxlength="255"
+        (input)="store.nameError.set(false)"
+        [value]="row.name"
+    /></ui-field>
+    @if (store.nameError()) {
+    <span role="alert">Vui lòng nhập tên tài nguyên.</span> }
+    <ui-field label="Mô tả (không bắt buộc)">
+      <textarea uiTextarea #assetDescription rows="2" maxlength="2000">
+{{ row.asset.description ?? '' }}</textarea
+      >
+    </ui-field>
+    <div class="asset-library__toolbar">
+      <button
+        uiButton
+        type="button"
+        (click)="store.editing.set(null)"
+        [disabled]="store.isSavingMetadata$()"
+      >
+        Hủy
+      </button>
+      <button
+        uiButton
+        type="button"
+        (click)="store.saveMetadata(assetName.value, assetDescription.value)"
+        [disabled]="store.isSavingMetadata$()"
+      >
+        Lưu thông tin
+      </button>
+    </div>
+  </section>
+  } @else if (details(); as row) {
+  <section class="asset-library__edit" aria-label="Thông tin tài nguyên">
+    <strong>Thông tin tài nguyên</strong>
+    <div><strong>Tên trong thư viện:</strong> {{ row.name }}</div>
+    <div><strong>Tên tệp gốc:</strong> {{ row.asset.originalName }}</div>
+    <div><strong>Định dạng:</strong> {{ format(row) }}</div>
+    <div><strong>Dung lượng:</strong> {{ row.sizeBytes | fmtBytes }}</div>
+    <div><strong>Ngày tải lên:</strong> {{ row.createTime | fmtDate }}</div>
+    <div>
+      <strong>Mô tả:</strong> {{ row.asset.description || 'Chưa có mô tả' }}
+    </div>
+    <button uiButton type="button" (click)="details.set(null)">
+      Quay lại thư viện
+    </button>
+  </section>
+  } @else {
   <div class="asset-library__toolbar">
     <ui-search
-      label="Tìm theo tên tệp"
-      placeholder="Tìm theo tên tệp…"
+      label="Tìm theo tên hoặc mô tả"
+      placeholder="Tìm theo tên hoặc mô tả…"
       [value]="store.query$()"
       (searched)="store.search($event)"
     />
     <span class="asset-library__count" aria-live="polite"
       >{{ store.total$() }} tệp</span
     >
+    <select
+      uiSelect
+      size="sm"
+      aria-label="Sắp xếp tài nguyên"
+      [value]="store.sort$().key + ',' + store.sort$().dir"
+      (change)="sort($event)"
+    >
+      <option value="uploaded,desc">Mới nhất</option>
+      <option value="uploaded,asc">Cũ nhất</option>
+      <option value="name,asc">Tên A–Z</option>
+      <option value="name,desc">Tên Z–A</option>
+    </select>
   </div>
-
   @if (store.loadError$(); as error) {
   <ui-error-state
     title="Không tải được thư viện"
@@ -19,47 +84,41 @@
   />
   } @else if (store.isLoading$()) {
   <div class="asset-library__loading"><span uiSpinner></span></div>
+  } @else if (!store.rows$().length) {
+  <ui-empty
+    variant="inline"
+    [title]="store.query$() ? 'Không có tệp phù hợp' : 'Thư viện chưa có tệp loại này.'"
+    [description]="store.query$() ? 'Thử đổi từ khóa.' : ''"
+  />
   } @else {
-  <ui-data-table
-    caption="Thư viện tài nguyên"
-    [columns]="columns"
-    [rows]="store.rows$()"
-    [total]="store.total$()"
-    [sort]="store.sort$()"
-    [page]="store.page$()"
-    [pageSize]="store.pageSize$()"
-    (sortChange)="store.sortBy($event)"
-    (pageChange)="store.goToPage($event)"
-    (pageSizeChange)="store.changePageSize($event)"
-  >
-    <ui-empty
-      slot="empty"
-      variant="inline"
-      [title]="store.query$() ? 'Không có tệp phù hợp' : 'Thư viện chưa có tệp loại này.'"
-      [description]="store.query$() ? 'Thử đổi từ khóa.' : ''"
-    />
-    <ng-template uiDataTableCell="name" [of]="store.rows$()" let-row>
+  <ul uiList aria-label="Thư viện tài nguyên">
+    @for (row of store.rows$(); track row.id) {
+    <li uiListItem class="asset-library__row">
       <div class="asset-library__file">
         <button
           uiButton
           variant="ghost"
           size="sm"
           class="asset-library__pick"
+          [disabled]="row.asset.status === 'deleting'"
           [attr.aria-label]="'Chọn ' + row.name"
+          [title]="row.name"
           (click)="picked.emit(row.asset)"
         >
-          {{ row.name }}
+          <span class="asset-library__name-wrap"
+            ><span class="asset-library__name">{{ row.name }}</span></span
+          >
         </button>
-        <span class="asset-library__mime">{{ row.mimeType }}</span>
+        <span class="asset-library__meta"
+          >{{ format(row) }} · {{ row.sizeBytes | fmtBytes }} · {{
+          row.createTime | fmtDate }}</span
+        >
+        @if (row.asset.status === 'deleting') {
+        <span class="asset-library__meta"
+          >Đang xóa hoặc xóa chưa hoàn tất. Chọn xóa vĩnh viễn để thử lại.</span
+        >
+        }
       </div>
-    </ng-template>
-    <ng-template uiDataTableCell="size" [of]="store.rows$()" let-row>
-      <span class="asset-library__num">{{ row.sizeBytes | fmtBytes }}</span>
-    </ng-template>
-    <ng-template uiDataTableCell="uploaded" [of]="store.rows$()" let-row>
-      {{ row.createTime | fmtDate }}
-    </ng-template>
-    <ng-template uiDataTableCell="actions" [of]="store.rows$()" let-row>
       <ui-menu
         [label]="'Thêm thao tác cho ' + row.name"
         icon="ellipsis"
@@ -68,9 +127,18 @@
         size="sm"
         [disabled]="store.isDeleting$()"
         [entries]="rowMenu"
-        (selected)="store.remove(row)"
+        (selected)="chooseAction($event, row)"
       />
-    </ng-template>
-  </ui-data-table>
-  }
+    </li>
+    }
+  </ul>
+  <ui-pagination
+    [total]="store.total$()"
+    [page]="store.page$()"
+    [pageSize]="store.pageSize$()"
+    [pageSizeOptions]="pageSizes"
+    (pageChange)="store.goToPage($event)"
+    (pageSizeChange)="store.changePageSize($event)"
+  />
+  } }
 </div>

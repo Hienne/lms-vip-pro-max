@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import type { RoomFacing, RoomPlayer } from '@lms/contracts';
+import type { RoomApproach, RoomFacing, RoomPlayer } from '@lms/contracts';
 import type { RoomSpeech } from '../../../data-access/chat-room.model';
-import { facingYaw, type GesturePose } from './room.motion';
+import { facingFromVector, facingYaw, type GesturePose } from './room.motion';
 import { CHAIR_SEAT_TOP, RoomWorld3D, WORLD_SCALE } from './room-world-3d';
 
 const AVATAR_COLORS = {
@@ -29,6 +29,8 @@ export class RoomAvatar3D {
   private readonly canvas = document.createElement('canvas');
   private readonly texture: THREE.CanvasTexture;
   private speechId = '';
+  private route?: RoomApproach;
+  private routeStartedAt = 0;
   target: { x: number; y: number; facing: RoomFacing };
   seated = false;
 
@@ -300,6 +302,36 @@ export class RoomAvatar3D {
     }
   }
 
+  follow(route: RoomApproach | undefined): void {
+    if (route === this.route) return;
+    this.route = route;
+    this.routeStartedAt = performance.now();
+  }
+
+  private approachPosition(time: number): typeof this.target {
+    if (!this.route) return this.target;
+    let distance =
+      (Math.max(0, time - this.routeStartedAt) * this.route.speed) / 1000;
+    const points = this.route.points;
+    let from = points[0];
+    for (let index = 1; index < points.length; index++) {
+      const to = points[index];
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const length = Math.hypot(dx, dy);
+      if (length > 0 && distance <= length) {
+        return {
+          x: from.x + (dx * distance) / length,
+          y: from.y + (dy * distance) / length,
+          facing: facingFromVector(dx, dy, this.target.facing),
+        };
+      }
+      distance -= length;
+      from = to;
+    }
+    return { ...from, facing: this.target.facing };
+  }
+
   update(
     delta: number,
     time: number,
@@ -309,8 +341,9 @@ export class RoomAvatar3D {
     localWalking?: boolean,
     smoothLocalPosition = false,
   ): void {
-    const dx = this.target.x / WORLD_SCALE - this.root.position.x,
-      dz = this.target.y / WORLD_SCALE - this.root.position.z;
+    const target = this.approachPosition(time);
+    const dx = target.x / WORLD_SCALE - this.root.position.x,
+      dz = target.y / WORLD_SCALE - this.root.position.z;
     const walking =
       !this.seated &&
       !pose.highFive &&
@@ -319,8 +352,7 @@ export class RoomAvatar3D {
     const positionBlend = this.local && !smoothLocalPosition ? 1 : blend;
     this.root.position.x += dx * positionBlend;
     this.root.position.z += dz * positionBlend;
-    const yaw =
-      pose.highFive?.yaw ?? facingYaw(pose.facing ?? this.target.facing);
+    const yaw = pose.highFive?.yaw ?? facingYaw(pose.facing ?? target.facing);
     const angle = Math.atan2(
       Math.sin(yaw - this.body.rotation.y),
       Math.cos(yaw - this.body.rotation.y),

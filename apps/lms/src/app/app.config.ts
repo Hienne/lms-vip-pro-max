@@ -7,12 +7,17 @@ import {
   provideRouter,
   TitleStrategy,
   withInMemoryScrolling,
+  withNavigationErrorHandler,
 } from '@angular/router';
 import { environment, mockInterceptors } from '../environments/environment';
 import { createAppRoutes } from './app.routes';
 import { parseAppConfig, provideAppConfig } from './core/config/app-config';
 import { DEV_FEATURES } from './core/dev/dev-features';
 import { provideAppErrorHandler } from './core/errors/app-error-handler';
+import {
+  offerReloadOnStaleNavigation,
+  provideStaleBuildRecovery,
+} from './core/errors/stale-build';
 import { envelopeInterceptor } from './core/http/envelope.interceptor';
 import { bearerInterceptor } from './core/http/bearer.interceptor';
 import { requestIdInterceptor } from './core/http/request-id.interceptor';
@@ -34,7 +39,9 @@ export const appConfig: ApplicationConfig = {
         scrollPositionRestoration: 'enabled',
         anchorScrolling: 'enabled',
       }),
+      withNavigationErrorHandler(offerReloadOnStaleNavigation),
     ),
+    provideStaleBuildRecovery(),
     { provide: TitleStrategy, useExisting: AppTitleStrategy },
     provideHttpClient(
       withInterceptors([

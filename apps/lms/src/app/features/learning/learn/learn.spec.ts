@@ -115,6 +115,21 @@ describe('Learn', () => {
   describe('a learner with a course in progress', () => {
     beforeEach(() => open());
 
+    it('identifies content progress and the remaining final exam on home tiles', () => {
+      const tiles = Array.from(cards());
+      expect(
+        tiles.every((tile) =>
+          tile
+            .querySelector('.course-tile__pct')
+            ?.textContent?.includes('nội dung'),
+        ),
+      ).toBe(true);
+      const failed = tiles.find((tile) =>
+        tile.textContent?.includes('Chưa đạt'),
+      );
+      expect(failed?.textContent).toContain('Bài kiểm tra cuối khóa chưa đạt');
+    });
+
     it('opens with the page title, the first thing to attend to and the resume card', () => {
       const hero = el.querySelector('app-learn-hero')!;
       expect(el.querySelectorAll('h1')).toHaveLength(1);
@@ -293,11 +308,13 @@ describe('Learn', () => {
       expect(region?.querySelector('a[href="/course/51"]')).toBeTruthy();
     });
 
-    it('links "Xem tất cả" to the assigned catalogue', () => {
+    it('links "Xem tất cả" to every joined course in the current learning tab', () => {
       const link = Array.from(el.querySelectorAll('a')).find((a) =>
         a.textContent?.includes('Xem tất cả'),
       );
-      expect(link?.getAttribute('href')).toBe('/catalog?scope=assigned');
+      expect(link?.getAttribute('href')).toBe(
+        '/catalog?scope=mine&status=in_progress',
+      );
     });
 
     it('lists what falls due with a link to each course, and the first reminders', () => {

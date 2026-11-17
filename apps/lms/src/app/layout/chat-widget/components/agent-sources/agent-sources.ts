@@ -1,5 +1,7 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 import type { Citation } from '@lms/contracts';
+import { Router, RouterLink, type UrlTree } from '@angular/router';
+import { SourceViewerStore } from '../../../../core/assistant/source-viewer.store';
 import { Popover } from '@lms/ui';
 import {
   citationLocation,
@@ -17,13 +19,20 @@ export function agentSourceId(turnId: number, n: number): string {
  */
 @Component({
   selector: 'app-agent-sources',
-  imports: [Popover],
+  imports: [Popover, RouterLink],
   templateUrl: './agent-sources.html',
   styleUrl: './agent-sources.scss',
 })
 export class AgentSources {
   readonly turnId = input.required<number>();
   readonly citations = input.required<readonly Citation[]>();
+  private readonly router = inject(Router);
+  protected readonly viewer = inject(SourceViewerStore);
+
+  /** A link with a query string is a `UrlTree`: a string would encode `?` and `=` into the path. */
+  protected linkTree(url: string): UrlTree {
+    return this.router.parseUrl(url);
+  }
 
   /** One line per number, in number order. */
   protected readonly items = computed(() => {

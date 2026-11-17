@@ -5,8 +5,12 @@ import {
   FormRoot,
   validateStandardSchema,
 } from '@angular/forms/signals';
-import type { CatalogTreeField, CatalogTreeProgram } from '@lms/contracts';
-import { Field, Input, Textarea } from '@lms/ui';
+import type {
+  BusinessModule,
+  CatalogTreeField,
+  CatalogTreeProgram,
+} from '@lms/contracts';
+import { Button, Field, Icon, Input, Select, Textarea } from '@lms/ui';
 import type { SaveCatalogItem } from '../../data-access/training-catalog.store';
 import {
   CatalogItemFormSchema,
@@ -21,7 +25,7 @@ import {
  */
 @Component({
   selector: 'app-catalog-item-form',
-  imports: [Field, FormField, FormRoot, Input, Textarea],
+  imports: [Button, Field, FormField, FormRoot, Icon, Input, Select, Textarea],
   templateUrl: './catalog-item-form.html',
 })
 export class CatalogItemForm {
@@ -31,9 +35,13 @@ export class CatalogItemForm {
     CatalogTreeField | CatalogTreeProgram | null
   >();
   readonly submitted = output<SaveCatalogItem>();
+  readonly modules = input<readonly BusinessModule[]>([]);
 
   private readonly model = linkedSignal(() =>
-    toCatalogItemFormValue(this.item()),
+    toCatalogItemFormValue(
+      this.item(),
+      this.kind() === 'field' ? this.modules() : [],
+    ),
   );
   protected readonly itemForm = form(
     this.model,
@@ -49,6 +57,58 @@ export class CatalogItemForm {
       name: value.name.trim(),
       status: this.item()?.status ?? 'draft',
       ...(description ? { description } : {}),
+      ...(this.kind() === 'field'
+        ? {
+            modules: value.modules.map((module) => ({
+              ...(module.id
+                ? { id: module.id, expectedVersion: module.expectedVersion }
+                : {}),
+              code: module.code.trim(),
+              name: module.name.trim(),
+              status: module.status,
+              sortNo: module.sortNo,
+              deleted: module.deleted,
+            })),
+          }
+        : {}),
     });
+  }
+
+  protected addModule(): void {
+    this.model.update((value) => ({
+      ...value,
+      modules: [
+        ...value.modules,
+        {
+          key: crypto.randomUUID(),
+          code: '',
+          name: '',
+          status: 'published',
+          sortNo: 0,
+          deleted: false,
+        },
+      ],
+    }));
+  }
+
+  protected removeModule(key: string): void {
+    this.model.update((value) => ({
+      ...value,
+      modules: value.modules.flatMap((module) => {
+        if (module.key !== key) return [module];
+        if (!module.id) return [];
+        const original = this.modules().find((row) => row.id === module.id);
+        // A deleted row must not retain invalid hidden edits that would block the form.
+        return [
+          {
+            ...module,
+            code: original?.code ?? module.code,
+            name: original?.name ?? module.name,
+            status: original?.status ?? module.status,
+            deleted: !module.deleted,
+          },
+        ];
+      }),
+    }));
   }
 }

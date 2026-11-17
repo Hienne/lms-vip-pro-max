@@ -1,0 +1,80 @@
+<ng-template #inline let-pieces>
+  @for (piece of pieces; track $index) { @switch (piece.kind) { @case ('code') {
+  <code>{{ piece.text }}</code>
+  } @case ('link') {
+  <a class="md__link" [routerLink]="linkTree(piece.href)">{{ piece.text }}</a>
+  } @case ('source') { @if (badges()) {
+  <app-source-badge [citation]="piece.citation" />
+  } @else {
+  <button
+    type="button"
+    class="md__cite"
+    [attr.aria-label]="piece.name"
+    (click)="sourceSelected.emit(piece.citation.n)"
+  >
+    {{ piece.citation.n }}
+  </button>
+  } } @default {
+  <span [class.md__strong]="piece.strong" [class.md__em]="piece.emphasis"
+    >{{ piece.text }}</span
+  >
+  } } }
+</ng-template>
+
+<div class="md">
+  @for (block of blocks(); track $index) { @switch (block.kind) { @case
+  ('paragraph') {
+  <p>
+    <ng-container
+      *ngTemplateOutlet="inline; context: pieceContext(block.pieces)"
+    />
+  </p>
+  } @case ('list') { @if (block.ordered) {
+  <ol>
+    @for (item of block.items; track $index) {
+    <li>
+      <ng-container *ngTemplateOutlet="inline; context: pieceContext(item)" />
+    </li>
+    }
+  </ol>
+  } @else {
+  <ul>
+    @for (item of block.items; track $index) {
+    <li>
+      <ng-container *ngTemplateOutlet="inline; context: pieceContext(item)" />
+    </li>
+    }
+  </ul>
+  } } @case ('code') {
+  <pre><code>{{ block.text }}</code></pre>
+  } @case ('table') {
+  <div class="md__table" tabindex="0" role="region" aria-label="Bảng">
+    <table>
+      <thead>
+        <tr>
+          @for (cell of block.head; track $index) {
+          <th scope="col">
+            <ng-container
+              *ngTemplateOutlet="inline; context: pieceContext(cell)"
+            />
+          </th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of block.rows; track $index) {
+        <tr>
+          @for (cell of row; track $index) {
+          <td>
+            <ng-container
+              *ngTemplateOutlet="inline; context: pieceContext(cell)"
+            />
+          </td>
+          }
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  } } }
+</div>

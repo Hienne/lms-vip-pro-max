@@ -33,7 +33,7 @@ const BRAND_POINTS: readonly { icon: IconName; text: string }[] = [
     icon: 'history',
     text: 'Tiếp tục học đúng trang, đúng mốc video trên mọi thiết bị',
   },
-  { icon: 'target', text: 'Theo dõi năng lực theo từng nhóm kiến thức' },
+  { icon: 'target', text: 'Xem kết quả đánh giá theo từng nhóm năng lực' },
 ];
 
 /** The sign-in page (the mockup's `login`), on the bare layout. */

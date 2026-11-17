@@ -12,6 +12,7 @@ import {
   openCommunity,
   type CommunityPage,
 } from '../community.testing';
+import { randomId } from '../../../core/browser/secure-context';
 
 const type = async (page: CommunityPage, selector: string, value: string) => {
   const field = page
@@ -167,7 +168,7 @@ describe('CommunityEditor', () => {
         const page = await openCommunity(route, 'giangvien');
         const backend = TestBed.inject(MockBackend);
         const session = {
-          uploadId: crypto.randomUUID(),
+          uploadId: randomId(),
           assetId: 9123,
           status: 'uploading',
           partSize: 8_388_608,

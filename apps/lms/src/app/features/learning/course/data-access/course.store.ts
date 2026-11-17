@@ -15,6 +15,7 @@ import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { coverPreview } from '../../../../shared/course/cover-image';
 import { LEVEL_LABEL } from '../../../../shared/course/course-labels';
+import { blockReasonText } from '../../../../shared/quiz/quiz-block-reason';
 
 export type CourseView = 'loading' | 'missing' | 'not-enrolled' | 'enrolled';
 
@@ -239,6 +240,29 @@ export class CourseStore {
         completion.finalExamStatus === 'NOT_PASSED')
       ? completion.finalQuizId
       : null;
+  });
+
+  readonly nextExamAction$ = computed(() => {
+    const id = this.nextExamId$();
+    const card = this.finalExam$();
+    if (!id || !card || card.quiz.id !== id) return null;
+    return {
+      id,
+      label: card.canStart
+        ? card.summary.runningAttemptId !== null
+          ? 'Tiếp tục làm bài'
+          : 'Làm bài kiểm tra cuối khóa'
+        : card.summary.attemptsUsed > 0
+          ? 'Xem kết quả và lịch sử thi'
+          : 'Xem điều kiện dự thi',
+      note:
+        card.canStart || !card.blockReason
+          ? null
+          : blockReasonText(card.blockReason, {
+              availableAt: card.availableAt,
+              closeAt: card.quiz.closeAt,
+            }),
+    };
   });
 
   /** "Bắt đầu học" before the first lesson, "Tiếp tục học" while learning, nothing once done. */

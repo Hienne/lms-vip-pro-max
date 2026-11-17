@@ -72,6 +72,20 @@ describe('LearnStore', () => {
     );
   }
 
+  it('keeps the selected course tab when opening the complete catalogue', async () => {
+    const store = await open();
+    for (const [tab, query] of [
+      ['in_progress', { scope: 'mine', status: 'in_progress' }],
+      ['not_started', { scope: 'mine', status: 'not_started' }],
+      ['completed', { scope: 'mine', status: 'completed' }],
+      ['mandatory', { scope: 'mine', requirement: 'mandatory' }],
+      ['assigned', { scope: 'assigned' }],
+    ] as const) {
+      store.showTab(tab);
+      expect(store.allCoursesQuery$()).toEqual(query);
+    }
+  });
+
   it('asks for the in-progress course touched last, then for that enrolment', async () => {
     const store = await open();
     expect(queries(learnerEndpoints.myCourses)).toContainEqual({
