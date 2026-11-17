@@ -763,8 +763,32 @@ the server sends a route and speed for frame-by-frame rendering and confirms arr
 
 Deploy the matching `corebanking-academy` module and configure WebSocket upgrade for
 `/api/v1/chat-room/socket` on the FE reverse proxy. The development `/api` proxy enables WebSocket.
-Apply the backend's `2026-11-09-chat-room-games.sql` upgrade first. Presence and invitations belong to one
-backend instance. Wallets and game data persist in PostgreSQL.
+The November 17 playground upgrade needs no new table, column or migration. It uses the existing
+wallet settlement API internally. Presence, invitations, board positions, moves, clocks and color-floor
+rounds belong to one backend instance in RAM; wallets and existing dice data persist in PostgreSQL.
+Only older installations without the wallet schema need the existing `2026-11-09-chat-room-games.sql` upgrade.
+
+Join capabilities `reactions`, `boardGames` and `floorGame` gate the new event groups; `playground-ready`
+acknowledges them. Reaction IDs come from `ROOM_REACTIONS`. A new reaction replaces that player's
+previous one, expires after 2.8 seconds and clears on departure/disconnect. It sits above the speech
+bubble, honors reduced motion and never enters chat history. Bubble textures use grapheme-safe wrapping,
+three lines with ellipsis, a bright sRGB untone-mapped surface and dark text. Full text stays in history.
+
+`RoomBoard` renders three chess and three xiangqi tables from the same map used for collision and seating.
+Both seated players confirm the same contribution (at least 10 CPoint) before play starts. The map exposes
+the 5-minute + 3-second clock. Snapshots carry legal destinations, turn, clocks, last move, check, history,
+result and any repetition warning. The server validates identity, seat, match/version and deadline;
+spectators can watch but cannot move. Arrow keys navigate cells and Enter chooses; promotions offer
+queen/rook/bishop/knight. Reconnecting players receive their match and can return to their reserved chair.
+Clocks run while disconnected. UI controls let players resign, offer/accept a draw, or claim one using
+the current position or a selected intended move. The backend acts as arbiter and applies incorrect-claim
+time penalties. FIDE dead-position reachability and complete WXF 2018 diagram coverage remain limitations
+documented in the backend's `docs/api/CHAT_ROOM.md`; do not claim complete rules certification.
+
+`RoomPlayground` shows table occupancy and the free color floor. Its target includes a Vietnamese name
+and symbol. The server starts with at least two players, counts down five seconds and scores up to five
+rounds at a shared deadline. Tiles use half-open bounds; a late movement packet cannot change a completed
+score. Reconnect snapshots restore the same round. Late entrants queue for the next game.
 
 Course lesson authoring accepts `lessonType: "scorm"` and nullable `scormPackageId` on a draft (required for publication). The lesson form uploads a ZIP directly, or opens the optional lesson-library picker; uploaded draft packages publish with the course. Manual content and quiz authoring stay available, including mixed courses. SCORM lessons send no manual blocks. The embedded lesson player uses the exact enrollmentId and lessonId for progress and launch. A save receipt triggers authenticated progress reads without relaunching the iframe. Completion is server-owned and follows the lesson's `scormCompletionRule`; a configured final exam remains required. Each lesson/enrollment has its own score and bookmark, even when sharing a package. Apply backend `2026-11-13-scorm-course-lessons.sql` after the SCORM 1.2 base upgrade, then `2026-11-14-scorm-completion-rule.sql`, before deploying both applications.
 

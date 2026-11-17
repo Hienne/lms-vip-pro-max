@@ -89,6 +89,8 @@ match.timeout === 'away') {
     [view]="store.canvas$()"
     [gesturesEnabled]="store.gesturesEnabled$()"
     [interactionsEnabled]="store.interactionsEnabled$()"
+    [reactionsEnabled]="store.playground$().reactions"
+    (reacted)="store.react($event)"
     [invitation]="store.invitation$()"
     [gestureNotice]="store.gestureNotice$()"
     (moved)="store.move($event)"
@@ -97,7 +99,8 @@ match.timeout === 'away') {
     (ready)="store.rendererReady()"
     (failed)="store.rendererFailed($event)"
   />
-  @if (store.nearDice$() && !panel) {
+  @if(store.online$() && !panel && !store.chatOpen$()) {
+  <app-room-playground /> } @if (store.nearDice$() && !panel) {
   <button
     uiButton
     size="sm"
@@ -112,7 +115,7 @@ match.timeout === 'away') {
     class="chat-room__game"
     tabindex="-1"
     aria-label="Trò chơi trong phòng"
-    [class.chat-room__game--caro]="panel === 'caro'"
+    [class.chat-room__game--caro]="panel === 'caro' || panel === 'board'"
   >
     @switch (panel) { @case ('dice') {
     <app-room-dice
@@ -140,7 +143,9 @@ match.timeout === 'away') {
       (stood)="store.interact({ type: 'seat', action: 'stand' })"
       (restarted)="games.newCaro()"
     />
-    } } @case ('rank') {
+    } } @case ('board') {
+    <app-room-board (closed)="closeGame()" />
+    } @case ('rank') {
     <ui-section-card class="chat-room__rank" title="Bảng CPoint">
       <button
         slot="action"

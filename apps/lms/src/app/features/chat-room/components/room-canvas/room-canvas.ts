@@ -14,8 +14,10 @@ import type {
   RoomInteractionCommand,
   RoomMap,
   RoomMovement,
+  RoomReactionId,
 } from '@lms/contracts';
 import { Button } from '@lms/ui';
+import { ROOM_REACTIONS } from '@lms/contracts';
 import type {
   RoomCanvasState,
   RoomInvitationView,
@@ -39,6 +41,9 @@ export class RoomCanvas {
   readonly view = input.required<RoomCanvasState>();
   readonly gesturesEnabled = input(false);
   readonly interactionsEnabled = input(false);
+  readonly reactionsEnabled = input(false);
+  readonly reacted = output<RoomReactionId>();
+  protected readonly reactions = ROOM_REACTIONS;
   readonly invitation = input<RoomInvitationView | null>(null);
   readonly gestureNotice = input('');
   readonly moved = output<RoomMovement>();
@@ -57,6 +62,14 @@ export class RoomCanvas {
     viewChild.required<ElementRef<HTMLDivElement>>('mount');
   private scene?: RoomRenderer;
   private chairPointer?: { id: number; x: number; y: number };
+  protected chooseReaction(
+    reaction: RoomReactionId,
+    picker: HTMLDetailsElement,
+  ): void {
+    this.reacted.emit(reaction);
+    picker.removeAttribute('open');
+    picker.querySelector('summary')?.focus();
+  }
 
   constructor() {
     afterRenderEffect((onCleanup) => {
@@ -107,7 +120,7 @@ export class RoomCanvas {
     }
   }
   protected focus(event: PointerEvent): void {
-    if ((event.target as HTMLElement).closest('button')) return;
+    if ((event.target as HTMLElement).closest('button, summary')) return;
     if (
       event.button === 0 &&
       event.target instanceof HTMLCanvasElement &&

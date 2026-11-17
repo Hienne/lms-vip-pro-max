@@ -99,6 +99,9 @@ describe('ChatRoomStore', () => {
       roomGames: true,
       gestures: true,
       interactions: true,
+      reactions: true,
+      boardGames: true,
+      floorGame: true,
     });
     expect(store.online$()).toBe(true);
     observer.message({
@@ -222,6 +225,30 @@ describe('ChatRoomStore', () => {
     expect(store.messages$()[0].id).toBe('1');
     store.leave();
     expect(store.messages$()).toEqual([]);
+  });
+  it('replaces and clears reactions without adding them to chat history', async () => {
+    await connect();
+    vi.useFakeTimers();
+    observer.message({
+      type: 'playground-ready',
+      reactions: true,
+      boardGames: true,
+      floorGame: true,
+    });
+    store.react('love');
+    expect(send).toHaveBeenCalledWith({ type: 'reaction', reaction: 'love' });
+    observer.message({ type: 'reaction', playerId: 'a', reaction: 'love' });
+    observer.message({ type: 'reaction', playerId: 'a', reaction: 'clap' });
+    expect(store.canvas$().reactions?.['a'].reaction).toBe('clap');
+    expect(store.messages$()).toEqual([]);
+    await vi.advanceTimersByTimeAsync(2801);
+    expect(store.canvas$().reactions).toEqual({});
+    observer.message({ type: 'reaction', playerId: 'b', reaction: 'hello' });
+    observer.message({ type: 'left', id: 'b', name: 'Bình' });
+    expect(store.canvas$().reactions).toEqual({});
+    observer.message({ type: 'reaction', playerId: 'a', reaction: 'hello' });
+    store.leave();
+    expect(store.canvas$().reactions).toEqual({});
   });
   it('opens chat explicitly, closes it after send, and resumes movement', async () => {
     store.openChat();

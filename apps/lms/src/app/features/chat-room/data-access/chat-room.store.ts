@@ -19,6 +19,7 @@ import {
   type RoomIdentity,
   type RoomMovement,
   type RoomPlayer,
+  type RoomReactionId,
 } from '@lms/contracts';
 import { retry, tap, throwError, timer } from 'rxjs';
 import { serverData } from '../../../core/data-access/server-data';
@@ -35,6 +36,7 @@ import type {
   RoomInvitationView,
   RoomSpeech,
   TimedRoomGesture,
+  RoomReaction,
 } from './chat-room.model';
 import { inRoomArea } from './chat-room.model';
 import { RoomGamesStore } from './room-games.store';
@@ -66,6 +68,12 @@ export class ChatRoomStore {
     messages: signal<readonly RoomChat[]>([]),
     me: signal(''),
     speech: signal<Readonly<Record<string, RoomSpeech>>>({}),
+    reactions: signal<Readonly<Record<string, RoomReaction>>>({}),
+    playground: signal({
+      reactions: false,
+      boardGames: false,
+      floorGame: false,
+    }),
     gestures: signal<Readonly<Record<string, TimedRoomGesture>>>({}),
     gesturesEnabled: signal(false),
     interactionsEnabled: signal(false),
@@ -113,6 +121,7 @@ export class ChatRoomStore {
   readonly players$ = this.state.players.asReadonly();
   readonly speech$ = this.state.speech.asReadonly();
   readonly messages$ = this.state.messages.asReadonly();
+  readonly playground$ = this.state.playground.asReadonly();
   readonly gesturesEnabled$ = this.state.gesturesEnabled.asReadonly();
   readonly interactionsEnabled$ = this.state.interactionsEnabled.asReadonly();
   readonly invitation$ = computed<RoomInvitationView | null>(() => {
@@ -179,6 +188,9 @@ export class ChatRoomStore {
     speech: this.speech$(),
     gestures: this.state.gestures(),
     correction: this.state.correction(),
+    reactions: this.state.reactions(),
+    boardTables: this.games.boardTables$(),
+    floorTarget: this.games.floor$()?.target,
   }));
 
   private identity: RoomIdentity | null = null;
@@ -291,6 +303,10 @@ export class ChatRoomStore {
       this.socket?.send({ type: 'gesture', kind });
     }
   }
+  react(reaction: RoomReactionId): void {
+    if (this.online$() && this.playground$().reactions)
+      this.socket?.send({ type: 'reaction', reaction });
+  }
   interact(command: RoomInteractionCommand): void {
     if (this.online$() && this.interactionsEnabled$()) {
       this.socket?.send(command);
@@ -365,6 +381,9 @@ export class ChatRoomStore {
             roomGames: true,
             gestures: true,
             interactions: true,
+            reactions: true,
+            boardGames: true,
+            floorGame: true,
           });
       },
       message: (event) => {
@@ -405,6 +424,7 @@ export class ChatRoomStore {
           this.setPlayers([...this.players$(), event.player]);
         break;
       case 'left':
+        this.clearReaction(event.id);
         this.setPlayers(this.players$().filter((p) => p.id !== event.id));
         if (!this.invitation$()) this.clearInvitation();
         this.clearSpeech(event.id);
@@ -466,6 +486,22 @@ export class ChatRoomStore {
           ),
         );
         break;
+      case 'playground-ready':
+        this.state.playground.set(event);
+        break;
+      case 'reaction': {
+        const startedAt = performance.now();
+        this.state.reactions.update((current) => ({
+          ...current,
+          [event.playerId]: { reaction: event.reaction, startedAt },
+        }));
+        clearTimeout(this.reactionTimers.get(event.playerId));
+        this.reactionTimers.set(
+          event.playerId,
+          setTimeout(() => this.clearReaction(event.playerId), 2800),
+        );
+        break;
+      }
       case 'gesture':
         this.receiveGesture(event);
         break;
@@ -582,6 +618,30 @@ export class ChatRoomStore {
     this.socket?.close();
     this.socket = undefined;
   }
+  private readonly reactionTimers = new Map<
+    string,
+    ReturnType<typeof setTimeout>
+  >();
+  private clearReaction(playerId?: string): void {
+    if (playerId) {
+      clearTimeout(this.reactionTimers.get(playerId));
+      this.reactionTimers.delete(playerId);
+      this.state.reactions.update((current) => {
+        const remaining = { ...current };
+        delete remaining[playerId];
+        return remaining;
+      });
+    } else {
+      this.reactionTimers.forEach(clearTimeout);
+      this.reactionTimers.clear();
+      this.state.reactions.set({});
+      this.state.playground.set({
+        reactions: false,
+        boardGames: false,
+        floorGame: false,
+      });
+    }
+  }
   private clearSpeech(playerId?: string): void {
     if (playerId) {
       clearTimeout(this.speechTimers.get(playerId));
@@ -659,6 +719,7 @@ export class ChatRoomStore {
   }
 
   private clearGestures(): void {
+    this.clearReaction();
     clearTimeout(this.gestureNoticeTimer);
     this.state.gestures.set({});
     this.state.gesturesEnabled.set(false);

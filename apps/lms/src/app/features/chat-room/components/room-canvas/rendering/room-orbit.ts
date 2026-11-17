@@ -174,7 +174,9 @@ export class RoomOrbit {
       !this.view().online ||
       this.view().chatting ||
       event.isComposing ||
-      ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(target.tagName) ||
+      ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'SUMMARY'].includes(
+        target.tagName,
+      ) ||
       target.isContentEditable ||
       target.closest?.('[role="log"]')
     )
@@ -239,6 +241,10 @@ export class RoomOrbit {
     const previous = this.previousView;
     this.previousView = view;
     if (view.dice !== previous?.dice) this.world.showDice(view.dice?.dice);
+    if (view.boardTables !== previous?.boardTables)
+      this.world.showBoardTables(view.boardTables ?? []);
+    if (view.floorTarget !== previous?.floorTarget)
+      this.world.showFloorTarget(view.floorTarget ?? '');
     if (view.chatting || (previous?.online && !view.online)) {
       this.blur();
     }
@@ -373,6 +379,7 @@ export class RoomOrbit {
           : gesturePose(view.gestures[id], now, this.reducedMotion),
         id === view.me ? walking || this.approaching : undefined,
         id === view.me && this.smoothLocalPosition,
+        view.reactions?.[id],
       ),
     );
     const focus = self?.seated
