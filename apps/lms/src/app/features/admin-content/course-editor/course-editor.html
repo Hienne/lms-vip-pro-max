@@ -163,6 +163,7 @@
     <app-course-outline
       [draft]="courseForm"
       [editable]="store.isDraft$()"
+      [lessonNotes]="fill.lessonNotes$()"
       [uploads]="store.uploads$()"
       (uploadsDropped)="store.cancelUploads($event)"
       (editLesson)="store.editLesson($event)"

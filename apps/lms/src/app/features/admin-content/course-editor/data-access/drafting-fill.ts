@@ -1,5 +1,14 @@
-import type { BasicsProposal, DraftingStep } from '@lms/contracts';
-import type { CourseDraftValue } from '../course-draft';
+import type {
+  BasicsProposal,
+  DraftingStep,
+  OutlineProposal,
+} from '@lms/contracts';
+import {
+  newChapter,
+  newLesson,
+  type ChapterValue,
+  type CourseDraftValue,
+} from '../course-draft';
 
 /** The pause between two fields the assistant writes, so the author watches the step fill. */
 export const DRAFTING_FIELD_DELAY_MS = 120;
@@ -44,10 +53,40 @@ function basicsPatches(proposal: BasicsProposal): FillPatch[] {
 }
 
 /**
+ * Step 2: each chapter, then its lessons one at a time, replacing what the outline held. Lessons
+ * are new content lessons with no blocks: the assistant never writes lesson content. Rows are made
+ * once, so a chapter or lesson keeps its key from one write to the next.
+ */
+function outlinePatches(proposal: OutlineProposal): FillPatch[] {
+  const chapters: ChapterValue[] = proposal.chapters.map((chapter, ci) => ({
+    ...newChapter(ci + 1),
+    title: chapter.title,
+    lessons: chapter.lessons.map((lesson, li) => ({
+      ...newLesson(li + 1),
+      title: lesson.title,
+    })),
+  }));
+  const patches: FillPatch[] = [];
+  chapters.forEach((chapter, ci) => {
+    const before = chapters.slice(0, ci);
+    for (let count = 0; count <= chapter.lessons.length; count++) {
+      patches.push(
+        set('chapters', [
+          ...before,
+          { ...chapter, lessons: chapter.lessons.slice(0, count) },
+        ]),
+      );
+    }
+  });
+  return patches;
+}
+
+/**
  * The writes that put a step's proposal into the editor's form, one per field (lists one item per
  * write). A step without a proposal, or one the page does not fill yet, writes nothing.
  */
 export function fillSteps(step: DraftingStep): readonly FillPatch[] {
   if (step.step === 1 && step.proposal) return basicsPatches(step.proposal);
+  if (step.step === 2 && step.proposal) return outlinePatches(step.proposal);
   return [];
 }

@@ -1,4 +1,8 @@
-import type { BasicsProposal, DraftingStep } from '@lms/contracts';
+import type {
+  BasicsProposal,
+  DraftingStep,
+  OutlineProposal,
+} from '@lms/contracts';
 import { emptyDraftValue, type CourseDraftValue } from '../course-draft';
 import { fillSteps } from './drafting-fill';
 
@@ -102,5 +106,94 @@ describe('fillSteps', () => {
     expect(
       fillSteps({ ...stepOne(), state: 'proposing', proposal: null }),
     ).toEqual([]);
+  });
+
+  describe('step 2', () => {
+    const outline: OutlineProposal = {
+      chapters: [
+        {
+          title: 'Tổng quan',
+          lessons: [
+            {
+              title: 'Mục đích',
+              description: 'Vì sao đối soát.',
+              sourceSection: 'Mục 1',
+            },
+            {
+              title: 'Dữ liệu',
+              description: 'Các nguồn dữ liệu.',
+              sourceSection: 'Mục 2',
+            },
+          ],
+        },
+        {
+          title: 'Thực hiện',
+          lessons: [
+            {
+              title: 'Các bước',
+              description: 'Thứ tự các bước.',
+              sourceSection: 'Mục 3',
+            },
+          ],
+        },
+      ],
+    };
+    const stepTwo: DraftingStep = {
+      step: 2,
+      state: 'proposed',
+      proposal: outline,
+      lessonNotes: null,
+      notes: [],
+      error: null,
+      updateTime: '2026-11-17T09:05:00+07:00',
+    };
+
+    it('writes each chapter, then its lessons, one at a time', () => {
+      const shape = frames(stepTwo).map((value) =>
+        value.chapters.map(
+          (chapter) =>
+            `${chapter.title}:${chapter.lessons.map((l) => l.title).join(',')}`,
+        ),
+      );
+
+      expect(
+        fillSteps(stepTwo).every((patch) => patch.field === 'chapters'),
+      ).toBe(true);
+      expect(shape).toEqual([
+        ['Tổng quan:'],
+        ['Tổng quan:Mục đích'],
+        ['Tổng quan:Mục đích,Dữ liệu'],
+        ['Tổng quan:Mục đích,Dữ liệu', 'Thực hiện:'],
+        ['Tổng quan:Mục đích,Dữ liệu', 'Thực hiện:Các bước'],
+      ]);
+    });
+
+    it('writes lessons without content and keeps their keys from frame to frame', () => {
+      const all = frames(stepTwo);
+      const last = all[all.length - 1];
+      const lessons = last.chapters.flatMap((chapter) => chapter.lessons);
+
+      expect(lessons.every((lesson) => lesson.blocks.length === 0)).toBe(true);
+      expect(lessons.every((lesson) => lesson.lessonType === 'content')).toBe(
+        true,
+      );
+      expect(all[1].chapters[0].lessons[0].key).toBe(
+        last.chapters[0].lessons[0].key,
+      );
+      expect(all[0].chapters[0].key).toBe(last.chapters[0].key);
+    });
+
+    it('replaces chapters the form already had', () => {
+      let value: CourseDraftValue = {
+        ...emptyDraftValue(),
+        chapters: [{ key: 'old', title: 'Cũ', lessons: [] }],
+      };
+      for (const patch of fillSteps(stepTwo)) value = patch.apply(value);
+
+      expect(value.chapters.map((chapter) => chapter.title)).toEqual([
+        'Tổng quan',
+        'Thực hiện',
+      ]);
+    });
   });
 });

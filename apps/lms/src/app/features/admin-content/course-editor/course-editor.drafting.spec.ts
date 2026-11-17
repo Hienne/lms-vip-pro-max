@@ -4,6 +4,7 @@ import {
   courseEndpoints,
   draftingSessionEndpoints,
   type ConfirmBasicsCommand,
+  type ConfirmOutlineCommand,
   type DraftingSession,
   type DraftingStep,
 } from '@lms/contracts';
@@ -13,6 +14,7 @@ import {
   draftingSessionFixture,
   draftingStepFixture,
   envelopeOk,
+  outlineProposalFixture,
   type FakeReply,
 } from '@lms/mocks';
 import { of } from 'rxjs';
@@ -307,6 +309,12 @@ describe('CourseEditor confirming a drafting step', () => {
         );
         return ok(session.courseId === courseId ? session : null);
       }
+      if (
+        endpoint === draftingSessionEndpoints.confirm &&
+        (request as { params: Record<string, string> }).params['step'] === '2'
+      ) {
+        return confirmOutline(request);
+      }
       if (endpoint === draftingSessionEndpoints.confirm) {
         const { course } = (request as { body: ConfirmBasicsCommand }).body;
         if (session.courseId !== null) return ok(session);
@@ -342,6 +350,34 @@ describe('CourseEditor confirming a drafting step', () => {
     });
   });
 
+  /**
+   * The server's step 2 confirm: the draft is saved through the course's own save, the step is
+   * confirmed and step 3 is queued.
+   */
+  const confirmOutline = (request: unknown): FakeReply => {
+    const { draft } = (request as { body: ConfirmOutlineCommand }).body;
+    const saved = original(courseEndpoints.saveDraft, {
+      ...(request as object),
+      body: draft,
+      params: {
+        courseId: String(session.courseId),
+        revisionId: String(session.revisionId),
+      },
+      query: {},
+    });
+    if (saved.body.status !== 'SUCCESS') return saved;
+    session = {
+      ...session,
+      currentStep: 3,
+      steps: [
+        session.steps[0],
+        { ...session.steps[1], state: 'confirmed' } as DraftingStep,
+        draftingStepFixture(3, 'proposing'),
+      ],
+    };
+    return ok(session);
+  };
+
   afterEach(() => vi.useRealTimers());
 
   const advance = async (ms: number) => {
@@ -350,6 +386,52 @@ describe('CourseEditor confirming a drafting step', () => {
     await vi.advanceTimersByTimeAsync(0);
     TestBed.tick();
   };
+
+  /**
+   * A draft the assistant made at step 1, opened later on its edit page: step 1 is confirmed and
+   * step 2 is being proposed.
+   */
+  async function openDraftAtStepTwo(): Promise<number> {
+    await open('/admin/courses/new');
+    // A request the page sent while signed in, so the course is made as its author.
+    const template = screen.calls.mock.calls
+      .map(([, request]) => request as { token?: string | null })
+      .find((request) => request?.token) as object;
+    const created = original(courseEndpoints.createCourse, {
+      ...template,
+      body: {
+        ownerOrgId: 1,
+        code: 'AI-RESUME01',
+        draft: {
+          programId: 1,
+          title: basicsProposalFixture.title,
+          summary: basicsProposalFixture.summary,
+          level: 'basic',
+          defaultRequirement: 'mandatory',
+          objectives: [...basicsProposalFixture.objectives],
+          chapters: [],
+          rewardPoints: 0,
+        },
+      },
+      params: {},
+      query: {},
+    });
+    const detail = (
+      created.body as {
+        data: { course: { id: number }; revision: { id: number } };
+      }
+    ).data;
+    session = atStepTwo(detail.course.id, detail.revision.id);
+
+    // The draft is opened later: the page follows no session until it asks for the course's.
+    const opening = TestBed.inject(Router).navigateByUrl(
+      `/admin/courses/${detail.course.id}/edit`,
+    );
+    await advance(0);
+    await opening;
+    await advance(0);
+    return detail.course.id;
+  }
 
   async function open(
     url = '/admin/courses/new?session=1',
@@ -436,7 +518,9 @@ describe('CourseEditor confirming a drafting step', () => {
     expect(session.courseId).not.toBeNull();
     expect(screen.url()).toBe(`/admin/courses/${session.courseId}/edit?step=1`);
     expect(legend()).toContain('Nội dung khóa học');
-    expect(screen.text()).not.toContain('Đã chốt');
+    // Step 2 is being proposed: its "Đã chốt" waits for the outline.
+    expect(screen.text()).toContain('Trợ lý đang soạn…');
+    expect(confirmButton()?.disabled).toBe(true);
     expect(screen.page<CourseEditor>().hasUnsavedChanges()).toBe(false);
   });
 
@@ -470,44 +554,7 @@ describe('CourseEditor confirming a drafting step', () => {
   });
 
   it("resumes the draft at the session's current step after a reload, and a confirmed step is saved without confirming again", async () => {
-    await open('/admin/courses/new');
-    // A request the page sent while signed in, so the course is made as its author.
-    const template = screen.calls.mock.calls
-      .map(([, request]) => request as { token?: string | null })
-      .find((request) => request?.token) as object;
-    const created = original(courseEndpoints.createCourse, {
-      ...template,
-      body: {
-        ownerOrgId: 1,
-        code: 'AI-RESUME01',
-        draft: {
-          programId: 1,
-          title: basicsProposalFixture.title,
-          summary: basicsProposalFixture.summary,
-          level: 'basic',
-          defaultRequirement: 'mandatory',
-          objectives: [...basicsProposalFixture.objectives],
-          chapters: [],
-          rewardPoints: 0,
-        },
-      },
-      params: {},
-      query: {},
-    });
-    const detail = (
-      created.body as {
-        data: { course: { id: number }; revision: { id: number } };
-      }
-    ).data;
-    session = atStepTwo(detail.course.id, detail.revision.id);
-
-    // The draft is opened later: the page follows no session until it asks for the course's.
-    const opening = TestBed.inject(Router).navigateByUrl(
-      `/admin/courses/${detail.course.id}/edit`,
-    );
-    await advance(0);
-    await opening;
-    await advance(0);
+    await openDraftAtStepTwo();
 
     expect(screen.callsTo(draftingSessionEndpoints.forCourse)).toBe(1);
     expect(legend()).toContain('Nội dung khóa học');
@@ -544,5 +591,104 @@ describe('CourseEditor confirming a drafting step', () => {
     expect(screen.callsTo(draftingSessionEndpoints.get)).toBe(0);
     expect(screen.text()).not.toContain('Trợ lý đang soạn…');
     expect(confirmButton()).toBeUndefined();
+  });
+
+  describe('step 2, the outline', () => {
+    /** Each chapter, then each of its lessons. */
+    const OUTLINE_PATCHES = outlineProposalFixture.chapters.reduce(
+      (count, chapter) => count + 1 + chapter.lessons.length,
+      0,
+    );
+    const fieldset = () =>
+      screen.el.querySelector<HTMLFieldSetElement>(
+        'fieldset.course-editor__body',
+      ) as HTMLFieldSetElement;
+    const lessonTitles = () =>
+      Array.from(
+        screen.el.querySelectorAll('.course-outline__lesson-title'),
+      ).map((title) => title.textContent?.trim());
+
+    /** The server finishes the outline; the page sees it at its next look. */
+    const proposeOutline = async () => {
+      session = {
+        ...session,
+        steps: [session.steps[0], draftingStepFixture(2, 'proposed')],
+      };
+      await advance(DRAFTING_POLL_INTERVAL_MS);
+    };
+
+    it("writes the chapters and lessons one at a time, locked, with each lesson's line and source", async () => {
+      await openDraftAtStepTwo();
+      expect(legend()).toContain('Nội dung khóa học');
+      expect(screen.text()).toContain('Trợ lý đang soạn…');
+
+      await proposeOutline();
+      expect(fieldset().disabled).toBe(true);
+      expect(lessonTitles()).toEqual([]);
+
+      await advance(DRAFTING_FIELD_DELAY_MS);
+      expect(lessonTitles()).toEqual([
+        outlineProposalFixture.chapters[0].lessons[0].title,
+      ]);
+      expect(fieldset().disabled).toBe(true);
+
+      await advance(DRAFTING_FIELD_DELAY_MS * OUTLINE_PATCHES);
+      const proposed = outlineProposalFixture.chapters.flatMap(
+        (chapter) => chapter.lessons,
+      );
+      expect(lessonTitles()).toEqual(proposed.map((lesson) => lesson.title));
+      expect(fieldset().disabled).toBe(false);
+      expect(screen.text()).toContain(
+        `${proposed[0].description} · Nguồn: ${proposed[0].sourceSection}`,
+      );
+      expect(screen.text()).toContain('AI đề xuất');
+      // Lessons are empty: publishing will ask for content, confirming does not.
+      expect(screen.text()).toContain('Thiếu nội dung');
+      expect(screen.text()).toContain(
+        'bài chưa có nội dung không chặn bước này',
+      );
+      expect(confirmButton()?.disabled).toBe(false);
+    });
+
+    it('confirms the outline with empty lessons, saves the draft and moves on to step 3', async () => {
+      const courseId = await openDraftAtStepTwo();
+      await proposeOutline();
+      await advance(DRAFTING_FIELD_DELAY_MS * OUTLINE_PATCHES);
+
+      await press(confirmButton());
+
+      expect(screen.callsTo(draftingSessionEndpoints.confirm)).toBe(1);
+      const sent = screen.lastCall(draftingSessionEndpoints.confirm) as {
+        params: Record<string, unknown>;
+        body: ConfirmOutlineCommand;
+      };
+      expect(sent.params).toMatchObject({ step: '2' });
+      expect(
+        sent.body.draft.chapters.map((chapter) => ({
+          title: chapter.title,
+          lessons: chapter.lessons.map((lesson) => [
+            lesson.title,
+            lesson.blocks.length,
+          ]),
+        })),
+      ).toEqual(
+        outlineProposalFixture.chapters.map((chapter) => ({
+          title: chapter.title,
+          lessons: chapter.lessons.map((lesson) => [lesson.title, 0]),
+        })),
+      );
+      expect(legend()).toContain('Bài kiểm tra & điều kiện');
+      expect(screen.url()).toContain(`/admin/courses/${courseId}/edit`);
+      expect(screen.page<CourseEditor>().hasUnsavedChanges()).toBe(false);
+
+      // Back on the outline: saved, no longer a proposal, the lines still shown.
+      await press(screen.button('Nội dung khóa học'));
+      expect(lessonTitles()).toHaveLength(4);
+      expect(screen.text()).not.toContain('AI đề xuất');
+      expect(screen.text()).toContain(
+        outlineProposalFixture.chapters[0].lessons[0].description,
+      );
+      expect(confirmButton()).toBeUndefined();
+    });
   });
 });

@@ -93,6 +93,10 @@ const AI_STATES: Readonly<
 export class CourseOutline {
   readonly draft = input.required<FieldTree<CourseDraftValue>>();
   readonly editable = input(true);
+  /** The assistant's line under the lessons it proposed, by lesson title. */
+  readonly lessonNotes = input<
+    ReadonlyMap<string, { readonly text: string; readonly suggested: boolean }>
+  >(new Map());
   /** The files chosen in this editor by block key: a lesson row shows the ones still on their way. */
   readonly uploads = input<Readonly<Record<string, UploadEntry>>>({});
   readonly editLesson = output<LessonTarget>();
@@ -123,6 +127,8 @@ export class CourseOutline {
       Object.entries(BLOCK_TYPES).map(([type, { label }]) => [type, label]),
     );
   protected readonly problemOf = lessonProblem;
+  protected readonly noteOf = (lesson: LessonValue) =>
+    this.lessonNotes().get(lesson.title.trim());
   protected readonly uploadOf = (lesson: LessonValue) =>
     lessonUploadOf(
       lesson.blocks.map((b) => b.key),

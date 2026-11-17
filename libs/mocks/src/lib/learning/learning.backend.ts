@@ -230,6 +230,16 @@ export class LearningBackend {
   });
 
   /** How many reminders the person has due: what the mock's bell shows. */
+  /** The course's draft holds content the assistant proposed: publishing asks for the review. */
+  markAiGenerated(courseId: number): void {
+    const record = this.courses.find((c) => c.course.id === courseId);
+    if (record?.draft)
+      record.draft = {
+        ...record.draft,
+        revision: { ...record.draft.revision, aiGenerated: true },
+      };
+  }
+
   /** Who owns a course and the program of its latest revision, for the quiz service. */
   courseOwnership(courseId: number | null) {
     const record = this.courses.find((c) => c.course.id === courseId);

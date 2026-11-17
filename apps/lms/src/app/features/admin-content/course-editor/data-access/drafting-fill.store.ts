@@ -38,7 +38,16 @@ const EMPTY_HINTS = {
 export type DraftingHints = Partial<Record<keyof typeof EMPTY_HINTS, string>>;
 
 /** The steps the page confirms with "Đã chốt" so far; the later tickets add theirs. */
-const CONFIRMABLE_STEPS: readonly DraftingStepNumber[] = [1];
+const CONFIRMABLE_STEPS: readonly DraftingStepNumber[] = [1, 2];
+
+/**
+ * What the outline shows under a lesson the assistant proposed: what it teaches and the part of
+ * the document it comes from, and whether it is still a proposal (step 2 not confirmed yet).
+ */
+export interface LessonNoteView {
+  readonly text: string;
+  readonly suggested: boolean;
+}
 
 /** One "Đã chốt": the step and the page's values for it. */
 interface ConfirmInput {
@@ -233,6 +242,28 @@ export class DraftingFillStore {
     return hints;
   });
 
+  /**
+   * The step 2 proposal's lessons by title: a lesson of the outline with that title shows the
+   * line. Lessons have no description of their own, so the line lives on the session only.
+   */
+  readonly lessonNotes$ = computed((): ReadonlyMap<string, LessonNoteView> => {
+    const outline = this.session()?.steps.find((step) => step.step === 2);
+    if (outline?.step !== 2 || !outline.proposal) return new Map();
+    const suggested = outline.state !== 'confirmed';
+    const notes = new Map<string, LessonNoteView>();
+    for (const chapter of outline.proposal.chapters) {
+      for (const lesson of chapter.lessons) {
+        const title = lesson.title.trim();
+        if (!notes.has(title))
+          notes.set(title, {
+            text: `${lesson.description} · Nguồn: ${lesson.sourceSection}`,
+            suggested,
+          });
+      }
+    }
+    return notes;
+  });
+
   /** A proposal arrived: writing it starts a timer, outside the signal graph. */
   private readonly playWhenReady = effect(() => {
     const step = this.ready();
@@ -359,7 +390,11 @@ export class DraftingFillStore {
     const next = session.currentStep - 1;
     if (this.editor.isCreate$() && session.courseId !== null)
       this.editor.moveToCourse(session.courseId, next);
-    else this.editor.goToStep(next);
+    else {
+      // The confirm saved the draft: the page reads it again (its version, the AI flag).
+      this.editor.reloadCourse();
+      this.editor.goToStep(next);
+    }
     this.drafting.refresh();
   }
 

@@ -41,8 +41,9 @@
   </button>
   } @else if (problem(); as reason) {
   <span>{{ reason }}</span>
-  } @else { Xem lại và sửa nếu cần. Bấm Đã chốt để lưu và để trợ lý sang bước
-  tiếp theo. }
+  } @else { Xem lại và sửa nếu cần. @if (step === 2) { Nội dung từng bài để
+  trống để bạn tự viết; bài chưa có nội dung không chặn bước này. } Bấm Đã chốt
+  để lưu và để trợ lý sang bước tiếp theo. }
   <button
     uiButton
     uiAlertAction

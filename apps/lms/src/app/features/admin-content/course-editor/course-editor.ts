@@ -487,19 +487,29 @@ export class CourseEditor implements HasUnsavedChanges {
 
   /**
    * "Đã chốt" on the bar or on the chat's card: the step is confirmed with what the page holds
-   * now. Step 1 sends the create command, so the server makes the draft course from it.
+   * now. Step 1 sends the create command, so the server makes the draft course from it; step 2
+   * the whole draft, as "Lưu nháp" saves it (lessons without content do not stop it).
    */
   protected confirmDraftingStep(step: DraftingStepNumber): void {
     if (this.store.step$() !== step - 1 || this.draftingProblem() !== null) {
       if (this.stepInvalid()) this.showInvalidStep();
       return;
     }
-    const ownerOrgId = this.store.ownerOrgId$();
-    if (step !== 1 || !ownerOrgId) return;
     const value = this.draftValue();
-    this.fill.confirm(step, {
-      course: toCreateCourseCommand(value, value.code, ownerOrgId),
-    });
+    if (step === 1) {
+      const ownerOrgId = this.store.ownerOrgId$();
+      if (!ownerOrgId) return;
+      this.fill.confirm(step, {
+        course: toCreateCourseCommand(value, value.code, ownerOrgId),
+      });
+      return;
+    }
+    const revision = this.store.course$()?.revision;
+    if (step === 2 && revision) {
+      this.fill.confirm(step, {
+        draft: toSaveDraftCommand(value, revision.rowVersion),
+      });
+    }
   }
 
   /** "Tiếp theo": when the step stays because of an error, the first one gets focus. */

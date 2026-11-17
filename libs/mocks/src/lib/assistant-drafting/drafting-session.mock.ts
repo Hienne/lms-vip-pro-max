@@ -6,10 +6,14 @@ import {
   draftingSessionEndpoints,
   StartDraftingFieldsSchema,
   type AnyEndpoint,
+  type CourseDetail,
   type CreateCourseCommand,
   type DraftingSession,
   type DraftingStep,
   type DraftingStepNumber,
+  type LessonNote,
+  type OutlineProposal,
+  type SaveDraftCommand,
   type StartDraftingFields,
 } from '@lms/contracts';
 import { backendRefusal, BACKEND_RESPONSES } from '../backend-responses';
@@ -40,6 +44,23 @@ const invalidState = (): FakeReply => ({
     BACKEND_RESPONSES.validationFailed.title,
     INVALID_STATE_MESSAGE,
     [{ field: 'step', code: 'INVALID_STATE', message: INVALID_STATE_MESSAGE }],
+  ),
+});
+const CONTENT_NOT_EMPTY_MESSAGE =
+  'Bài do trợ lý đề xuất được lưu với nội dung trống; hãy thêm nội dung sau khi chốt bước này.';
+const contentNotEmpty = (): FakeReply => ({
+  status: 200,
+  body: envelopeError(
+    BACKEND_RESPONSES.validationFailed.code,
+    BACKEND_RESPONSES.validationFailed.title,
+    CONTENT_NOT_EMPTY_MESSAGE,
+    [
+      {
+        field: 'draft.chapters',
+        code: 'CONTENT_NOT_EMPTY',
+        message: CONTENT_NOT_EMPTY_MESSAGE,
+      },
+    ],
   ),
 });
 const takenCode = (): FakeReply => {
@@ -88,12 +109,67 @@ const stepNumber = (value: unknown): DraftingStepNumber | undefined => {
 };
 
 /**
- * Creates the draft course of a confirmed step 1, as the backend does through its course create
- * path. The fake backend hands its own over; without one, the mock makes up the ids.
+ * The course writes of a confirm, as the backend does them through its course service: step 1
+ * creates the draft course, step 2 saves the outline (and marks the revision as AI made when the
+ * step held a proposal). The fake backend hands its own over; without one, the mock makes up ids.
  */
-export type DraftingCourseCreator = (
-  command: CreateCourseCommand,
-) => FakeReply | undefined;
+export interface DraftingCourses {
+  create(command: CreateCourseCommand): FakeReply | undefined;
+  saveOutline(
+    courseId: number,
+    revisionId: number,
+    draft: SaveDraftCommand,
+    aiGenerated: boolean,
+  ): FakeReply | undefined;
+}
+
+type ProposedLesson = OutlineProposal['chapters'][number]['lessons'][number];
+
+/**
+ * Each saved lesson that came from the proposal, as the server keeps it: matched by title first,
+ * then a renamed one by its place in the outline. Lessons the author added get none.
+ */
+function lessonNotesOf(
+  proposal: OutlineProposal,
+  saved: CourseDetail,
+): LessonNote[] {
+  const proposed = proposal.chapters.flatMap((chapter) => chapter.lessons);
+  const used = new Set<ProposedLesson>();
+  const matched = new Map<number, ProposedLesson>();
+  const savedLessons = saved.chapters.flatMap((chapter) =>
+    chapter.lessons.map((item) => item.lesson),
+  );
+  for (const lesson of savedLessons) {
+    const found = proposed.find(
+      (item) => !used.has(item) && item.title.trim() === lesson.title.trim(),
+    );
+    if (found) {
+      used.add(found);
+      matched.set(lesson.id, found);
+    }
+  }
+  saved.chapters.forEach((chapter, ci) =>
+    chapter.lessons.forEach(({ lesson }, li) => {
+      const found = proposal.chapters[ci]?.lessons[li];
+      if (found && !matched.has(lesson.id) && !used.has(found)) {
+        used.add(found);
+        matched.set(lesson.id, found);
+      }
+    }),
+  );
+  return savedLessons.flatMap((lesson) => {
+    const from = matched.get(lesson.id);
+    return from
+      ? [
+          {
+            lessonId: lesson.id,
+            description: from.description,
+            sourceSection: from.sourceSection,
+          },
+        ]
+      : [];
+  });
+}
 
 const replyData = (reply: FakeReply | undefined): unknown =>
   reply &&
@@ -139,7 +215,7 @@ export class DraftingSessionMock {
     endpoint: AnyEndpoint,
     request: FakeRequest,
     owner: string,
-    createCourse?: DraftingCourseCreator,
+    courses?: DraftingCourses,
   ): FakeReply | undefined {
     if (!this.answers(endpoint)) return undefined;
     if (endpoint === draftingSessionEndpoints.start)
@@ -176,7 +252,7 @@ export class DraftingSessionMock {
     const step = stepNumber(request.params['step']);
     if (!step) return refusal('validationFailed');
     if (endpoint === draftingSessionEndpoints.confirm)
-      return this.confirm(entry, step, request.body, createCourse);
+      return this.confirm(entry, step, request.body, courses);
     if (endpoint === draftingSessionEndpoints.proposeAgain)
       return this.proposeAgain(entry, step);
     return this.manual(entry, step);
@@ -230,7 +306,7 @@ export class DraftingSessionMock {
     entry: MockSession,
     step: DraftingStepNumber,
     body: unknown,
-    createCourse?: DraftingCourseCreator,
+    courses?: DraftingCourses,
   ): FakeReply {
     const session = entry.session;
     const current = this.stepOf(entry, step);
@@ -252,7 +328,7 @@ export class DraftingSessionMock {
       const code = course.code.trim();
       const created = this.takenCodes.has(code)
         ? undefined
-        : createCourse?.(course);
+        : courses?.create(course);
       if (
         this.takenCodes.has(code) ||
         replyCode(created) === BACKEND_RESPONSES.learningDuplicate.code
@@ -267,19 +343,53 @@ export class DraftingSessionMock {
       session.courseId = detail?.course.id ?? 500 + session.id;
       session.revisionId = detail?.revision.id ?? 600 + session.id;
     }
-    const confirmed: DraftingStep =
-      current.step === 2
-        ? {
-            ...current,
-            lessonNotes: (current.proposal?.chapters ?? [])
-              .flatMap((chapter) => chapter.lessons)
-              .map((lesson, index) => ({
-                lessonId: 900 + index,
-                description: lesson.description,
-                sourceSection: lesson.sourceSection,
-              })),
-          }
-        : current;
+    let confirmed: DraftingStep = current;
+    if (current.step === 2) {
+      const draft = (parsed.data as { draft: SaveDraftCommand }).draft;
+      const proposal = current.proposal;
+      // The assistant never writes lesson content: a proposed lesson sent with content is refused.
+      const proposedTitles = new Set(
+        (proposal?.chapters ?? []).flatMap((chapter) =>
+          chapter.lessons.map((lesson) => lesson.title.trim()),
+        ),
+      );
+      if (
+        draft.chapters.some((chapter) =>
+          chapter.lessons.some(
+            (lesson) =>
+              proposedTitles.has(lesson.title.trim()) &&
+              lesson.blocks.length > 0,
+          ),
+        )
+      ) {
+        return contentNotEmpty();
+      }
+      const savedReply =
+        session.courseId !== null && session.revisionId !== null
+          ? courses?.saveOutline(
+              session.courseId,
+              session.revisionId,
+              draft,
+              proposedTitles.size > 0,
+            )
+          : undefined;
+      if (savedReply && !replyData(savedReply)) return savedReply;
+      const saved = replyData(savedReply) as CourseDetail | undefined;
+      confirmed = {
+        ...current,
+        lessonNotes: !proposal
+          ? null
+          : saved
+            ? lessonNotesOf(proposal, saved)
+            : proposal.chapters
+                .flatMap((chapter) => chapter.lessons)
+                .map((lesson, index) => ({
+                  lessonId: 900 + index,
+                  description: lesson.description,
+                  sourceSection: lesson.sourceSection,
+                })),
+      };
+    }
     this.replace(entry, { ...confirmed, state: 'confirmed', error: null });
     if (session.status === 'failed') {
       session.status = 'active';

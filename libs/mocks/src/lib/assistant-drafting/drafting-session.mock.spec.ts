@@ -232,6 +232,54 @@ describe('DraftingSessionMock', () => {
     expect(code(confirm(ready(session.id), 2))).toBe('CORE-VALIDATION_FAILED');
   });
 
+  it('refuses a step 2 confirm whose proposed lesson carries content', () => {
+    let session = ready(start().id);
+    session = parsed(
+      draftingSessionEndpoints.confirm,
+      confirm(session),
+    ) as DraftingSession;
+    session = ready(session.id);
+    const lesson = outlineProposalFixture.chapters[0].lessons[0];
+
+    const refused = call(
+      draftingSessionEndpoints.confirm,
+      {
+        draft: {
+          ...draft,
+          chapters: [
+            {
+              title: 'Chương 1',
+              lessons: [
+                {
+                  title: lesson.title,
+                  lessonType: 'content',
+                  estimatedDurationSeconds: 600,
+                  isRequired: true,
+                  blocks: [
+                    {
+                      blockType: 'text',
+                      title: 'Văn bản',
+                      body: 'Nội dung',
+                      completionMode: 'manual',
+                      isRequired: true,
+                      assets: [],
+                      steps: [],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+      { sessionId: String(session.id), step: '2' },
+    );
+
+    expect(code(refused)).toBe('CORE-VALIDATION_FAILED');
+    expect(refused?.body.errors?.[0]?.code).toBe('CONTENT_NOT_EMPTY');
+    expect(stepOf(get(session.id), 2)?.state).toBe('proposed');
+  });
+
   it('refuses a confirm body that does not fit the step', () => {
     const session = ready(start().id);
     const reply = call(
@@ -472,6 +520,85 @@ describe('FakeBackend drafting sessions', () => {
     expect(code(refused)).toBe('LEARNING-DUPLICATE');
     expect(refused?.body.errors?.[0]?.field).toBe('course.code');
     expect(proposed(second.id).courseId).toBeNull();
+  });
+
+  it('saves a confirmed outline with empty lessons and marks the revision AI made', () => {
+    const token = login('giangvien');
+    const at = (
+      endpoint: AnyEndpoint,
+      body: unknown,
+      params: Record<string, string>,
+    ) => backend.handle(endpoint, { token, params, query: {}, body });
+    const ready = (id: number): DraftingSession => {
+      let session: DraftingSession;
+      let i = 0;
+      do {
+        session = parsed(
+          draftingSessionEndpoints.get,
+          at(draftingSessionEndpoints.get, null, { sessionId: String(id) }),
+        ) as DraftingSession;
+      } while (++i < 10 && session.steps.at(-1)?.state === 'proposing');
+      return session;
+    };
+    const confirmAt = (session: DraftingSession, step: number, body: unknown) =>
+      at(draftingSessionEndpoints.confirm, body, {
+        sessionId: String(session.id),
+        step: String(step),
+      });
+    const started = parsed(
+      draftingSessionEndpoints.start,
+      startAs(token),
+    ) as DraftingSession;
+    const first = ready(started.id);
+    const created = parsed(
+      draftingSessionEndpoints.confirm,
+      confirmAt(first, 1, {
+        course: { ownerOrgId: 1, code: 'AI-OUTLINE1', title: 'Đối soát' },
+      }),
+    ) as DraftingSession;
+    const atStepTwo = ready(created.id);
+    const courseParams = { courseId: String(created.courseId) };
+    const before = parsed(
+      courseEndpoints.getCourse,
+      at(courseEndpoints.getCourse, null, courseParams),
+    ) as { revision: { rowVersion: number } };
+
+    const confirmed = parsed(
+      draftingSessionEndpoints.confirm,
+      confirmAt(atStepTwo, 2, {
+        draft: {
+          ...draft,
+          expectedVersion: before.revision.rowVersion,
+          chapters: outlineProposalFixture.chapters.map((chapter) => ({
+            title: chapter.title,
+            lessons: chapter.lessons.map((lesson) => ({
+              title: lesson.title,
+              lessonType: 'content',
+              estimatedDurationSeconds: 600,
+              isRequired: true,
+              blocks: [],
+            })),
+          })),
+        },
+      }),
+    ) as DraftingSession;
+
+    const course = parsed(
+      courseEndpoints.getCourse,
+      at(courseEndpoints.getCourse, null, courseParams),
+    ) as {
+      revision: { aiGenerated?: boolean };
+      chapters: { lessons: { lesson: { id: number }; blocks: unknown[] }[] }[];
+    };
+    const lessons = course.chapters.flatMap((chapter) => chapter.lessons);
+    expect(lessons).toHaveLength(4);
+    expect(lessons.every((lesson) => lesson.blocks.length === 0)).toBe(true);
+    expect(course.revision.aiGenerated).toBe(true);
+    expect(confirmed.currentStep).toBe(3);
+    const outline = confirmed.steps.find((step) => step.step === 2);
+    expect(
+      outline?.step === 2 && outline.lessonNotes?.map((note) => note.lessonId),
+    ).toEqual(lessons.map((lesson) => lesson.lesson.id));
   });
 
   it('answers a dev build whose token the real backend issued', () => {

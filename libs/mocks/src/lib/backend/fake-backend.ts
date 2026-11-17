@@ -448,19 +448,38 @@ export class FakeBackend {
         if (!this.hasRole(user.userId, COURSE_JOB_ROLES)) {
           return refuse('accessDenied');
         }
-        // Step 1's confirm makes the draft course through the course create, as the server does.
-        return this.draftingSessions.handle(
-          endpoint,
-          request,
-          user.userId,
-          (course) =>
+        // Confirms write the course through its own endpoints, as the server does: step 1 creates
+        // the draft, step 2 saves the outline and marks the revision as AI made.
+        return this.draftingSessions.handle(endpoint, request, user.userId, {
+          create: (course) =>
             this.handle(courseEndpoints.createCourse, {
               ...request,
               body: course,
               params: {},
               query: {},
             }),
-        );
+          saveOutline: (courseId, revisionId, draft, aiGenerated) => {
+            const saved = this.handle(courseEndpoints.saveDraft, {
+              ...request,
+              body: draft,
+              params: {
+                courseId: String(courseId),
+                revisionId: String(revisionId),
+              },
+              query: {},
+            });
+            if (aiGenerated && saved?.body.status === 'SUCCESS') {
+              this.learning.markAiGenerated(courseId);
+              return this.handle(courseEndpoints.getCourse, {
+                ...request,
+                body: null,
+                params: { courseId: String(courseId) },
+                query: {},
+              });
+            }
+            return saved;
+          },
+        });
       } catch (error) {
         if (error instanceof Refused) return error.reply;
         throw error;
