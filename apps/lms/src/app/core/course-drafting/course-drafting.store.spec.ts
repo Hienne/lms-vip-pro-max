@@ -134,4 +134,47 @@ describe('CourseDraftingStore', () => {
 
     backend.expectNone((r) => r.url === STOP);
   });
+
+  it('follows the session that drafted a course, and none when the course has none', async () => {
+    const store = TestBed.inject(CourseDraftingStore);
+    const forCourse = (courseId: number) =>
+      backend.expectOne(
+        (r) =>
+          r.url === `/api/v1/assistant/drafting-sessions/course/${courseId}` &&
+          r.method === 'GET',
+      );
+
+    store.loadForCourse(77);
+    await settle();
+    forCourse(77).flush(
+      envelopeOk({ ...draftingSessionFixture(2), courseId: 77 }),
+    );
+    await settle();
+    reads()[0].flush(
+      envelopeOk({ ...draftingSessionFixture(2), courseId: 77 }),
+    );
+    await settle();
+    expect(store.session$()?.courseId).toBe(77);
+    expect(store.step$()?.step).toBe(2);
+
+    store.loadForCourse(78);
+    await settle();
+    forCourse(78).flush(envelopeOk(null));
+    await settle();
+    expect(store.session$()).toBeUndefined();
+  });
+
+  it('confirms through the page that shows the session, and only that one', async () => {
+    const store = await open(draftingSessionFixture(1));
+    const confirm = vi.fn();
+
+    expect(store.confirm(1)).toBe(false);
+    const unregister = store.registerPageConfirm(2, confirm);
+    expect(store.confirm(1)).toBe(false);
+    unregister();
+    store.registerPageConfirm(1, confirm);
+
+    expect(store.confirm(1)).toBe(true);
+    expect(confirm).toHaveBeenCalledExactlyOnceWith(1);
+  });
 });

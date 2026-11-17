@@ -12,5 +12,51 @@
   >
     Dừng
   </button>
+  @if (fill.confirmStep$()) {
+  <!-- The step is locked: "Đã chốt" waits, and the text above says why. -->
+  <button
+    uiButton
+    uiAlertAction
+    type="button"
+    variant="primary"
+    size="sm"
+    disabled
+  >
+    <ui-icon name="check" size="sm" />Đã chốt
+  </button>
+  }
+</ui-alert>
+} @else if (fill.confirmStep$(); as step) {
+<ui-alert tone="info" heading="Chốt bước này" class="drafting-bar">
+  @if (fill.suggestedCode$(); as code) {
+  <span>Mã khóa học đã có. Trợ lý đề xuất mã {{ code }}.</span>
+  <button
+    uiButton
+    uiAlertAction
+    type="button"
+    size="sm"
+    (click)="fill.useSuggestedCode()"
+  >
+    Dùng mã {{ code }}
+  </button>
+  } @else if (problem(); as reason) {
+  <span>{{ reason }}</span>
+  } @else { Xem lại và sửa nếu cần. Bấm Đã chốt để lưu và để trợ lý sang bước
+  tiếp theo. }
+  <button
+    uiButton
+    uiAlertAction
+    type="button"
+    variant="primary"
+    size="sm"
+    [disabled]="!!problem() || fill.isConfirming$()"
+    (click)="confirmed.emit(step)"
+  >
+    <ui-icon name="check" size="sm" />Đã chốt
+  </button>
+</ui-alert>
+} @if (fill.confirmError$(); as error) {
+<ui-alert tone="danger" [heading]="error.title ?? ''" class="drafting-bar">
+  {{ error.message }}
 </ui-alert>
 }

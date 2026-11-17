@@ -1,5 +1,6 @@
 import {
   authV1Endpoints,
+  courseEndpoints,
   draftingSessionEndpoints,
   DraftingSessionSchema,
   type AnyEndpoint,
@@ -285,6 +286,9 @@ describe('DraftingSessionMock', () => {
     const next = get(session.id);
     const fresh = (next.steps[0].proposal as { code: string }).code;
     expect(fresh).not.toBe(taken);
+    expect(stepOf(next, 1)?.notes.at(-1)).toBe(
+      `Mã ${taken} đã có; trợ lý đề xuất mã ${fresh}.`,
+    );
     expect(next.courseId).toBeNull();
     expect(stepOf(next, 1)?.state).toBe('proposed');
     expect(
@@ -398,6 +402,76 @@ describe('FakeBackend drafting sessions', () => {
     const refused = startAs(login('hocvien'));
     expect(refused?.status).toBe(403);
     expect(code(refused)).toBe('CORE-ACCESS_DENIED');
+  });
+
+  it('makes the draft course of a confirmed step 1 through the course create, once', () => {
+    const token = login('giangvien');
+    const at = (
+      endpoint: AnyEndpoint,
+      body: unknown,
+      params: Record<string, string>,
+    ) => backend.handle(endpoint, { token, params, query: {}, body });
+    const proposed = (id: number): DraftingSession => {
+      let session = parsed(
+        draftingSessionEndpoints.get,
+        at(draftingSessionEndpoints.get, null, { sessionId: String(id) }),
+      ) as DraftingSession;
+      for (let i = 0; i < 10 && session.steps[0].state === 'proposing'; i++) {
+        session = parsed(
+          draftingSessionEndpoints.get,
+          at(draftingSessionEndpoints.get, null, { sessionId: String(id) }),
+        ) as DraftingSession;
+      }
+      return session;
+    };
+    const confirmAt = (session: DraftingSession, body: unknown) =>
+      at(draftingSessionEndpoints.confirm, body, {
+        sessionId: String(session.id),
+        step: '1',
+      });
+
+    const first = proposed(
+      (
+        parsed(
+          draftingSessionEndpoints.start,
+          startAs(token),
+        ) as DraftingSession
+      ).id,
+    );
+    const body = confirmBody(first, 1) as { course: { code: string } };
+    const confirmed = parsed(
+      draftingSessionEndpoints.confirm,
+      confirmAt(first, body),
+    ) as DraftingSession;
+    const course = parsed(
+      courseEndpoints.getCourse,
+      at(courseEndpoints.getCourse, null, {
+        courseId: String(confirmed.courseId),
+      }),
+    ) as { course: { code: string } };
+    expect(course.course.code).toBe(body.course.code);
+    expect(
+      (
+        parsed(
+          draftingSessionEndpoints.confirm,
+          confirmAt(first, body),
+        ) as DraftingSession
+      ).courseId,
+    ).toBe(confirmed.courseId);
+
+    // Another session confirming the code that course now has is refused like the server does.
+    const second = proposed(
+      (
+        parsed(
+          draftingSessionEndpoints.start,
+          startAs(token),
+        ) as DraftingSession
+      ).id,
+    );
+    const refused = confirmAt(second, body);
+    expect(code(refused)).toBe('LEARNING-DUPLICATE');
+    expect(refused?.body.errors?.[0]?.field).toBe('course.code');
+    expect(proposed(second.id).courseId).toBeNull();
   });
 
   it('answers a dev build whose token the real backend issued', () => {

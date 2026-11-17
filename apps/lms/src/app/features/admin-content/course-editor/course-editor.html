@@ -123,7 +123,10 @@
 } @if (store.step$() === 1) {
 <app-course-ai-status [unsaved]="dirty()" />
 } @if (fill.attached$()) {
-<app-drafting-bar />
+<app-drafting-bar
+  [problem]="draftingProblem()"
+  (confirmed)="confirmDraftingStep($event)"
+/>
 }
 
 <form id="course-editor-form" [formRoot]="courseForm">

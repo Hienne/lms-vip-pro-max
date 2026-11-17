@@ -13,7 +13,11 @@ import {
 } from '@angular/core';
 import { form, FormRoot, submit } from '@angular/forms/signals';
 import { Router, RouterLink } from '@angular/router';
-import { courseJobReviewPath, type CourseDetail } from '@lms/contracts';
+import {
+  courseJobReviewPath,
+  type CourseDetail,
+  type DraftingStepNumber,
+} from '@lms/contracts';
 import {
   Alert,
   AlertAction,
@@ -50,6 +54,7 @@ import {
   emptyDraftValue,
   draftChecks,
   mergeLive,
+  toCreateCourseCommand,
   toDraftValue,
   toSaveDraftCommand,
   withAsset,
@@ -364,7 +369,7 @@ export class CourseEditor implements HasUnsavedChanges {
   constructor() {
     this.keepDraftWhenTheSessionEnds();
     this.applyChatPrefill();
-    this.fill.attach(this.model);
+    this.fill.attach(this.model, (step) => this.confirmDraftingStep(step));
     this.store.registerBlockPositions(this.blockPositions);
     this.store.registerAssetAttacher((blockKey, asset) =>
       this.model.update((value) => ({
@@ -455,6 +460,46 @@ export class CourseEditor implements HasUnsavedChanges {
     return pending
       ? `Còn ${pending} tệp đang tải. Rời trang sẽ dừng tải; lần sau mở lại, chọn lại đúng tệp để tải tiếp.`
       : undefined;
+  }
+
+  /** A field of the step shown is invalid. */
+  private readonly stepInvalid = computed(() =>
+    (this.stepFields()[this.store.step$()] ?? []).some((field) =>
+      field().invalid(),
+    ),
+  );
+
+  /**
+   * Why "Đã chốt" cannot confirm the step shown yet: the assistant still writes it, a field of
+   * the step is invalid, a file still uploads, or there is no unit to own a new course.
+   */
+  protected readonly draftingProblem = computed((): string | null => {
+    if (this.fill.locked$())
+      return 'Trợ lý đang soạn bước này. Chờ trợ lý soạn xong hoặc bấm Dừng.';
+    if (this.stepInvalid())
+      return 'Còn trường chưa hợp lệ ở bước này. Sửa xong rồi bấm Đã chốt.';
+    if (this.store.pendingUploads$() > 0 || this.continueBlocked())
+      return 'Còn tệp đang tải lên. Chờ tải xong rồi bấm Đã chốt.';
+    if (this.store.isCreate$() && !this.store.ownerOrgId$())
+      return 'Chưa xác định được đơn vị sở hữu khóa học.';
+    return null;
+  });
+
+  /**
+   * "Đã chốt" on the bar or on the chat's card: the step is confirmed with what the page holds
+   * now. Step 1 sends the create command, so the server makes the draft course from it.
+   */
+  protected confirmDraftingStep(step: DraftingStepNumber): void {
+    if (this.store.step$() !== step - 1 || this.draftingProblem() !== null) {
+      if (this.stepInvalid()) this.showInvalidStep();
+      return;
+    }
+    const ownerOrgId = this.store.ownerOrgId$();
+    if (step !== 1 || !ownerOrgId) return;
+    const value = this.draftValue();
+    this.fill.confirm(step, {
+      course: toCreateCourseCommand(value, value.code, ownerOrgId),
+    });
   }
 
   /** "Tiếp theo": when the step stays because of an error, the first one gets focus. */

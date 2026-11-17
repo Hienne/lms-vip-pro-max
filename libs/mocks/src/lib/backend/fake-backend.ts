@@ -448,7 +448,19 @@ export class FakeBackend {
         if (!this.hasRole(user.userId, COURSE_JOB_ROLES)) {
           return refuse('accessDenied');
         }
-        return this.draftingSessions.handle(endpoint, request, user.userId);
+        // Step 1's confirm makes the draft course through the course create, as the server does.
+        return this.draftingSessions.handle(
+          endpoint,
+          request,
+          user.userId,
+          (course) =>
+            this.handle(courseEndpoints.createCourse, {
+              ...request,
+              body: course,
+              params: {},
+              query: {},
+            }),
+        );
       } catch (error) {
         if (error instanceof Refused) return error.reply;
         throw error;

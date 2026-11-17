@@ -6,6 +6,7 @@ import {
   draftingSessionEndpoints,
   StartDraftingFieldsSchema,
   type AnyEndpoint,
+  type CreateCourseCommand,
   type DraftingSession,
   type DraftingStep,
   type DraftingStepNumber,
@@ -86,6 +87,27 @@ const stepNumber = (value: unknown): DraftingStepNumber | undefined => {
     : undefined;
 };
 
+/**
+ * Creates the draft course of a confirmed step 1, as the backend does through its course create
+ * path. The fake backend hands its own over; without one, the mock makes up the ids.
+ */
+export type DraftingCourseCreator = (
+  command: CreateCourseCommand,
+) => FakeReply | undefined;
+
+const replyData = (reply: FakeReply | undefined): unknown =>
+  reply &&
+  typeof reply.body === 'object' &&
+  reply.body !== null &&
+  'data' in reply.body
+    ? (reply.body as { data: unknown }).data
+    : undefined;
+
+const replyCode = (reply: FakeReply | undefined): unknown =>
+  reply && typeof reply.body === 'object' && reply.body !== null
+    ? (reply.body as { messageCode?: unknown }).messageCode
+    : undefined;
+
 export class DraftingSessionMock {
   /** How many looks at a session still show a step `proposing` before its proposal is ready. */
   pollsBeforeProposal = 2;
@@ -117,6 +139,7 @@ export class DraftingSessionMock {
     endpoint: AnyEndpoint,
     request: FakeRequest,
     owner: string,
+    createCourse?: DraftingCourseCreator,
   ): FakeReply | undefined {
     if (!this.answers(endpoint)) return undefined;
     if (endpoint === draftingSessionEndpoints.start)
@@ -153,7 +176,7 @@ export class DraftingSessionMock {
     const step = stepNumber(request.params['step']);
     if (!step) return refusal('validationFailed');
     if (endpoint === draftingSessionEndpoints.confirm)
-      return this.confirm(entry, step, request.body);
+      return this.confirm(entry, step, request.body, createCourse);
     if (endpoint === draftingSessionEndpoints.proposeAgain)
       return this.proposeAgain(entry, step);
     return this.manual(entry, step);
@@ -207,11 +230,12 @@ export class DraftingSessionMock {
     entry: MockSession,
     step: DraftingStepNumber,
     body: unknown,
+    createCourse?: DraftingCourseCreator,
   ): FakeReply {
     const session = entry.session;
     const current = this.stepOf(entry, step);
-    // Confirming step 1 again (a retried request) returns the course it already made.
-    if (step === 1 && current?.state === 'confirmed' && session.courseId) {
+    // Confirming step 1 again (a retried request) returns the session as it is: no second course.
+    if (step === 1 && session.courseId !== null) {
       return ok(this.view(entry));
     }
     if (
@@ -224,19 +248,24 @@ export class DraftingSessionMock {
     const parsed = CONFIRM_BODIES[step].safeParse(body);
     if (!parsed.success) return refusal('validationFailed');
     if (step === 1) {
-      const code = (parsed.data as { course: { code: string } }).course.code;
-      if (this.takenCodes.has(code)) {
-        entry.code = this.freshCode();
-        if (current.step === 1 && current.proposal) {
-          this.replace(entry, {
-            ...current,
-            proposal: { ...current.proposal, code: entry.code },
-          });
-        }
+      const course = (parsed.data as { course: CreateCourseCommand }).course;
+      const code = course.code.trim();
+      const created = this.takenCodes.has(code)
+        ? undefined
+        : createCourse?.(course);
+      if (
+        this.takenCodes.has(code) ||
+        replyCode(created) === BACKEND_RESPONSES.learningDuplicate.code
+      ) {
+        this.proposeCode(entry, current, code);
         return takenCode();
       }
-      session.courseId = 500 + session.id;
-      session.revisionId = 600 + session.id;
+      if (created && !replyData(created)) return created;
+      const detail = replyData(created) as
+        | { course: { id: number }; revision: { id: number } }
+        | undefined;
+      session.courseId = detail?.course.id ?? 500 + session.id;
+      session.revisionId = detail?.revision.id ?? 600 + session.id;
     }
     const confirmed: DraftingStep =
       current.step === 2
@@ -271,6 +300,25 @@ export class DraftingSessionMock {
       ];
     }
     return ok(this.view(entry));
+  }
+
+  /** Step 1 proposes a new code after a taken one, with a line for the chat, as the server does. */
+  private proposeCode(
+    entry: MockSession,
+    current: DraftingStep,
+    taken: string,
+  ): void {
+    entry.code = this.freshCode();
+    if (current.step === 1 && current.proposal) {
+      this.replace(entry, {
+        ...current,
+        proposal: { ...current.proposal, code: entry.code },
+        notes: [
+          ...current.notes,
+          `Mã ${taken} đã có; trợ lý đề xuất mã ${entry.code}.`,
+        ],
+      });
+    }
   }
 
   private proposeAgain(

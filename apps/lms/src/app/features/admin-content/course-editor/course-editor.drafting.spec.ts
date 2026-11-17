@@ -1,7 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
-import { draftingSessionEndpoints, type DraftingSession } from '@lms/contracts';
 import {
+  courseEndpoints,
+  draftingSessionEndpoints,
+  type ConfirmBasicsCommand,
+  type DraftingSession,
+  type DraftingStep,
+} from '@lms/contracts';
+import {
+  backendRefusal,
   basicsProposalFixture,
   draftingSessionFixture,
   draftingStepFixture,
@@ -250,5 +257,292 @@ describe('CourseEditor following a drafting session', () => {
     expect(screen.callsTo(draftingSessionEndpoints.get)).toBe(0);
     expect(screen.text()).not.toContain('Trợ lý đang soạn…');
     expect(fieldset().disabled).toBe(false);
+  });
+});
+
+describe('CourseEditor confirming a drafting step', () => {
+  const screen = setUpAdminScreen([
+    { provide: Sha256Hasher, useValue: new FakeHasher() },
+  ]);
+
+  const TAKEN = 'AI-TAKEN001';
+  const FRESH = 'AI-FRESH001';
+
+  let session: DraftingSession;
+
+  const original = (endpoint: unknown, request: unknown): FakeReply =>
+    MockBackend.prototype.handle.call(
+      TestBed.inject(MockBackend),
+      endpoint as never,
+      request as never,
+    ) as FakeReply;
+
+  /** Step 1 confirmed: the course exists and step 2 is being proposed, as the server leaves it. */
+  const atStepTwo = (
+    courseId: number,
+    revisionId: number,
+  ): DraftingSession => ({
+    ...session,
+    courseId,
+    revisionId,
+    currentStep: 2,
+    steps: [
+      { ...session.steps[0], state: 'confirmed' } as DraftingStep,
+      draftingStepFixture(2, 'proposing'),
+    ],
+  });
+
+  beforeEach(() => {
+    session = {
+      ...draftingSessionFixture(1),
+      steps: [draftingStepFixture(1, 'proposing')],
+    };
+    // The server's confirm: a taken code is refused and step 1 proposes another; otherwise the
+    // draft course is made through the course create.
+    screen.calls.mockImplementation((endpoint, request) => {
+      if (endpoint === draftingSessionEndpoints.get) return ok(session);
+      if (endpoint === draftingSessionEndpoints.forCourse) {
+        const courseId = Number(
+          (request as { params: Record<string, string> }).params['courseId'],
+        );
+        return ok(session.courseId === courseId ? session : null);
+      }
+      if (endpoint === draftingSessionEndpoints.confirm) {
+        const { course } = (request as { body: ConfirmBasicsCommand }).body;
+        if (session.courseId !== null) return ok(session);
+        if (course.code === TAKEN) {
+          const step = session.steps[0];
+          session = {
+            ...session,
+            steps: [
+              {
+                ...step,
+                proposal: { ...basicsProposalFixture, code: FRESH },
+                updateTime: '2026-11-17T09:00:00+07:00',
+              } as DraftingStep,
+            ],
+          };
+          return backendRefusal('learningDuplicate');
+        }
+        const created = original(courseEndpoints.createCourse, {
+          ...(request as object),
+          body: course,
+          params: {},
+          query: {},
+        });
+        const detail = (
+          created.body as {
+            data: { course: { id: number }; revision: { id: number } };
+          }
+        ).data;
+        session = atStepTwo(detail.course.id, detail.revision.id);
+        return ok(session);
+      }
+      return original(endpoint, request);
+    });
+  });
+
+  afterEach(() => vi.useRealTimers());
+
+  const advance = async (ms: number) => {
+    await vi.advanceTimersByTimeAsync(ms);
+    TestBed.tick();
+    await vi.advanceTimersByTimeAsync(0);
+    TestBed.tick();
+  };
+
+  async function open(
+    url = '/admin/courses/new?session=1',
+    first: unknown = draftingSessionEndpoints.get,
+  ) {
+    const reply = TestBed.inject(ReplyGate).hold(first as never);
+    await screen.open(url);
+    vi.useFakeTimers();
+    reply.release();
+    await advance(0);
+  }
+
+  /** The proposal arrives and every field is written. */
+  const filled = async () => {
+    await open();
+    session = draftingSessionFixture(1);
+    await advance(DRAFTING_POLL_INTERVAL_MS);
+    await advance(DRAFTING_FIELD_DELAY_MS * PATCHES);
+  };
+
+  const confirmButton = () =>
+    screen.button('Đã chốt') as HTMLButtonElement | undefined;
+  const legend = () =>
+    screen.el.querySelector('fieldset.course-editor__body legend')
+      ?.textContent ?? '';
+
+  const press = async (target: HTMLElement | undefined) => {
+    if (!target) throw new Error('Nothing to click');
+    target.click();
+    await advance(0);
+    await advance(0);
+  };
+
+  it('keeps "Đã chốt" disabled, saying why, until the step is written', async () => {
+    await open();
+
+    expect(confirmButton()?.disabled).toBe(true);
+    expect(screen.text()).toContain('Bạn sửa được khi trợ lý điền xong');
+
+    session = draftingSessionFixture(1);
+    await advance(DRAFTING_POLL_INTERVAL_MS);
+    expect(confirmButton()?.disabled).toBe(true);
+
+    await advance(DRAFTING_FIELD_DELAY_MS * PATCHES);
+    expect(confirmButton()?.disabled).toBe(false);
+    expect(screen.text()).toContain('Bấm Đã chốt để lưu');
+  });
+
+  it('keeps "Đã chốt" disabled with the reason while a field of the step is invalid', async () => {
+    await filled();
+
+    const title = screen.field('Tên khóa học') as HTMLInputElement;
+    title.value = '';
+    title.dispatchEvent(new Event('input', { bubbles: true }));
+    await advance(0);
+
+    expect(confirmButton()?.disabled).toBe(true);
+    expect(screen.text()).toContain('Còn trường chưa hợp lệ ở bước này');
+    expect(screen.callsTo(draftingSessionEndpoints.confirm)).toBe(0);
+  });
+
+  it('confirms step 1 with the values on the page, makes the draft and continues on its edit page at step 2', async () => {
+    await filled();
+    const title = screen.field('Tên khóa học') as HTMLInputElement;
+    title.value = 'Tên do tác giả sửa';
+    title.dispatchEvent(new Event('input', { bubbles: true }));
+    await advance(0);
+
+    await press(confirmButton());
+
+    expect(screen.callsTo(draftingSessionEndpoints.confirm)).toBe(1);
+    const sent = screen.lastCall(draftingSessionEndpoints.confirm) as {
+      params: Record<string, unknown>;
+      body: ConfirmBasicsCommand;
+    };
+    expect(sent.params).toMatchObject({ sessionId: '1', step: '1' });
+    expect(sent.body.course).toMatchObject({
+      code: basicsProposalFixture.code,
+      draft: {
+        title: 'Tên do tác giả sửa',
+        summary: basicsProposalFixture.summary,
+      },
+    });
+    expect(session.courseId).not.toBeNull();
+    expect(screen.url()).toBe(`/admin/courses/${session.courseId}/edit?step=1`);
+    expect(legend()).toContain('Nội dung khóa học');
+    expect(screen.text()).not.toContain('Đã chốt');
+    expect(screen.page<CourseEditor>().hasUnsavedChanges()).toBe(false);
+  });
+
+  it('shows a taken code on the field, offers the code the server proposes and keeps the other fields', async () => {
+    await filled();
+    const code = screen.field('Mã khóa học') as HTMLInputElement;
+    code.value = TAKEN;
+    code.dispatchEvent(new Event('input', { bubbles: true }));
+    const title = screen.field('Tên khóa học') as HTMLInputElement;
+    title.value = 'Tên do tác giả sửa';
+    title.dispatchEvent(new Event('input', { bubbles: true }));
+    await advance(0);
+
+    await press(confirmButton());
+
+    expect(screen.url()).toContain('/admin/courses/new');
+    expect(session.courseId).toBeNull();
+    expect(screen.text()).toContain('Mã khóa học đã tồn tại.');
+    expect(screen.field('Mã khóa học').value).toBe(TAKEN);
+    expect(screen.text()).toContain(`Trợ lý đề xuất mã ${FRESH}`);
+    expect(confirmButton()?.disabled).toBe(true);
+
+    await press(screen.button(`Dùng mã ${FRESH}`));
+
+    expect(screen.field('Mã khóa học').value).toBe(FRESH);
+    expect(screen.field('Tên khóa học').value).toBe('Tên do tác giả sửa');
+    expect(screen.text()).not.toContain('Mã khóa học đã tồn tại.');
+    await press(confirmButton());
+    expect(session.courseId).not.toBeNull();
+    expect(screen.url()).toContain(`/admin/courses/${session.courseId}/edit`);
+  });
+
+  it("resumes the draft at the session's current step after a reload, and a confirmed step is saved without confirming again", async () => {
+    await open('/admin/courses/new');
+    // A request the page sent while signed in, so the course is made as its author.
+    const template = screen.calls.mock.calls
+      .map(([, request]) => request as { token?: string | null })
+      .find((request) => request?.token) as object;
+    const created = original(courseEndpoints.createCourse, {
+      ...template,
+      body: {
+        ownerOrgId: 1,
+        code: 'AI-RESUME01',
+        draft: {
+          programId: 1,
+          title: basicsProposalFixture.title,
+          summary: basicsProposalFixture.summary,
+          level: 'basic',
+          defaultRequirement: 'mandatory',
+          objectives: [...basicsProposalFixture.objectives],
+          chapters: [],
+          rewardPoints: 0,
+        },
+      },
+      params: {},
+      query: {},
+    });
+    const detail = (
+      created.body as {
+        data: { course: { id: number }; revision: { id: number } };
+      }
+    ).data;
+    session = atStepTwo(detail.course.id, detail.revision.id);
+
+    // The draft is opened later: the page follows no session until it asks for the course's.
+    const opening = TestBed.inject(Router).navigateByUrl(
+      `/admin/courses/${detail.course.id}/edit`,
+    );
+    await advance(0);
+    await opening;
+    await advance(0);
+
+    expect(screen.callsTo(draftingSessionEndpoints.forCourse)).toBe(1);
+    expect(legend()).toContain('Nội dung khóa học');
+
+    // Back on step 1, confirmed: no bar, nothing locked, "Lưu nháp" saves the draft.
+    await press(screen.button('Thông tin cơ bản'));
+    expect(legend()).toContain('Thông tin cơ bản');
+    expect(confirmButton()).toBeUndefined();
+    expect(
+      screen.el.querySelector<HTMLFieldSetElement>(
+        'fieldset.course-editor__body',
+      )?.disabled,
+    ).toBe(false);
+    const title = screen.field('Tên khóa học') as HTMLInputElement;
+    title.value = 'Tên sửa sau khi chốt';
+    title.dispatchEvent(new Event('input', { bubbles: true }));
+    await advance(0);
+    await press(screen.button('Lưu nháp'));
+
+    expect(screen.callsTo(courseEndpoints.saveDraft)).toBe(1);
+    expect(
+      (
+        screen.lastCall(courseEndpoints.saveDraft) as {
+          body: { title: string };
+        }
+      ).body.title,
+    ).toBe('Tên sửa sau khi chốt');
+    expect(screen.callsTo(draftingSessionEndpoints.confirm)).toBe(0);
+  });
+
+  it('follows no session on the edit page of a course the assistant did not draft', async () => {
+    await open('/admin/courses/1/edit', draftingSessionEndpoints.forCourse);
+
+    expect(screen.callsTo(draftingSessionEndpoints.get)).toBe(0);
+    expect(screen.text()).not.toContain('Trợ lý đang soạn…');
+    expect(confirmButton()).toBeUndefined();
   });
 });

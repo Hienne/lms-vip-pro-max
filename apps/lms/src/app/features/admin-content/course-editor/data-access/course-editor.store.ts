@@ -342,6 +342,8 @@ export class CourseEditorStore {
       }),
     ),
   );
+  /** The course the page edits (the URL's id); none on a new course. */
+  readonly courseId$ = this.courseId;
 
   /** Where this page's unsaved draft is kept when the session ends: per user and course. */
   readonly keptDraftKey$ = computed(
@@ -1912,6 +1914,16 @@ export class CourseEditorStore {
           return throwError(() => error);
         }),
       );
+  }
+
+  /**
+   * A confirm elsewhere (the drafting session's step 1) found the code taken: the code field says
+   * so, on the first step, as when this page creates the course.
+   */
+  markCodeTaken(code: string): void {
+    this.setTakenCode(code);
+    this.goToStep(0);
+    this.state.stepChecks()[0]?.touch();
   }
 
   /**
