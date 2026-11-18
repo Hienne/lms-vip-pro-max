@@ -1,0 +1,167 @@
+@if (store.available$()) {
+<button
+  uiIconButton
+  label="Kết nối trợ lý ngoài"
+  aria-haspopup="dialog"
+  [attr.aria-expanded]="store.open$()"
+  (click)="store.openPanel()"
+>
+  <ui-icon name="key" />
+</button>
+}
+
+<ng-template
+  [uiDrawer]="store.open$()"
+  uiDrawerTitle="Kết nối trợ lý ngoài"
+  [uiDrawerBusy]="store.isCreating$()"
+  uiDrawerBusyLabel="Đang tạo kết nối…"
+  (uiDrawerDismiss)="close()"
+>
+  <div class="stack external-assistant">
+    @if (store.created$(); as created) {
+    <section class="stack" aria-labelledby="external-token-title">
+      <h3 id="external-token-title">
+        Đã tạo kết nối “{{ created.connection.name }}”
+      </h3>
+      <ui-alert tone="warning" heading="Mã chỉ hiện một lần">
+        Sao chép ngay. Đóng bảng này là mã biến mất; nếu lỡ mất, hãy thu hồi và
+        tạo kết nối mới.
+      </ui-alert>
+
+      <ui-field label="Mã kết nối">
+        <div class="external-assistant__copy">
+          <input
+            uiInput
+            readonly
+            class="external-assistant__secret"
+            data-testid="external-token"
+            [value]="created.token"
+          />
+          <button
+            uiIconButton
+            label="Sao chép mã"
+            (click)="store.copy(created.token, 'mã kết nối')"
+          >
+            <ui-icon name="copy" />
+          </button>
+        </div>
+      </ui-field>
+
+      @if (store.command$(); as command) {
+      <ui-field
+        label="Lệnh thêm vào Claude Code"
+        hint="Dán vào terminal nơi bạn chạy Claude Code."
+      >
+        <div class="external-assistant__copy">
+          <textarea
+            uiInput
+            readonly
+            rows="4"
+            class="external-assistant__secret"
+            data-testid="external-command"
+            [value]="command"
+          ></textarea>
+          <button
+            uiIconButton
+            label="Sao chép lệnh"
+            (click)="store.copy(command, 'lệnh')"
+          >
+            <ui-icon name="copy" />
+          </button>
+        </div>
+      </ui-field>
+      }
+
+      <p class="external-assistant__note">
+        Trợ lý ngoài đọc tài liệu trên máy bạn và gửi nội dung đề xuất về đây.
+        Chỉ dùng với tài liệu không mật: tài liệu mật hãy soạn với Trợ lý trong
+        hệ thống.
+      </p>
+      <div>
+        <button uiButton variant="primary" (click)="done()">Xong</button>
+      </div>
+    </section>
+    } @else {
+    <section class="stack" aria-labelledby="external-list-title">
+      <h3 id="external-list-title">Kết nối của bạn</h3>
+      @if (store.isLoading$()) {
+      <span uiSkeleton variant="text"></span>
+      <span uiSkeleton variant="text"></span>
+      } @else if (store.loadError$(); as error) {
+      <ui-error-state
+        title="Không tải được danh sách kết nối"
+        [message]="error.message"
+        (retry)="store.retryLoad()"
+      />
+      } @else if (store.connections$().length === 0) {
+      <ui-empty
+        variant="inline"
+        icon="key"
+        title="Chưa có kết nối nào"
+        description="Tạo một kết nối để Claude Code trên máy bạn soạn khóa học cùng bạn."
+      />
+      } @else {
+      <ul uiList data-testid="external-connections">
+        @for (connection of store.connections$(); track connection.id) {
+        <li uiListItem class="external-assistant__row">
+          <div class="external-assistant__info">
+            <strong>{{ connection.name }}</strong>
+            <small>
+              {{ connection.tokenPrefix }}… · Tạo {{ connection.createTime |
+              fmtDate }} · Hết hạn {{ connection.expiresAt | fmtDate }} · Lần
+              dùng cuối {{ connection.lastUsedAt ? (connection.lastUsedAt |
+              fmtRelative) : 'chưa dùng' }}
+            </small>
+          </div>
+          <button
+            uiButton
+            variant="ghost"
+            size="sm"
+            [disabled]="store.isRevoking$()"
+            [attr.aria-label]="'Thu hồi kết nối ' + connection.name"
+            (click)="store.revoke(connection)"
+          >
+            Thu hồi
+          </button>
+        </li>
+        }
+      </ul>
+      }
+    </section>
+
+    <section class="stack" aria-labelledby="external-create-title">
+      <h3 id="external-create-title">Tạo kết nối</h3>
+      @if (store.createError$(); as error) {
+      <ui-alert tone="danger" [heading]="error.title ?? ''"
+        >{{ error.message }}</ui-alert
+      >
+      }
+      <form class="stack" [formRoot]="createForm">
+        <ui-field
+          label="Tên kết nối"
+          required
+          hint="Ví dụ: Claude Code trên máy làm việc."
+        >
+          <input uiInput [formField]="createForm.name" />
+        </ui-field>
+        <ui-field label="Hiệu lực" required>
+          <select uiSelect [formField]="createForm.validDays">
+            <option value="30">30 ngày</option>
+            <option value="90">90 ngày</option>
+          </select>
+        </ui-field>
+        <div>
+          <button
+            uiButton
+            type="submit"
+            variant="primary"
+            [disabled]="store.isCreating$()"
+          >
+            Tạo kết nối
+          </button>
+        </div>
+      </form>
+    </section>
+    }
+  </div>
+</ng-template>

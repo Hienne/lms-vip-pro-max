@@ -175,6 +175,14 @@ export const DraftingSourceSchema = z.object({
 });
 export type DraftingSource = z.infer<typeof DraftingSourceSchema>;
 
+/**
+ * Who proposes the steps: the in-house `assistant` (from `source`), or a Trợ lý ngoài over MCP
+ * (`external`), which reads the document on the author's machine: then `source` is null and
+ * `sourceName` is the document's name as the Trợ lý ngoài gave it.
+ */
+export const DraftingProposerSchema = z.enum(['assistant', 'external']);
+export type DraftingProposer = z.infer<typeof DraftingProposerSchema>;
+
 export const DraftingSessionSchema = z.object({
   id: z.number().int(),
   status: DraftingSessionStatusSchema,
@@ -190,6 +198,9 @@ export const DraftingSessionSchema = z.object({
   steps: z.array(DraftingStepSchema),
   createTime: z.iso.datetime({ offset: true }),
   updateTime: z.iso.datetime({ offset: true }),
+  proposer: DraftingProposerSchema,
+  /** The Trợ lý ngoài's document name; null for the in-house assistant. */
+  sourceName: z.string().nullable(),
 });
 export type DraftingSession = z.infer<typeof DraftingSessionSchema>;
 

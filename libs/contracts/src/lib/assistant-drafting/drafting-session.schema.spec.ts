@@ -91,6 +91,8 @@ const session = (steps: unknown[]) => ({
   steps,
   createTime: time,
   updateTime: time,
+  proposer: 'assistant',
+  sourceName: null,
 });
 
 describe('drafting proposals', () => {
@@ -233,6 +235,21 @@ describe('DraftingSessionSchema', () => {
     ).toBe(false);
     expect(
       DraftingSessionSchema.safeParse({ ...session([]), currentStep: 0 })
+        .success,
+    ).toBe(false);
+  });
+
+  it('reads a Trợ lý ngoài session: no source, the document named, waiting on step 1', () => {
+    const parsed = DraftingSessionSchema.parse({
+      ...session([{ ...step(1, null, 'proposing') }]),
+      source: null,
+      proposer: 'external',
+      sourceName: 'quy-trinh-doi-soat.pdf',
+    });
+    expect(parsed.proposer).toBe('external');
+    expect(parsed.sourceName).toBe('quy-trinh-doi-soat.pdf');
+    expect(
+      DraftingSessionSchema.safeParse({ ...session([]), proposer: 'claude' })
         .success,
     ).toBe(false);
   });

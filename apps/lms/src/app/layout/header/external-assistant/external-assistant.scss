@@ -1,0 +1,26 @@
+@use 'ui';
+
+.external-assistant__copy {
+  display: flex;
+  gap: ui.space(2);
+  align-items: flex-start;
+}
+
+.external-assistant__secret {
+  flex: 1;
+  min-width: 0;
+  resize: none;
+}
+
+.external-assistant__row {
+  display: flex;
+  gap: ui.space(3);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.external-assistant__info {
+  display: grid;
+  gap: ui.space(1);
+  min-width: 0;
+}

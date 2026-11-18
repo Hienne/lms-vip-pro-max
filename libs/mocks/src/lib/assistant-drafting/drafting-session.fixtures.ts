@@ -171,6 +171,8 @@ export function draftingSessionFixture(
     steps,
     createTime: DRAFTING_FIXTURE_TIME,
     updateTime: DRAFTING_FIXTURE_TIME,
+    proposer: 'assistant',
+    sourceName: null,
   };
 }
 

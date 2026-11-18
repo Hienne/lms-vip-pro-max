@@ -282,6 +282,22 @@ export class DraftingFillStore {
   /** The step cannot be edited until the assistant finishes or is stopped. */
   readonly locked$ = this.working$;
 
+  /** A Trợ lý ngoài, not the in-house assistant, proposes this page's session. */
+  readonly external$ = computed(() => this.session()?.proposer === 'external');
+
+  /** The document the Trợ lý ngoài reads on the author's machine, as it named it. */
+  readonly externalSourceName$ = computed(() =>
+    this.external$() ? (this.session()?.sourceName ?? null) : null,
+  );
+
+  /**
+   * "Đang chờ Trợ lý ngoài đề xuất": the step shown waits for the Trợ lý ngoài's proposal. It
+   * comes when the author asks the assistant on their machine, so no timer or progress is shown.
+   */
+  readonly waitingExternal$ = computed(
+    () => this.external$() && this.working$() && !this.state.playing(),
+  );
+
   /**
    * The step "Đã chốt" confirms: the session's current step while the page shows it and it is
    * not confirmed yet. A step confirmed before is edited and saved with "Lưu nháp".
@@ -558,11 +574,14 @@ export class DraftingFillStore {
    */
   async proposeAgain(step: DraftingStepNumber): Promise<void> {
     if (this.proposeAgainStep$() !== step) return;
+    // A Trợ lý ngoài proposes only when asked on the author's machine: the dialog says so.
+    const message = this.external$()
+      ? 'Bước này quay lại chờ đề xuất. Hãy nhắn Trợ lý ngoài (ví dụ Claude Code) đề xuất lại bước này; khi đề xuất mới tới, các trường của bước, kể cả phần bạn đã sửa, sẽ được thay. Các bước khác giữ nguyên.'
+      : 'Trợ lý soạn lại bước này từ tài liệu. Các trường của bước, kể cả phần bạn đã sửa, sẽ được thay bằng đề xuất mới. Các bước khác giữ nguyên.';
     const agreed = await firstValueFrom(
       confirmDialog(this.dialog, {
         title: 'Đề xuất lại bước này?',
-        message:
-          'Trợ lý soạn lại bước này từ tài liệu. Các trường của bước, kể cả phần bạn đã sửa, sẽ được thay bằng đề xuất mới. Các bước khác giữ nguyên.',
+        message,
         confirmLabel: 'Đề xuất lại',
         tone: 'danger',
       }),
