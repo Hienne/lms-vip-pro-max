@@ -1,6 +1,7 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, viewChild } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { AgentComposer } from './agent-composer';
+import { DRAFTING_SOURCE_QUESTION } from './agent-composer.form';
 
 @Component({
   selector: 'app-host',
@@ -15,6 +16,7 @@ import { AgentComposer } from './agent-composer';
   />`,
 })
 class Host {
+  readonly composer = viewChild.required(AgentComposer);
   readonly answering = signal(false);
   readonly offline = signal(false);
   readonly canAttach = signal(false);
@@ -172,6 +174,63 @@ describe('AgentComposer', () => {
       ]);
       expect(host.asked).toEqual([]);
       expect(el.textContent).not.toContain('quy-trinh.md');
+    });
+
+    describe('opened by "Soạn cùng trợ lý"', () => {
+      it('opens the picker from the paperclip and sends the file picked at once', async () => {
+        const { fixture, el, host } = await setup();
+        host.canAttach.set(true);
+        await fixture.whenStable();
+        const input = el.querySelector<HTMLInputElement>('input[type="file"]')!;
+        const opened = vi.spyOn(input, 'click');
+
+        host.composer().pickSource();
+        expect(opened).toHaveBeenCalledTimes(1);
+        expect(document.activeElement?.getAttribute('aria-label')).toBe(
+          'Đính kèm tài liệu để tạo khóa học',
+        );
+        const file = new File(['x'], 'quy-trinh.md');
+        await attach(fixture, el, file);
+
+        expect(host.attached).toEqual([
+          { message: DRAFTING_SOURCE_QUESTION, file },
+        ]);
+        expect(el.textContent).not.toContain('quy-trinh.md');
+      });
+
+      it('sends nothing for a refused file and says why', async () => {
+        const { fixture, el, host } = await setup();
+        host.canAttach.set(true);
+        await fixture.whenStable();
+
+        host.composer().pickSource();
+        await attach(fixture, el, new File(['x'], 'anh.png'));
+
+        expect(host.attached).toEqual([]);
+        expect(el.querySelector('[role="alert"]')?.textContent).toContain(
+          '.pdf, .md hoặc .docx',
+        );
+      });
+
+      it('lets a later paperclip pick wait for the message again', async () => {
+        const { fixture, el, host } = await setup();
+        host.canAttach.set(true);
+        await fixture.whenStable();
+        host.composer().pickSource();
+        const clip = el.querySelector<HTMLButtonElement>(
+          'button[aria-label="Đính kèm tài liệu để tạo khóa học"]',
+        )!;
+        clip.click();
+        await attach(fixture, el, new File(['x'], 'quy-trinh.md'));
+
+        expect(host.attached).toEqual([]);
+        expect(el.textContent).toContain('quy-trinh.md');
+      });
+
+      it('does nothing for someone who may not attach a file', async () => {
+        const { host } = await setup();
+        expect(() => host.composer().pickSource()).not.toThrow();
+      });
     });
 
     it('refuses a file type the server would not read', async () => {

@@ -12,12 +12,8 @@ import {
   viewChild,
 } from '@angular/core';
 import { form, FormRoot, submit } from '@angular/forms/signals';
-import { Router, RouterLink } from '@angular/router';
-import {
-  courseJobReviewPath,
-  type CourseDetail,
-  type DraftingStepNumber,
-} from '@lms/contracts';
+import { RouterLink } from '@angular/router';
+import { type CourseDetail, type DraftingStepNumber } from '@lms/contracts';
 import {
   Alert,
   AlertAction,
@@ -32,16 +28,15 @@ import {
   Spinner,
   Stepper,
   PageHeader,
-  Switch,
   Toaster,
 } from '@lms/ui';
+import { AgentChatStore } from '../../../core/assistant/agent-chat.store';
 import { CourseFormPrefillStore } from '../../../core/assistant/course-form-prefill.store';
 import { KeptDrafts } from '../../../core/session/kept-drafts';
 import { CourseJobAccess } from '../../../core/course-jobs/course-job-access';
 import type { HasUnsavedChanges } from '../../../core/routing/unsaved-changes.guard';
 import { BottomBar } from '../../../layout/shell-insets';
 import { CatalogStatus } from '../../../shared/status/catalog-status';
-import { StartCourseStore } from '../ai-course/ai-course-section/data-access/start-course.store';
 import { firstValueFrom } from 'rxjs';
 import { CourseAiStatus } from './components/course-ai-status/course-ai-status';
 import { DraftingBar } from './components/drafting-bar/drafting-bar';
@@ -109,21 +104,14 @@ const fingerprint = (value: CourseDraftValue) =>
     RouterLink,
     Spinner,
     Stepper,
-    Switch,
   ],
-  providers: [
-    CourseEditorStore,
-    CourseAiJobStore,
-    StartCourseStore,
-    DraftingFillStore,
-  ],
+  providers: [CourseEditorStore, CourseAiJobStore, DraftingFillStore],
   templateUrl: './course-editor.html',
   styleUrl: './course-editor.scss',
 })
 export class CourseEditor implements HasUnsavedChanges {
   protected readonly store = inject(CourseEditorStore);
   protected readonly steps = EDITOR_STEPS;
-  private readonly router = inject(Router);
   private readonly dialog = inject(Dialog);
   private readonly injector = inject(Injector);
   protected readonly validationRequested = signal<readonly boolean[]>([
@@ -134,60 +122,26 @@ export class CourseEditor implements HasUnsavedChanges {
   protected readonly ai = inject(CourseAiJobStore);
   /** The assistant's proposal written into the form, on a course drafted with it. */
   protected readonly fill = inject(DraftingFillStore);
-  private readonly starter = inject(StartCourseStore);
   private readonly chatPrefill = inject(CourseFormPrefillStore);
   private readonly keptDrafts = inject(KeptDrafts);
   private readonly toaster = inject(Toaster);
-  /** "Tạo bằng AI" is offered to instructors and admins on a new course only. */
-  protected readonly canGenerate = inject(CourseJobAccess).canGenerate$;
-  protected readonly generating = this.starter.isStarting$;
+  private readonly chat = inject(AgentChatStore);
+  private readonly canGenerate = inject(CourseJobAccess).canGenerate$;
   /**
-   * The author's choice to write the new course with AI. Off by default: a course is typed by
-   * hand unless the author turns it on (or the chat opened the form to generate one).
+   * "Soạn cùng trợ lý" is offered on a new course that no session fills yet, to instructors and
+   * admins who have the assistant.
    */
-  protected readonly aiEnabled = signal(false);
-  /** The "Tạo bằng AI" section and button are shown: a new course, a role that may generate, switched on. */
-  protected readonly showAi = computed(
-    () => !this.store.course$() && this.canGenerate() && this.aiEnabled(),
+  protected readonly canDraftWithAssistant = computed(
+    () =>
+      this.store.isCreate$() &&
+      !this.fill.attached$() &&
+      this.canGenerate() &&
+      this.chat.available$(),
   );
 
-  protected toggleAi(event: Event): void {
-    this.aiEnabled.set((event.target as HTMLInputElement).checked);
-  }
-
-  /**
-   * Why "Tạo bằng AI" is not available yet: step 1's own fields first, then the AI section's.
-   * Null when the button may be pressed.
-   */
-  protected readonly aiProblem = computed((): string | null => {
-    if (this.stepFields()[0].some((field) => field().invalid())) {
-      return 'Hoàn thành thông tin cơ bản của khóa học ở trên';
-    }
-    return this.starter.problem$();
-  });
-
-  /**
-   * Starts the job: the server creates it together with the draft course, and the editor moves
-   * to step 2 of that course, where the outline appears as it is written.
-   */
-  protected generateWithAi(): void {
-    if (!this.showAi() || this.aiProblem() !== null) return;
-    const value = this.draftValue();
-    this.starter.start(
-      {
-        title: value.title,
-        description: value.summary,
-        programmeId: Number(value.programId),
-      },
-      (job) => {
-        if (job.courseId == null) {
-          // A job made without a course (an older server): the review screen still shows it.
-          void this.router.navigateByUrl(courseJobReviewPath(job.jobId));
-          return;
-        }
-        this.store.moveToCourse(job.courseId, 1);
-      },
-    );
+  /** Opens the chat on a new conversation with the file picker; the file picked starts a session. */
+  protected draftWithAssistant(): void {
+    this.chat.startDrafting();
   }
 
   /**
@@ -251,18 +205,15 @@ export class CourseEditor implements HasUnsavedChanges {
   });
 
   /**
-   * A new course opened by the chat (`open_course_form`) starts with what the user said and the
-   * file they attached. The hand-over is read once and cleared; it is taken on every open so a
-   * prefill is never left for a later one, but only a new course for a role that may generate
-   * uses it.
+   * A new course opened by the chat (`open_course_form`) starts with the title the user said. The
+   * hand-over is read once and cleared; it is taken on every open so a prefill is never left for a
+   * later one, but only a new course for a role that may generate uses it.
    */
   private applyChatPrefill(): void {
     const prefill = this.chatPrefill.take();
     if (!prefill || !this.store.isCreate$() || !this.canGenerate()) return;
-    this.aiEnabled.set(true);
     const title = prefill.fields.title?.trim();
     if (title) this.model.update((value) => ({ ...value, title }));
-    this.starter.applyPrefill(prefill.fields, prefill.file);
   }
 
   /**

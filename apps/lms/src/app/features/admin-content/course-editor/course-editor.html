@@ -23,31 +23,16 @@
   "
 >
   <div slot="actions" class="course-editor__head-state">
-    @if (!editing && canGenerate()) {
-    <label class="course-editor__ai-toggle">
-      <input
-        type="checkbox"
-        uiSwitch
-        [checked]="aiEnabled()"
-        (change)="toggleAi($event)"
-      />
-      Soạn bằng AI
-    </label>
-    } @if (showAi()) {
+    @if (canDraftWithAssistant()) {
     <button
       type="button"
       uiButton
       variant="secondary"
       size="sm"
-      aria-describedby="ai-problem"
-      [disabled]="aiProblem() !== null || generating()"
-      (click)="generateWithAi()"
+      (click)="draftWithAssistant()"
     >
-      <ui-icon name="sparkles" size="sm" />Tạo bằng AI
+      Soạn cùng trợ lý
     </button>
-    <span id="ai-problem" class="course-editor__ai-problem"
-      >{{ aiProblem() }}</span
-    >
     } @if (store.course$()) {
     <app-catalog-status [status]="store.status$()" />
     }
@@ -144,7 +129,6 @@
       [ownerName]="store.ownerName$()"
       [programs]="store.programs$()"
       [modules]="store.modules$()"
-      [ai]="showAi()"
       [suggested]="fill.marks$()"
       [hints]="fill.hints$()"
       [coverAssetId]="draftValue().coverAssetId"

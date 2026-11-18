@@ -3,7 +3,7 @@ import type { CourseFormPrefill } from '@lms/contracts';
 
 /** What the chat hands to the new-course form: the file the user attached and what they said. */
 export interface CoursePrefill {
-  /** The attached source file, kept here and not uploaded until "Tạo bằng AI" is pressed. */
+  /** The attached source file; the editor no longer reads it (the chat starts a session instead). */
   readonly file: File | null;
   readonly fields: CourseFormPrefill;
 }

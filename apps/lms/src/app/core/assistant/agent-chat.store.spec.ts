@@ -917,6 +917,37 @@ describe('AgentChatStore', () => {
     });
   });
 
+  describe('"Soạn cùng trợ lý" from the new course page', () => {
+    it('opens the panel on a new conversation and asks for the file picker once', async () => {
+      await converse('Một', [conversation(42), done('Trả lời một')]);
+      store.close();
+
+      store.startDrafting();
+      TestBed.tick();
+
+      expect(store.isOpen$()).toBe(true);
+      expect(store.turns$()).toEqual([]);
+      expect(store.conversationId$()).toBeNull();
+      expect(store.isPickingSource$()).toBe(true);
+
+      store.sourcePickOffered();
+      expect(store.isPickingSource$()).toBe(false);
+    });
+
+    it('only opens the panel while a reply is on its way', async () => {
+      store.ask('Một');
+      await settle();
+
+      store.startDrafting();
+
+      expect(store.isOpen$()).toBe(true);
+      expect(store.turns$()).toHaveLength(1);
+      expect(store.isPickingSource$()).toBe(false);
+      finish(backend.expectOne(STREAM), [done('Trả lời một')]);
+      await settle();
+    });
+  });
+
   describe('drafting step messages', () => {
     const SESSION = '/api/v1/assistant/drafting-sessions/1';
 

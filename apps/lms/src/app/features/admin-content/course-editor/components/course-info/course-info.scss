@@ -26,10 +26,6 @@
     @include ui.row(3);
   }
 
-  &__ai {
-    margin-block-start: ui.space(6);
-  }
-
   &__owner {
     @include ui.text(sm, muted);
   }

@@ -24,6 +24,7 @@ import {
 import {
   AgentComposerSchema,
   COUNTER_FROM,
+  DRAFTING_SOURCE_QUESTION,
   type AgentComposerValue,
 } from './agent-composer.form';
 
@@ -32,7 +33,8 @@ import {
  * button inside it. `Enter` sends, `Shift+Enter` starts a new line (and an `Enter` that confirms an
  * input-method composition does neither). While a reply is on its way the button stops it instead.
  * An instructor or admin (`canAttach`) can also attach one file, which the message then asks the
- * assistant to build a course from.
+ * assistant to build a course from. Opened by "Soạn cùng trợ lý" ({@link pickSource}), the file
+ * picked is sent at once, since the user came to build a course from it.
  */
 @Component({
   selector: 'app-agent-composer',
@@ -53,6 +55,11 @@ export class AgentComposer {
     viewChild.required<ElementRef<HTMLTextAreaElement>>('box');
   private readonly formElement =
     viewChild.required<ElementRef<HTMLFormElement>>('formElement');
+  private readonly picker = viewChild<ElementRef<HTMLInputElement>>('picker');
+  private readonly attachButton =
+    viewChild<ElementRef<HTMLButtonElement>>('attachButton');
+  /** The next file picked is sent at once: the picker was opened by {@link pickSource}. */
+  private sendOnPick = false;
 
   private readonly model = signal<AgentComposerValue>({ message: '' });
   protected readonly composerForm = form(
@@ -96,7 +103,35 @@ export class AgentComposer {
     if (!picked) return;
     const problem = uploadProblem(picked);
     this.fileProblem.set(problem);
+    const sendNow = this.sendOnPick && !problem && !this.answering();
+    this.sendOnPick = false;
+    if (sendNow) {
+      this.file.set(null);
+      this.askWithFile.emit({
+        message: DRAFTING_SOURCE_QUESTION,
+        file: picked,
+      });
+      return;
+    }
     this.file.set(problem ? null : picked);
+  }
+
+  /** The paperclip: the file picked waits for the message. */
+  protected attach(): void {
+    this.sendOnPick = false;
+    this.picker()?.nativeElement.click();
+  }
+
+  /**
+   * "Soạn cùng trợ lý": focus on the paperclip and the file picker opened, and the file picked
+   * there is sent at once. Nothing happens for someone who may not attach a file.
+   */
+  pickSource(): void {
+    const picker = this.picker()?.nativeElement;
+    if (!picker) return;
+    this.sendOnPick = true;
+    this.attachButton()?.nativeElement.focus();
+    picker.click();
   }
 
   protected removeFile(): void {

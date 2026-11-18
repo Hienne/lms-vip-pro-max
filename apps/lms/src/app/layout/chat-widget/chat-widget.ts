@@ -129,6 +129,15 @@ export class ChatWidget {
       const composer = this.composer();
       if (composer) untracked(() => composer.focus());
     });
+    // "Soạn cùng trợ lý" asked for the file picker: offered once the composer shows.
+    afterRenderEffect(() => {
+      const composer = this.composer();
+      if (!composer || !this.store.isPickingSource$()) return;
+      untracked(() => {
+        this.store.sourcePickOffered();
+        composer.pickSource();
+      });
+    });
     // Every opening starts at the newest message, whatever the last opening ended on.
     afterRenderEffect(() => {
       const log = this.log()?.nativeElement;

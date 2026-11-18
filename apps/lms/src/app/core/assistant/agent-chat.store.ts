@@ -131,6 +131,8 @@ export class AgentChatStore {
     opening: signal(false),
     /** Why the last attempt to open a saved conversation failed; null when it did not. */
     openError: signal<string | null>(null),
+    /** "Soạn cùng trợ lý" asked for the file picker; the panel opens it once it shows. */
+    pickingSource: signal(false),
   };
 
   readonly turns$ = this.state.turns.asReadonly();
@@ -152,6 +154,7 @@ export class AgentChatStore {
   readonly isHistoryOpen$ = this.state.history.asReadonly();
   readonly isOpening$ = this.state.opening.asReadonly();
   readonly openError$ = this.state.openError.asReadonly();
+  readonly isPickingSource$ = this.state.pickingSource.asReadonly();
   /** The saved conversation the panel is on; null while it holds a new one. */
   readonly conversationId$ = this.state.conversationId.asReadonly();
   /** The composer is off: a question could not be sent. */
@@ -468,6 +471,23 @@ export class AgentChatStore {
     this.setConversationId(null);
     this.state.lesson.set(null);
     this.state.history.set(false);
+  }
+
+  /**
+   * "Soạn cùng trợ lý" on the new course page: the panel opens on a new conversation and offers
+   * the file picker; the file picked there is sent as from the paperclip. While a reply is on its
+   * way the panel only opens, since that conversation cannot be left yet.
+   */
+  startDrafting(): void {
+    this.open();
+    if (this.isAnswering$()) return;
+    this.clear();
+    this.state.pickingSource.set(true);
+  }
+
+  /** The panel has offered the file picker that {@link startDrafting} asked for. */
+  sourcePickOffered(): void {
+    this.state.pickingSource.set(false);
   }
 
   // ---- drafting step cards --------------------------------------------------------------------

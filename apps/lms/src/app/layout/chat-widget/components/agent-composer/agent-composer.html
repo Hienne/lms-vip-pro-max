@@ -48,11 +48,12 @@
       (change)="pick($event)"
     />
     <button
+      #attachButton
       uiIconButton
       size="sm"
       label="Đính kèm tài liệu để tạo khóa học"
       [disabled]="answering() || offline()"
-      (click)="picker.click()"
+      (click)="attach()"
     >
       <ui-icon name="paperclip" size="sm" />
     </button>

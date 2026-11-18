@@ -8,7 +8,8 @@ import {
   untracked,
   type WritableSignal,
 } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, type ParamMap } from '@angular/router';
 import {
   assessmentV1Endpoints,
   type ConfirmDraftingStepCommand,
@@ -437,8 +438,10 @@ export class DraftingFillStore {
     onCleanup(this.drafting.registerPageConfirm(sessionId, confirm));
   });
 
+  private readonly destroyRef = inject(DestroyRef);
+
   constructor() {
-    inject(DestroyRef).onDestroy(() => this.cancel());
+    this.destroyRef.onDestroy(() => this.cancel());
   }
 
   // ---- setters ----------------------------------------------------------------------------
@@ -521,8 +524,9 @@ export class DraftingFillStore {
 
   /**
    * The page hands over its form model and how it confirms a step with its values. On a new
-   * course opened with `?session=`, the page follows that session; on a course's edit page, the
-   * session that drafted the course, if any, from its current step.
+   * course opened with `?session=`, the page follows that session, also when the session is
+   * added to the URL of the page already open (the chat started one from "Soạn cùng trợ lý"); on a
+   * course's edit page, the session that drafted the course, if any, from its current step.
    */
   attach(
     model: WritableSignal<CourseDraftValue>,
@@ -537,8 +541,16 @@ export class DraftingFillStore {
       this.drafting.loadForCourse(courseId);
       return;
     }
-    const sessionId = Number(this.route.snapshot.queryParamMap.get('session'));
+    this.route.queryParamMap
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((params) => this.followSessionOf(params));
+  }
+
+  /** A new course page follows the session its URL names; once it follows one, it keeps it. */
+  private followSessionOf(params: ParamMap): void {
+    const sessionId = Number(params.get('session'));
     if (!Number.isInteger(sessionId) || sessionId <= 0) return;
+    if (this.state.sessionId() !== undefined) return;
     this.setSessionId(sessionId);
     this.drafting.load(sessionId);
   }

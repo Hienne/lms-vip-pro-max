@@ -39,7 +39,6 @@ import {
 import { isCancellable, itemState } from '../../data-access/upload-entry';
 import { AssetLibrary } from '../asset-library/asset-library';
 import { AssetLibraryStore } from '../asset-library/data-access/asset-library.store';
-import { AiCourseSection } from '../../../ai-course/ai-course-section/ai-course-section';
 
 /**
  * Step 1 of the editor: the course's name, place in the catalogue, level, kind, summary and
@@ -51,7 +50,6 @@ import { AiCourseSection } from '../../../ai-course/ai-course-section/ai-course-
 @Component({
   selector: 'app-course-info',
   imports: [
-    AiCourseSection,
     AssetLibrary,
     Badge,
     Button,
@@ -82,8 +80,6 @@ export class CourseInfo {
   /** False on a published revision: the objectives cannot be added or removed. */
   readonly editable = input(true);
   readonly ownerName = input('');
-  /** Shows the "Tạo bằng AI" section: a new course, for a role that may generate. */
-  readonly ai = input(false);
   /** The fields that still hold what the assistant wrote: each shows "AI đề xuất". */
   readonly suggested = input<ReadonlySet<FillField>>(new Set());
   /** What to say under a programme or module the assistant left empty. */
