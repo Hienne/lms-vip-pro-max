@@ -578,6 +578,72 @@ describe('Lesson', () => {
     });
   });
 
+  describe('a video that allows seeking', () => {
+    /** The course the server sends once the author has allowed seeking on its video block. */
+    function serveSeeking(allowSeeking: boolean): void {
+      const original = real();
+      handle.mockImplementation((endpoint, request) => {
+        const reply = original(endpoint, request);
+        if (endpoint !== learnerEndpoints.course || !reply) return reply;
+        const data = structuredClone(
+          (reply.body as { data: LearnerCourse }).data,
+        );
+        for (const lesson of data.content.chapters.flatMap((c) => c.lessons)) {
+          for (const { block } of lesson.blocks) {
+            if (block.blockType === 'video') block.allowSeeking = allowSeeking;
+          }
+        }
+        return { ...reply, body: { ...reply.body, data } } as FakeReply;
+      });
+    }
+    const player = () => el.querySelector('video')!;
+    const sent = () =>
+      calls(learnerEndpoints.saveProgress).map(
+        ([, r]) =>
+          r.body as {
+            eventType: string;
+            videoPositionSeconds?: number;
+            watchedFromSeconds?: number;
+          },
+      );
+
+    it('shows the progress bar and the ±10 s buttons, and sends a SEEK without a range', async () => {
+      serveSeeking(true);
+      await open(lessonUrl(0));
+      expect(el.querySelector('input.video__seek')).not.toBeNull();
+      expect(
+        el.querySelector('button[aria-label="Lùi 10 giây"]'),
+      ).not.toBeNull();
+
+      let now = 0;
+      Object.defineProperty(player(), 'currentTime', {
+        get: () => now,
+        set: (value: number) => (now = value),
+      });
+      player().dispatchEvent(new Event('loadedmetadata'));
+      handle.mockClear();
+      now = 45;
+      player().dispatchEvent(new Event('seeking'));
+      await settle();
+
+      expect(now).toBe(45);
+      expect(sent()).toEqual([
+        expect.objectContaining({
+          eventType: 'SEEK',
+          videoPositionSeconds: 45,
+        }),
+      ]);
+      expect(sent()[0].watchedFromSeconds).toBeUndefined();
+    });
+
+    it('keeps the player as it is when the block does not allow seeking', async () => {
+      serveSeeking(false);
+      await open(lessonUrl(0));
+      expect(el.querySelector('input.video__seek')).toBeNull();
+      expect(el.querySelector('button[aria-label="Lùi 10 giây"]')).toBeNull();
+    });
+  });
+
   describe('chapters and transcript of a video', () => {
     const chapters = [
       { startSeconds: 0, title: 'Giới thiệu' },

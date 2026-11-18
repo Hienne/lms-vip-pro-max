@@ -27,7 +27,33 @@
     (contextmenu)="$event.preventDefault()"
     (error)="loadFailed()"
   ></video>
+  @if (allowSeeking()) {
+  <input
+    type="range"
+    class="video__seek"
+    aria-label="Thanh tiến trình video"
+    min="0"
+    step="1"
+    [max]="duration()"
+    [disabled]="!duration()"
+    [value]="scrub() ?? second()"
+    [attr.aria-valuetext]="clock(scrub() ?? second()) + ' / ' + clock(duration())"
+    (input)="scrubbing($event)"
+    (change)="scrubbed($event)"
+  />
+  }
   <div class="video__controls">
+    @if (allowSeeking()) {
+    <button
+      uiIconButton
+      type="button"
+      size="sm"
+      [label]="'Lùi ' + skipSeconds + ' giây'"
+      (click)="skip(-skipSeconds)"
+    >
+      <ui-icon name="undo-2" />
+    </button>
+    }
     <button
       uiIconButton
       type="button"
@@ -37,6 +63,17 @@
     >
       <ui-icon [name]="playing() ? 'pause' : 'play'" />
     </button>
+    @if (allowSeeking()) {
+    <button
+      uiIconButton
+      type="button"
+      size="sm"
+      [label]="'Tua tới ' + skipSeconds + ' giây'"
+      (click)="skip(skipSeconds)"
+    >
+      <ui-icon name="redo-2" />
+    </button>
+    }
     <span class="video__time" aria-label="Thời gian đã phát"
       >{{ clock(second()) }} / {{ clock(duration()) }}</span
     >
@@ -79,11 +116,15 @@
   class="video__chapters"
   [chapters]="chapters()"
   [second]="second()"
+  [seekable]="allowSeeking()"
+  (jump)="jumpTo($event)"
 />
 } @if (transcript().length) {
 <app-video-transcript
   class="video__transcript"
   [lines]="transcript()"
   [second]="second()"
+  [seekable]="allowSeeking()"
+  (jump)="jumpTo($event)"
 />
 } }

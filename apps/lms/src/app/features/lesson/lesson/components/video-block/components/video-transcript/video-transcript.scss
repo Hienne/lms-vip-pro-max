@@ -64,6 +64,22 @@
     &[aria-current='true'] {
       background: ui.color(primary-subtle);
     }
+
+    &--jump {
+      border: 0;
+      background: transparent;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+
+      &:hover {
+        background: ui.color(surface-muted);
+      }
+
+      &:focus-visible {
+        @include ui.focus-ring;
+      }
+    }
   }
 
   &__time {

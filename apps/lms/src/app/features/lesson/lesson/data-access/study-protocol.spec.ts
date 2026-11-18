@@ -200,6 +200,43 @@ describe('study protocol', () => {
       }
     });
 
+    it('keeps a range from spanning a seek: close at the old spot, SEEK with none, play, then range from the new spot', () => {
+      const events: StudyEvent[] = [
+        { type: 'HEARTBEAT', playing: true, positionSeconds: 25 },
+        { type: 'SEEK', playing: false, positionSeconds: 60 },
+        { type: 'PLAY', playing: true, positionSeconds: 60 },
+        { type: 'HEARTBEAT', playing: true, positionSeconds: 80 },
+      ];
+      let tracker: PlayTracker = playing(10);
+      const sent = events.map((event) => {
+        const next = toCommand(state, tracker, event);
+        tracker = next.tracker;
+        return next.command;
+      });
+
+      expect(
+        sent.map((c) => [c.watchedFromSeconds, c.watchedToSeconds]),
+      ).toEqual([
+        [10, 25],
+        [undefined, undefined],
+        [undefined, undefined],
+        [60, 80],
+      ]);
+      expect(sent[1]).toMatchObject({
+        eventType: 'SEEK',
+        videoPositionSeconds: 60,
+      });
+      // No range covers any second between 25 and 60.
+      expect(
+        sent.some(
+          (c) =>
+            c.watchedFromSeconds !== undefined &&
+            c.watchedFromSeconds < 60 &&
+            (c.watchedToSeconds ?? 0) > 25,
+        ),
+      ).toBe(false);
+    });
+
     it('is absent after a pause: the next heartbeat did not follow a playing event', () => {
       const { command } = toCommand(
         state,
