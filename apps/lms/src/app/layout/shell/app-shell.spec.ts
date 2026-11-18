@@ -103,6 +103,7 @@ describe('AppShell', () => {
         (r) =>
           r.url.startsWith('/api/v1/me/learning/') ||
           r.url === '/api/v1/me/competency' ||
+          r.url === '/api/v1/me/competency/review' ||
           r.url === '/api/v1/me/flashcard-decks' ||
           r.url === '/api/v1/training-catalog/programs' ||
           r.url === '/api/v1/orgs' ||

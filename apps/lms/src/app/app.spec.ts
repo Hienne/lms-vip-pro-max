@@ -43,6 +43,7 @@ describe('App boot', () => {
         (r) =>
           r.url.startsWith('/api/v1/me/learning/') ||
           r.url === '/api/v1/me/competency' ||
+          r.url === '/api/v1/me/competency/review' ||
           r.url === '/api/v1/training-catalog/programs',
       )
       .filter((r) => !r.cancelled)

@@ -62,6 +62,7 @@ describe('Login', () => {
       (req) =>
         req.url.startsWith('/api/v1/me/learning/') ||
         req.url === '/api/v1/me/competency' ||
+        req.url === '/api/v1/me/competency/review' ||
         req.url.startsWith('/api/v1/training-catalog/'),
     );
     backend.verify();
