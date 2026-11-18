@@ -296,6 +296,14 @@
       </section>
 
       <app-lesson-checkpoint class="lesson__checkpoint" />
+      @if (store.lesson$() && canAsk()) {
+      <div class="lesson__explain-entry">
+        <button uiButton variant="ghost" (click)="store.openSelfExplain()">
+          <ui-icon name="notebook-pen" size="sm" />Giải thích lại bằng lời của
+          bạn
+        </button>
+      </div>
+      }
 
       <div uiCard class="lesson__stepbar">
         <nav class="lesson__stepbar-nav" aria-label="Chuyển khối và bài học">
@@ -448,6 +456,7 @@
       <button uiButton (click)="store.openCheckpoint()">
         <ui-icon name="circle-help" size="sm" />Làm câu hỏi nhanh
       </button>
+      <app-self-explain />
     </div>
   </ui-tabs>
 </ng-template>

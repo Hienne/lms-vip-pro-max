@@ -1,0 +1,62 @@
+@if (store.available$()) {
+<ui-section-card title="Giải thích lại bằng lời của bạn" class="explain">
+  <div class="explain__body">
+    <p class="explain__hint">
+      Viết vài câu về bài này như đang kể cho đồng nghiệp. Trợ lý đối chiếu với
+      nội dung bài và chỉ ra chỗ còn thiếu. Không tính điểm.
+    </p>
+    @if (store.noText$()) {
+    <ui-alert tone="info">{{ store.error$() }}</ui-alert>
+    } @else {
+    <ui-field label="Bạn hiểu bài này thế nào?">
+      <textarea
+        uiTextarea
+        rows="5"
+        placeholder="Bài này nói về…"
+        [value]="store.text$()"
+        [readOnly]="store.phase$() === 'working'"
+        (input)="onInput($event)"
+      ></textarea>
+    </ui-field>
+    <p
+      class="explain__count"
+      [class.explain__count--bad]="store.length$() > 0 && !store.lengthOk$()"
+    >
+      {{ store.length$() }}/{{ store.maxLength }} ký tự · cần ít nhất {{
+      store.minLength }}
+    </p>
+    @if (store.phase$() === 'error') {
+    <ui-alert tone="danger">{{ store.error$() }}</ui-alert>
+    } @if (store.phase$() === 'working' || store.phase$() === 'done') {
+    <div class="explain__answer" aria-live="polite">
+      <app-assistant-markdown
+        [text]="store.answer$()"
+        [citations]="store.citations$()"
+        [badges]="true"
+      />
+      @if (store.phase$() === 'working') {
+      <p class="explain__hint">Đang nhận xét…</p>
+      }
+    </div>
+    }
+    <div class="explain__actions">
+      <button
+        uiButton
+        variant="ghost"
+        [disabled]="!store.canSave$()"
+        (click)="store.saveToNotes()"
+      >
+        <ui-icon name="notebook-pen" size="sm" />Lưu vào ghi chú
+      </button>
+      @if (store.phase$() === 'done') {
+      <button uiButton (click)="store.rewrite()">Viết lại</button>
+      } @else {
+      <button uiButton [disabled]="!store.canSend$()" (click)="store.send()">
+        {{ store.phase$() === 'working' ? 'Đang gửi…' : 'Gửi để nhận xét' }}
+      </button>
+      }
+    </div>
+    }
+  </div>
+</ui-section-card>
+}

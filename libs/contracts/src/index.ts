@@ -74,3 +74,4 @@ export * from './lib/assessment/personal-flashcard.endpoints';
 export * from './lib/scorm/scorm.endpoints';
 export * from './lib/learning-loop/checkpoint.schema';
 export * from './lib/learning-loop/checkpoint.endpoints';
+export * from './lib/learning-loop/self-explain.endpoints';

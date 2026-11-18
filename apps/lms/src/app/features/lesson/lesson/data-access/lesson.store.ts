@@ -768,6 +768,12 @@ export class LessonStore {
     this.closeOutline();
   }
 
+  /** "Giải thích lại bằng lời của bạn" from the lesson page: shows the side panel's "Tự kiểm tra" tab, drawer included. */
+  openSelfExplain(): void {
+    this.setSideTab('review');
+    this.openOutline();
+  }
+
   /** "Bỏ qua": the card goes for this lesson. It never held "Tiếp theo" back. */
   skipCheckpoint(): void {
     this.setCheckpointMode('skipped');
@@ -806,6 +812,14 @@ export class LessonStore {
     const lessonId = this.lessonId$();
     if (lessonId !== undefined) {
       this.lessonNotes.add({ lessonId, anchor: this.anchor$(), text });
+    }
+  }
+
+  /** "Lưu vào ghi chú" of the explain-it-back card: a note on the whole lesson, whatever is on screen. */
+  saveLessonNote(text: string): void {
+    const lessonId = this.lessonId$();
+    if (lessonId !== undefined) {
+      this.lessonNotes.add({ lessonId, anchor: NO_ANCHOR, text });
     }
   }
 

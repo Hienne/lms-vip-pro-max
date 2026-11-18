@@ -28,6 +28,7 @@ import { AttachmentBlock } from './components/attachment-block/attachment-block'
 import { BlockList } from './components/block-list/block-list';
 import { ImageBlock } from './components/image-block/image-block';
 import { LessonCheckpoint } from './components/lesson-checkpoint/lesson-checkpoint';
+import { SelfExplain } from './components/self-explain/self-explain';
 import { LessonFeedback } from './components/lesson-feedback/lesson-feedback';
 import { LessonNotes } from './components/lesson-notes/lesson-notes';
 import { LessonOutline } from './components/lesson-outline/lesson-outline';
@@ -61,6 +62,7 @@ import { ScormBlock } from './components/scorm-block/scorm-block';
     IconButton,
     ImageBlock,
     LessonCheckpoint,
+    SelfExplain,
     LessonFeedback,
     LessonNotes,
     LessonOutline,

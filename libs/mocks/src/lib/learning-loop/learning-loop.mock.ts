@@ -2,6 +2,9 @@ import {
   checkpointEndpoints,
   CHECKPOINT_STALE_CODE,
   CheckpointAnswerBodySchema,
+  LESSON_TEXT_UNAVAILABLE_CODE,
+  selfExplainEndpoints,
+  SelfExplainBodySchema,
   type AnyEndpoint,
   type CheckpointQuestion,
 } from '@lms/contracts';
@@ -111,15 +114,80 @@ export class LearningLoopMock {
   }[] = [];
 
   answers(endpoint: AnyEndpoint): boolean {
-    return Object.values(checkpointEndpoints).some((e) => e === endpoint);
+    return (
+      endpoint === selfExplainEndpoints.selfExplain ||
+      Object.values(checkpointEndpoints).some((e) => e === endpoint)
+    );
   }
 
   handle(endpoint: AnyEndpoint, request: FakeRequest): FakeReply | undefined {
     if (!this.answers(endpoint)) return undefined;
     const lessonId = Number(request.params['lessonId'] ?? 1);
+    if (endpoint === selfExplainEndpoints.selfExplain)
+      return this.selfExplain(lessonId, request.body);
     if (endpoint === checkpointEndpoints.checkpoint)
       return ok({ lessonId, questions: this.pick(lessonId) });
     return this.answer(lessonId, request.body);
+  }
+
+  /** Streams the canned three sections; the refusals come before any event, as the server's do. */
+  private selfExplain(lessonId: number, body: unknown): FakeReply {
+    if (!SelfExplainBodySchema.safeParse(body).success)
+      return refuse(
+        'CORE-VALIDATION_FAILED',
+        'Dữ liệu chưa hợp lệ',
+        'Hãy viết từ 50 đến 1500 ký tự.',
+      );
+    // Lessons without a quick question have no text to compare with either.
+    if (lessonId % 5 === 0)
+      return refuse(
+        LESSON_TEXT_UNAVAILABLE_CODE,
+        'Chưa có nội dung bài học',
+        'Bài học này chưa có nội dung để đối chiếu. Bạn thử lại sau nhé.',
+      );
+    const answer = [
+      '**Bạn đã nắm được**',
+      '- Ý chính của bài và mục đích của nó [1].',
+      '',
+      '**Còn thiếu**',
+      '- Các bước thực hiện theo đúng thứ tự [1].',
+      '',
+      '**Cần xem lại (có thể hiểu chưa đúng)**',
+      '- Điều kiện áp dụng: bài nêu rõ khi nào được dùng [1].',
+    ].join('\n');
+    return {
+      status: 200,
+      body: envelopeOk(null),
+      events: [
+        { type: 'conversation', conversationId: 1 },
+        { type: 'delta', text: answer },
+        {
+          type: 'done',
+          answer,
+          citations: [
+            {
+              n: 1,
+              documentId: 0,
+              fileName: 'Bài học',
+              page: null,
+              lineStart: 0,
+              lineEnd: 0,
+              snippet: 'Nội dung bài học được trích từ khóa học.',
+              lesson: {
+                courseId: 1,
+                courseTitle: 'Khóa học',
+                revisionId: 1,
+                chapterTitle: 'Chương 1',
+                lessonId,
+                lessonTitle: `Bài ${lessonId}`,
+                blockId: 1,
+                url: `/lesson/1/${lessonId}`,
+              },
+            },
+          ],
+        },
+      ],
+    };
   }
 
   private candidates(lessonId: number): readonly SeedQuestion[] {
