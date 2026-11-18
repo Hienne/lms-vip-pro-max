@@ -48,8 +48,37 @@ games.caroTable$();
     {{ store.statusLabel$() }} @if (store.online$()) { · {{
     store.players$().length }} người trong phòng }
   </span>
-  <div class="row">
-    @if (store.entered$() && !store.online$()) {
+  <div class="row row--gap-2 chat-room__status-actions">
+    @if (store.canReopenTable$()) {
+    <button uiButton size="sm" (click)="store.reopenTable()">Mở lại bàn</button>
+    } @if (store.voice.available$()) { @let phase = store.voice.phase$();
+    <button
+      uiButton
+      size="sm"
+      class="chat-room__voice"
+      aria-keyshortcuts="V"
+      [attr.aria-pressed]="phase !== 'idle'"
+      (pointerdown)="holdVoiceButton($event)"
+      (pointerup)="store.voice.release()"
+      (lostpointercapture)="store.voice.release()"
+      (blur)="store.voice.release()"
+      (keydown)="voiceButtonKey($event)"
+      (keyup)="voiceButtonKey($event)"
+    >
+      {{ phase === 'idle' ? 'Giữ V để nói' : phase === 'permission' ? 'Đang mở
+      micrô…' : phase === 'connecting' ? 'Đang kết nối thoại…' : 'Đang nói' }}
+    </button>
+    @if (store.voice.playingBlocked$()) {
+    <button uiButton size="sm" (click)="store.voice.enablePlayback()">
+      Bật âm thanh thoại
+    </button>
+    } @if (store.voice.speakers$().length) {
+    <span role="status"
+      >Đang nói: {{ store.voice.speakers$().join(', ') }}</span
+    >
+    } @if (store.voice.error$(); as voiceError) {
+    <span role="alert">{{ voiceError }}</span>
+    } } @if (store.entered$() && !store.online$()) {
     <button
       uiButton
       size="sm"

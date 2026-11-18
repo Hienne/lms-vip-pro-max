@@ -366,6 +366,13 @@ const MediaSourceSchema = z.enum([
   'screen',
   'youtube',
 ]);
+const IceServersSchema = z.array(
+  z.object({
+    urls: z.string(),
+    username: z.string().optional(),
+    credential: z.string().optional(),
+  }),
+);
 const MediaStateSchema = z.object({
   type: z.literal('media-state'),
   id: z.uuid(),
@@ -378,13 +385,7 @@ const MediaStateSchema = z.object({
   position: z.number().nonnegative(),
   updatedAt: z.number(),
   serverTime: z.number(),
-  iceServers: z.array(
-    z.object({
-      urls: z.string(),
-      username: z.string().optional(),
-      credential: z.string().optional(),
-    }),
-  ),
+  iceServers: IceServersSchema,
 });
 export type RoomMediaState = z.infer<typeof MediaStateSchema>;
 const MediaSignalSchema = z.object({
@@ -392,6 +393,11 @@ const MediaSignalSchema = z.object({
   connection: z.uuid(),
   kind: z.enum(['offer', 'answer', 'ice']),
   payload: z.string().max(20000),
+});
+const VoiceWatchSchema = z.object({ id: z.uuid(), speaker: z.string() });
+const VoiceSignalSchema = MediaSignalSchema.omit({ connection: true }).extend({
+  speaker: z.string(),
+  type: z.literal('voice-signal'),
 });
 
 export const RoomCommandSchema = z.discriminatedUnion('type', [
@@ -404,6 +410,7 @@ export const RoomCommandSchema = z.discriminatedUnion('type', [
     boardGames: z.literal(true).optional(),
     floorGame: z.literal(true).optional(),
     presentation: z.literal(true).optional(),
+    voice: z.literal(true).optional(),
   }),
   RoomMovementSchema.extend({ type: z.literal('move') }),
   z.object({
@@ -463,6 +470,9 @@ export const RoomCommandSchema = z.discriminatedUnion('type', [
     connection: z.uuid(),
   }),
   MediaSignalSchema.extend({ type: z.literal('media-signal'), to: z.string() }),
+  z.object({ type: z.literal('voice-talk'), id: z.uuid().nullable() }),
+  VoiceWatchSchema.extend({ type: z.literal('voice-watch') }),
+  VoiceSignalSchema.extend({ to: z.string() }),
   z.object({ type: z.literal('board-watch'), table: z.string() }),
   z.object({
     type: z.literal('board-ready'),
@@ -491,6 +501,15 @@ export const RoomCommandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ping') }),
 ]);
 export const RoomEventSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('voice-ready'), iceServers: IceServersSchema }),
+  z.object({ type: z.literal('voice-peer'), id: z.uuid(), peer: z.string() }),
+  z.object({
+    type: z.literal('voice-state'),
+    speaker: z.string(),
+    name: z.string(),
+    id: z.uuid().or(z.literal('')),
+  }),
+  VoiceSignalSchema.extend({ from: z.string() }),
   MediaStateSchema,
   MediaSignalSchema.extend({
     type: z.literal('media-signal'),
