@@ -160,6 +160,11 @@ describe('AppShell', () => {
       )
       .filter((r) => !r.cancelled)
       .forEach((r) => r.flush(envelopeOk([])));
+    // A user with the assistant asks whether the header shows "Kết nối trợ lý ngoài"; it is off.
+    backend
+      .match('/api/v1/assistant/external-connections/status')
+      .filter((r) => !r.cancelled)
+      .forEach((r) => r.flush(envelopeOk({ enabled: false, allowed: false })));
   }
 
   async function open(url: string, counts?: Counts) {
