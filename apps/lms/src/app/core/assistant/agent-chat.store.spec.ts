@@ -34,7 +34,6 @@ import {
   FakeSessionStore,
   seedProfile,
 } from '../session/session.testing';
-import { CourseFormPrefillStore } from './course-form-prefill.store';
 import { ConversationsStore } from './conversations.store';
 import {
   AgentChatStore,
@@ -859,7 +858,6 @@ describe('AgentChatStore', () => {
     const EDITOR = '/profile';
 
     it('uploads the file as a drafting source, then asks the course skill naming it', async () => {
-      const prefill = TestBed.inject(CourseFormPrefillStore);
       const file = new File(['x'], 'q.md');
       store.askWithFile('Tạo khóa học từ tài liệu này', file);
       await settle();
@@ -887,7 +885,6 @@ describe('AgentChatStore', () => {
       await settle();
 
       expect(router.navigateByUrl).toHaveBeenCalledWith(EDITOR);
-      expect(prefill.take()).toBeNull();
       expect(store.isAnswering$()).toBe(false);
     });
 

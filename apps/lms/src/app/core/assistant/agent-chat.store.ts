@@ -18,7 +18,6 @@ import {
   type AgentCommand,
   type AgentSkill,
   type AgentStreamEvent,
-  type CourseFormPrefill,
   type ConversationContext,
   type DraftingCard,
   type DraftingStepNumber,
@@ -37,7 +36,6 @@ import { SessionStore } from '../session/session.store';
 import type { ActionCard, AgentReply, AgentTurn } from './agent-chat.model';
 import { AgentChatStorage } from './agent-chat.storage';
 import { ConversationsStore } from './conversations.store';
-import { CourseFormPrefillStore } from './course-form-prefill.store';
 import { turnFromStored } from './stored-turns';
 import { toolStatusText } from './agent-status';
 
@@ -77,7 +75,6 @@ export class AgentChatStore {
   private readonly storage = inject(AgentChatStorage);
   private readonly conversations = inject(ConversationsStore);
   private readonly courseJobs = inject(CourseJobTrackerStore);
-  private readonly prefill = inject(CourseFormPrefillStore);
   private readonly drafting = inject(CourseDraftingStore);
   private readonly router = inject(Router);
   private readonly location = inject(PAGE_LOCATION);
@@ -755,7 +752,7 @@ export class AgentChatStore {
         }));
         break;
       case 'navigate':
-        this.navigate(id, event.path, event.title, event.prefill);
+        this.navigate(id, event.path, event.title);
         break;
       case 'action_required':
         this.patchReply(id, {
@@ -791,16 +788,8 @@ export class AgentChatStore {
     }
   }
 
-  /**
-   * Only a screen under the user's own menu opens; the route guard still applies on top. A course
-   * form opened with fields the user said gets them through the prefill store.
-   */
-  private navigate(
-    id: number,
-    path: string,
-    title: string,
-    said?: CourseFormPrefill,
-  ): void {
+  /** Only a screen under the user's own menu opens; the route guard still applies on top. */
+  private navigate(id: number, path: string, title: string): void {
     const inMenu = activeHref(this.session.user$()?.nav ?? [], path) !== null;
     if (!inMenu) {
       this.dropStream();
@@ -808,20 +797,15 @@ export class AgentChatStore {
       return;
     }
     this.patchReply(id, { navigatedTo: { path, title } });
-    if (said) this.prefill.set({ file: null, fields: said });
     Promise.resolve(this.router.navigateByUrl(path)).then(
-      (opened) => {
-        if (opened === false) this.prefill.clear();
-      },
+      () => undefined,
       (error: unknown) => {
         // A tab older than the last deploy cannot load the page's chunk: the full page load gets
-        // the new build and still lands where the user asked. The prefill store is in memory, so
-        // a course form opened this way starts empty.
+        // the new build and still lands where the user asked.
         if (isStaleBuildError(error)) {
           this.location.assign(path);
           return;
         }
-        this.prefill.clear();
         this.fail(id, GENERIC_ERROR);
       },
     );

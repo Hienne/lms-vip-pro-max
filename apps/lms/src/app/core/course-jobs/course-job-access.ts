@@ -7,7 +7,6 @@ const COURSE_MANAGER_ROLES: readonly string[] = [
   'ADMIN',
   'SUPER_ADMIN',
 ];
-const ADMIN_ROLES: readonly string[] = ['ADMIN', 'SUPER_ADMIN'];
 
 /**
  * What the signed-in user may do with AI course generation. It only decides what to show: the
@@ -24,10 +23,5 @@ export class CourseJobAccess {
   /** An instructor or an admin. */
   readonly canGenerate$ = computed(() =>
     this.roles().some((role) => COURSE_MANAGER_ROLES.includes(role)),
-  );
-
-  /** An admin picks the unit of the course; an instructor's is always their own. */
-  readonly picksUnit$ = computed(() =>
-    this.roles().some((role) => ADMIN_ROLES.includes(role)),
   );
 }

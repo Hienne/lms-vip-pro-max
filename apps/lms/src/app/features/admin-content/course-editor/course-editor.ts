@@ -31,7 +31,6 @@ import {
   Toaster,
 } from '@lms/ui';
 import { AgentChatStore } from '../../../core/assistant/agent-chat.store';
-import { CourseFormPrefillStore } from '../../../core/assistant/course-form-prefill.store';
 import { KeptDrafts } from '../../../core/session/kept-drafts';
 import { CourseJobAccess } from '../../../core/course-jobs/course-job-access';
 import type { HasUnsavedChanges } from '../../../core/routing/unsaved-changes.guard';
@@ -122,7 +121,6 @@ export class CourseEditor implements HasUnsavedChanges {
   protected readonly ai = inject(CourseAiJobStore);
   /** The assistant's proposal written into the form, on a course drafted with it. */
   protected readonly fill = inject(DraftingFillStore);
-  private readonly chatPrefill = inject(CourseFormPrefillStore);
   private readonly keptDrafts = inject(KeptDrafts);
   private readonly toaster = inject(Toaster);
   private readonly chat = inject(AgentChatStore);
@@ -203,18 +201,6 @@ export class CourseEditor implements HasUnsavedChanges {
       ? { ...value, coverAssetId: cover.asset.assetId }
       : value;
   });
-
-  /**
-   * A new course opened by the chat (`open_course_form`) starts with the title the user said. The
-   * hand-over is read once and cleared; it is taken on every open so a prefill is never left for a
-   * later one, but only a new course for a role that may generate uses it.
-   */
-  private applyChatPrefill(): void {
-    const prefill = this.chatPrefill.take();
-    if (!prefill || !this.store.isCreate$() || !this.canGenerate()) return;
-    const title = prefill.fields.title?.trim();
-    if (title) this.model.update((value) => ({ ...value, title }));
-  }
 
   /**
    * A 401 ends the session under unsaved edits: they are kept in this tab and, once the user has
@@ -319,7 +305,6 @@ export class CourseEditor implements HasUnsavedChanges {
 
   constructor() {
     this.keepDraftWhenTheSessionEnds();
-    this.applyChatPrefill();
     this.fill.attach(this.model, (step) => this.confirmDraftingStep(step));
     this.store.registerBlockPositions(this.blockPositions);
     this.store.registerAssetAttacher((blockKey, asset) =>

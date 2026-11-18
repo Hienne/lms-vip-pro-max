@@ -34,7 +34,6 @@ import { setUpAdminScreen } from '../../../core/dev/mock-api/admin-screen.testin
 import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
 import { DEFAULT_COURSE_COVER } from '../../../shared/course/course-card';
 import { AgentChatStore } from '../../../core/assistant/agent-chat.store';
-import { CourseFormPrefillStore } from '../../../core/assistant/course-form-prefill.store';
 import { ChatWidget } from '../../../layout/chat-widget/chat-widget';
 import { Toaster } from '@lms/ui';
 import { KeptDrafts } from '../../../core/session/kept-drafts';
@@ -2096,19 +2095,6 @@ describe('CourseEditor', () => {
         expect(screen.callsTo(draftingSessionEndpoints.get)).toBeGreaterThan(0);
         expect(draftButton()).toBeUndefined();
         widget.destroy();
-      });
-
-      it('still takes the title the chat handed over when it opens the form', async () => {
-        TestBed.inject(CourseFormPrefillStore).set({
-          file: null,
-          fields: { title: '[TEST-AI] Khóa thử' },
-        });
-        await screen.open('/admin/courses/new');
-
-        expect((screen.field('Tên khóa học') as HTMLInputElement).value).toBe(
-          '[TEST-AI] Khóa thử',
-        );
-        expect(screen.callsTo(knowledgeEndpoints.uploadDocument)).toBe(0);
       });
     });
 
