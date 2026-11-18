@@ -1,7 +1,9 @@
 @let summary = store.summary$();
-<header class="dashboard__header">
-  <h1>{{ greeting() }}</h1>
-  <div class="dashboard__period">
+<ui-page-header
+  [title]="greeting()"
+  description="Theo dõi hoạt động và kết quả đào tạo."
+>
+  <div slot="actions" class="dashboard__period">
     <select
       uiSelect
       id="dashboard-period"
@@ -19,7 +21,7 @@
     <span class="dashboard__dates" aria-live="polite">{{ dates }}</span>
     }
   </div>
-</header>
+</ui-page-header>
 
 @if (store.loading$()) {
 <p role="status" class="dashboard__message">
