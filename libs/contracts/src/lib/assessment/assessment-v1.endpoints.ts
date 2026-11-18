@@ -49,11 +49,17 @@ export const CourseExamCommandSchema = z.object({
     courseId: z.number().int().positive().optional(),
   }),
   pool: QuizPoolRequestV1Schema,
+  lessonTarget: z
+    .object({
+      chapter: z.number().int().nonnegative(),
+      lesson: z.number().int().nonnegative(),
+    })
+    .optional(),
 });
 export type CourseExamCommand = z.infer<typeof CourseExamCommandSchema>;
 
 export const assessmentV1Endpoints = {
-  /** Atomic course draft, final exam, selected pool and completion link. */
+  /** Atomically saves the draft, the exam pool and its lesson or final-exam link. */
   saveCourseExam: defineEndpoint({
     method: 'post',
     path: '/api/v1/course-exams',

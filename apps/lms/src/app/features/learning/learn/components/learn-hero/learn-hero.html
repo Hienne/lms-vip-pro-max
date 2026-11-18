@@ -1,4 +1,7 @@
-<ui-page-header title="Học tập" [description]="summary()">
+<ui-page-header
+  [title]="greeting()"
+  [description]="welcomeBack() ? 'Chào mừng bạn đã trở lại' : ''"
+>
   @if (pointsFailed()) {
   <div slot="actions" class="learn-hero__reward">
     <span class="learn-hero__reward-label">Không tải được điểm thưởng</span>
@@ -26,6 +29,8 @@
   </a>
   }
 </ui-page-header>
+
+<ng-content />
 
 @if (resumeFailed()) {
 <div uiCard class="learn-hero__continue">

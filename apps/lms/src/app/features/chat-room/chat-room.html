@@ -51,7 +51,28 @@ games.caroTable$();
   <div class="row row--gap-2 chat-room__status-actions">
     @if (store.canReopenTable$()) {
     <button uiButton size="sm" (click)="store.reopenTable()">Mở lại bàn</button>
-    } @if (store.voice.available$()) { @let phase = store.voice.phase$();
+    } @if (store.voice.available$()) { @if (!store.voice.listening$()) {
+    <button uiButton size="sm" (click)="store.voice.enablePlayback()">
+      Bật âm thanh thoại
+    </button>
+    } @else if (store.voice.paused$()) {
+    <button uiButton size="sm" (click)="store.voice.enablePlayback()">
+      Bật lại âm thanh thoại
+    </button>
+    <button uiButton size="sm" (click)="store.voice.disablePlayback()">
+      Tắt thoại
+    </button>
+    } @else { @let phase = store.voice.phase$(); @if (!store.voice.micReady$()
+    && phase === 'idle') {
+    <button
+      uiButton
+      size="sm"
+      [disabled]="store.voice.preparingMic$()"
+      (click)="store.voice.prepareMicrophone()"
+    >
+      Cho phép micrô
+    </button>
+    } @else {
     <button
       uiButton
       size="sm"
@@ -60,25 +81,27 @@ games.caroTable$();
       [attr.aria-pressed]="phase !== 'idle'"
       (pointerdown)="holdVoiceButton($event)"
       (pointerup)="store.voice.release()"
+      (pointercancel)="store.voice.release()"
+      (contextmenu)="$event.preventDefault()"
       (lostpointercapture)="store.voice.release()"
       (blur)="store.voice.release()"
       (keydown)="voiceButtonKey($event)"
       (keyup)="voiceButtonKey($event)"
     >
-      {{ phase === 'idle' ? 'Giữ V để nói' : phase === 'permission' ? 'Đang mở
-      micrô…' : phase === 'connecting' ? 'Đang kết nối thoại…' : 'Đang nói' }}
+      {{ phase === 'idle' ? 'Giữ để nói (V)' : phase === 'permission' ? 'Đang mở
+      micrô…' : 'Đang nói' }}
     </button>
-    @if (store.voice.playingBlocked$()) {
-    <button uiButton size="sm" (click)="store.voice.enablePlayback()">
-      Bật âm thanh thoại
+    }
+    <button uiButton size="sm" (click)="store.voice.disablePlayback()">
+      Tắt thoại
     </button>
     } @if (store.voice.speakers$().length) {
     <span role="status"
       >Đang nói: {{ store.voice.speakers$().join(', ') }}</span
     >
-    } @if (store.voice.error$(); as voiceError) {
+    } } @if (store.voice.error$(); as voiceError) {
     <span role="alert">{{ voiceError }}</span>
-    } } @if (store.entered$() && !store.online$()) {
+    } @if (store.entered$() && !store.online$()) {
     <button
       uiButton
       size="sm"

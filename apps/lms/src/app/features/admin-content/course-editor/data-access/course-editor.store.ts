@@ -33,6 +33,8 @@ import {
   type LibraryAsset,
   type SaveDraftCommand,
   type ScormPackage,
+  type CourseExamCommand,
+  type QuizSummary,
 } from '@lms/contracts';
 import { choose, confirm, NOW, Toaster, type StepperItem } from '@lms/ui';
 import {
@@ -75,9 +77,18 @@ import { courseCatalogStatus } from '../../../../shared/status/catalog-status';
 import {
   FILE_USAGE,
   toCreateCourseCommand,
+  toSaveDraftCommand,
   type AssetValue,
   type CourseDraftValue,
 } from '../course-draft';
+import {
+  activeBankQuestions,
+  type ExamPoolSource,
+} from '../components/course-rules/data-access/exam-pool';
+import {
+  toNewQuizRequest,
+  type ExamFormValue,
+} from '../components/course-rules/data-access/course-exam.model';
 import {
   cancelUpload,
   chunkedUpload,
@@ -312,6 +323,7 @@ export class CourseEditorStore {
     /** The course code the server refused as taken, so the code field can say so. */
     takenCode: signal<string | null>(null),
     examSaving: signal(false),
+    lessonExamPool: signal<ExamPoolSource | undefined>(undefined),
     examEditing: signal(false),
     /** The program whose field lists the modules; follows the course until the author picks. */
     programId: linkedSignal<number | undefined>(
@@ -402,11 +414,44 @@ export class CourseEditorStore {
 
   /** The course's quizzes, for a quiz lesson to pick from. */
   private readonly quizzesData = serverData(
-    (courseId: number) =>
-      this.client.call(assessmentV1Endpoints.courseQuizList, {
-        query: { courseId, size: 100 },
-      }),
+    (courseId: number) => {
+      const read = (page: number) =>
+        this.client.call(assessmentV1Endpoints.courseQuizList, {
+          query: { courseId, page, size: 100 },
+        });
+      return read(0).pipe(
+        expand((page) =>
+          page.page + 1 < page.totalPages ? read(page.page + 1) : EMPTY,
+        ),
+        reduce((items, page) => [...items, ...page.items], [] as QuizSummary[]),
+      );
+    },
     { params: () => this.courseId() },
+  );
+  private readonly lessonExamBank = serverData(
+    (source: ExamPoolSource) => activeBankQuestions(this.client, source),
+    { params: () => this.state.lessonExamPool() },
+  );
+  private readonly lessonExamSave = serverMutation(
+    ({
+      body,
+      apply,
+    }: {
+      body: CourseExamCommand;
+      apply: (saved: CourseDetail) => void;
+    }) =>
+      this.client
+        .call(assessmentV1Endpoints.saveCourseExam, { body })
+        .pipe(map((saved) => ({ saved, apply }))),
+    {
+      errors: 'alert',
+      success: () => 'Đã lưu bài học và bài kiểm tra nháp',
+      onSuccess: ({ saved, apply }) => {
+        apply(saved);
+        this.closeLesson();
+        this.acceptExamCourse(saved, 1);
+      },
+    },
   );
 
   private readonly programsData = serverData(
@@ -640,7 +685,15 @@ export class CourseEditorStore {
         })
       : 'draft';
   });
-  readonly quizzes$ = computed(() => this.quizzesData.value()?.items ?? []);
+  readonly quizzes$ = computed(() => this.quizzesData.value() ?? []);
+  readonly quizzesLoading$ = this.quizzesData.isLoading;
+  readonly lessonExamQuestions$ = computed(
+    () => this.lessonExamBank.value() ?? [],
+  );
+  readonly lessonExamLoading$ = this.lessonExamBank.isLoading;
+  readonly lessonExamLoadError$ = this.lessonExamBank.error;
+  readonly lessonExamSaving$ = this.lessonExamSave.isPending;
+  readonly lessonExamSaveError$ = this.lessonExamSave.error;
   readonly quizzesError$ = this.quizzesData.error;
   /** Why the exam of the last publish was refused: step 3 says so. */
   readonly examPublishError$ = this.state.examPublishError.asReadonly();
@@ -667,6 +720,7 @@ export class CourseEditorStore {
   readonly isSaving$ = computed(
     () =>
       this.state.examSaving() ||
+      this.lessonExamSaving$() ||
       this.saveMutation.isPending() ||
       this.createMutation.isPending() ||
       this.createAndContinueMutation.isPending() ||
@@ -961,6 +1015,61 @@ export class CourseEditorStore {
     }
   }
 
+  setLessonExamPool(programId?: number): void {
+    const course = this.course$();
+    const courseId =
+      course?.revision.programId === programId ? course?.course.id : undefined;
+    this.state.lessonExamPool.set(
+      programId ? { programId, courseId } : undefined,
+    );
+  }
+
+  retryLessonExamPool(): void {
+    this.lessonExamBank.reload();
+  }
+
+  saveLessonExam(
+    draft: CourseDraftValue,
+    lessonTarget: LessonTarget,
+    value: ExamFormValue,
+    apply: (saved: CourseDetail) => void,
+  ): void {
+    if (this.isSaving$() || !this.canCreateQuiz$() || this.pendingUploads$())
+      return;
+    const course = this.course$();
+    const ownerOrgId = this.ownerOrgId$();
+    if (
+      !ownerOrgId ||
+      !draft.programId ||
+      !draft.code.trim() ||
+      !draft.title.trim() ||
+      !draft.level
+    )
+      return;
+    const quiz = toNewQuizRequest(course?.course.id ?? 1, value);
+    const body: CourseExamCommand = {
+      ...(course
+        ? {
+            courseId: course.course.id,
+            revisionId: course.revision.id,
+            draft: toSaveDraftCommand(draft, course.revision.rowVersion),
+          }
+        : {
+            course: toCreateCourseCommand(draft, draft.code, ownerOrgId),
+          }),
+      lessonTarget,
+      quiz: { ...quiz, courseId: course?.course.id, quizType: 'PRACTICE' },
+      pool: {
+        items: (value.questionIds ?? []).map((questionId, sortNo) => ({
+          questionId,
+          sortNo,
+          points: null,
+        })),
+      },
+    };
+    this.lessonExamSave.run({ body, apply });
+  }
+
   /**
    * The page hands over how a finished upload's asset joins its block of the draft, once. The
    * block is found by its key wherever it sits then, so moving things around mixes nothing up.
@@ -1054,6 +1163,7 @@ export class CourseEditorStore {
   /** Opens a lesson in the drawer; a published revision is not edited, so it stays shut. */
   editLesson(target: LessonTarget): void {
     if (!this.isDraft$()) return;
+    this.lessonExamSave.reset();
     this.setScormPickerOpen(false);
     this.setSessionUploads([]);
     this.setEditingLesson(target);
@@ -1836,7 +1946,7 @@ export class CourseEditorStore {
   ): { id: number; title: string } | undefined {
     const exam = this.quizzesData
       .value()
-      ?.items.find((quiz) => quiz.id === finalQuizId);
+      ?.find((quiz) => quiz.id === finalQuizId);
     return exam &&
       exam.status === 'DRAFT' &&
       exam.id !== this.state.publishedExamId()

@@ -1,5 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, effect, inject, viewChild } from '@angular/core';
+import { OPEN_PAGE_GUIDE } from '../../../core/routing/page-guide-action';
 import { RouterLink } from '@angular/router';
 import {
   Button,
@@ -84,6 +85,9 @@ import { ScormBlock } from './components/scorm-block/scorm-block';
 })
 export class Lesson {
   protected readonly store = inject(LessonStore);
+  protected readonly openPageGuide = inject(OPEN_PAGE_GUIDE, {
+    optional: true,
+  });
 
   protected readonly agent = inject(AgentChatStore);
 

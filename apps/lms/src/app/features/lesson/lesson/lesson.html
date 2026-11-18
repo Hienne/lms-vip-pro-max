@@ -50,6 +50,15 @@
       [disabled]="agent.isAnswering$()"
       (selected)="assist($event)"
     />
+    } @if (openPageGuide; as openGuide) {
+    <button
+      uiIconButton
+      size="sm"
+      label="Hướng dẫn bài học"
+      (click)="openGuide()"
+    >
+      <ui-icon name="circle-help" size="sm" />
+    </button>
     } @if (store.lesson$()) {
     <button
       uiButton

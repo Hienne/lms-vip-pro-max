@@ -111,6 +111,7 @@ describe('ChatRoomStore', () => {
       boardGames: true,
       presentation: true,
       voice: true,
+      voiceRelay: true,
     });
     expect(store.online$()).toBe(true);
     observer.message({

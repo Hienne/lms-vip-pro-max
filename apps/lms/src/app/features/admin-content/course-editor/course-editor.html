@@ -211,13 +211,19 @@
   [uiDrawer]="!!editingLesson()"
   uiDrawerSize="lg"
   uiDrawerTitle="Soạn bài học"
+  [uiDrawerBusy]="store.lessonExamSaving$()"
+  uiDrawerBusyLabel="Đang lưu bài học và bài kiểm tra"
   [uiDrawerFooter]="footer"
   [uiDrawerGuard]="store.lessonUploading$() || inlineUploading()"
   (uiDrawerCloseRequest)="askToCloseLesson()"
   (uiDrawerDismiss)="store.closeLesson()"
 >
   @if (editingLesson(); as lesson) {
-  <app-lesson-form [lesson]="lesson" (submitted)="applyLesson($event)" />
+  <app-lesson-form
+    [lesson]="lesson"
+    [programId]="+draftValue().programId"
+    (submitted)="applyLesson($event)"
+  />
   }
 </ng-template>
 <ng-template #footer let-close="close">
@@ -236,7 +242,7 @@
     formId="lesson-form"
     submitLabel="Lưu"
     cancelLabel="Hủy"
-    [saving]="inlineUploading()"
+    [saving]="inlineUploading() || store.lessonExamSaving$()"
     (cancel)="close()"
   />
 </ng-template>

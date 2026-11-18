@@ -594,8 +594,15 @@ export class ReportScreenStore {
       now.getDate() + 1,
     ).toISOString();
     if (to !== end) return 'custom';
-    if (from === new Date(now.getFullYear(), now.getMonth(), 1).toISOString())
-      return 'month';
+    if (
+      from ===
+      new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() - 89,
+      ).toISOString()
+    )
+      return '90days';
     if (
       from ===
       new Date(
@@ -628,10 +635,13 @@ export class ReportScreenStore {
       return;
     }
     const now = new Date();
-    const from =
-      value === 'month'
-        ? new Date(now.getFullYear(), now.getMonth(), 1)
-        : new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+    if (value !== '30days' && value !== '90days') return;
+    const days = value === '90days' ? 90 : 30;
+    const from = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() - days + 1,
+    );
     const to = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
     this.applyFilters({
       ...this.filters$(),

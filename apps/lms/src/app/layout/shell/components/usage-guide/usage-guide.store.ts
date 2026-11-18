@@ -184,20 +184,44 @@ export class UsageGuideStore {
   openPage(path: string): void {
     if (this.busy$() || !this.session.isSignedIn$()) return;
     const cleanPath = path.split(/[?#]/)[0];
-    const allowed = [
-      ...GUIDE_STEPS[this.audience$()],
-      ...PAGE_GUIDE_STEPS,
-    ].filter((step) => this.session.menus$().includes(step.permission));
-    const exact = allowed.filter((step) => step.path === cleanPath);
-    const parents = allowed.filter(
-      (step) =>
-        cleanPath.startsWith(step.path + '/') ||
-        (step.path.endsWith('/') && cleanPath.startsWith(step.path)),
+    const menus = this.session.menus$();
+    const detailed = PAGE_GUIDE_STEPS.filter((step) =>
+      menus.includes(step.permission),
     );
-    const longest = Math.max(0, ...parents.map((step) => step.path.length));
+    const basic = [
+      ...GUIDE_STEPS[this.audience$()],
+      ...this.audiences$()
+        .filter((audience) => audience !== this.audience$())
+        .flatMap((audience) => GUIDE_STEPS[audience]),
+    ].filter((step) => menus.includes(step.permission));
+    const allowed = [...detailed, ...basic];
+    const segments = cleanPath.split('/');
+    const matched = detailed.filter((step) => {
+      const pattern = step.path.split('/');
+      return (
+        pattern.length === segments.length &&
+        pattern.every(
+          (part, index) => part.startsWith(':') || part === segments[index],
+        )
+      );
+    });
+    const exact = matched.filter((step) => step.path === cleanPath);
+    const overview = basic.filter((step) => step.path === cleanPath);
+    const parent = [...detailed, ...basic]
+      .filter(
+        (step) =>
+          !step.path.includes(':') && cleanPath.startsWith(step.path + '/'),
+      )
+      .sort((a, b) => b.path.length - a.path.length)[0];
     const steps = exact.length
       ? exact
-      : parents.filter((step) => step.path.length === longest);
+      : matched.length
+        ? matched
+        : overview.length
+          ? overview
+          : parent
+            ? allowed.filter((step) => step.path === parent.path)
+            : [];
     const fallback = allowed[0];
     if (!steps.length && !fallback) return;
     this.setPageSteps(

@@ -85,7 +85,7 @@ export class ChatRoom {
   protected shortcut(event: KeyboardEvent): void {
     if (event.isComposing) return;
     const target = event.target as HTMLElement | null;
-    if (event.code === 'KeyV' && this.store.voice.available$()) {
+    if (event.code === 'KeyV' && this.store.voice.listening$()) {
       if (
         event.defaultPrevented ||
         event.ctrlKey ||

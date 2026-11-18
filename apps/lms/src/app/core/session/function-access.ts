@@ -1,5 +1,20 @@
 import type { RoleGrant } from '@lms/contracts';
 
+export function staffHomeFor(
+  grants: readonly RoleGrant[],
+): '/admin' | '/instructor' | undefined {
+  const admin = grants.some(
+    (grant) =>
+      (grant.roleCode === 'SUPER_ADMIN' && grant.scope.type === 'GLOBAL') ||
+      (grant.roleCode === 'ADMIN' &&
+        ['ORG', 'GLOBAL'].includes(grant.scope.type)),
+  );
+  if (admin) return '/admin';
+  return grants.some((grant) => grant.roleCode === 'INSTRUCTOR')
+    ? '/instructor'
+    : undefined;
+}
+
 /**
  * Display/route eligibility for APIs with explicit business-role requirements. A function alone
  * does not grant an operation. Keep each role and scope on the same effective /me grant.

@@ -299,7 +299,46 @@ export class FakeBackend {
         .filter((u) => u.status === 'active')
         .map((u) => ({ userId: u.userId, orgId: u.orgId, teamId: u.teamId })),
     quizStatus: (quizId) => this.authoring.quizStatus(quizId),
+    publishLessonQuizzes: (request, courseId, ids) => {
+      const undo = this.authoring.checkpointExamWrites();
+      try {
+        for (const id of ids) {
+          const params = { id: String(id) };
+          const result = this.handle(assessmentV1Endpoints.quiz, {
+            ...request,
+            params,
+          });
+          const match = QuizDetailV1Schema.safeParse(result?.body.data);
+          if (
+            !match.success ||
+            match.data.quiz.courseId !== courseId ||
+            match.data.quiz.status === 'CLOSED'
+          ) {
+            this.refuseMock(
+              envelopeError(
+                'LEARNING-QUIZ_LESSON_UNLINKED',
+                'Thiếu bài kiểm tra',
+                'Chọn bài kiểm tra còn khả dụng.',
+              ),
+            );
+          }
+          if (match.data.quiz.status === 'DRAFT') {
+            const reply = this.handle(assessmentV1Endpoints.publishQuiz, {
+              ...request,
+              params,
+              body: { expectedVersion: match.data.quiz.rowVersion },
+            });
+            if (reply && reply.body.status !== 'SUCCESS')
+              throw new Refused(reply);
+          }
+        }
+      } catch (error) {
+        undo();
+        throw error;
+      }
+    },
     reportScope: (request) => this.reportScope(request),
+    dashboardScope: (request) => this.dashboardScope(request),
     isSystemAdmin: (request) => this.isGlobalAdmin(this.caller(request)),
     nameOf: (type, id) => {
       switch (type) {
@@ -456,6 +495,17 @@ export class FakeBackend {
     });
     if (!parsed.success) return invalid();
     const command = parsed.data;
+    const target = command.lessonTarget;
+    if (
+      target
+        ? command.quiz.quizType !== 'PRACTICE' || command.quizId !== undefined
+        : command.quiz.quizType !== 'FINAL_EXAM'
+    )
+      return invalid();
+    const draft = command.draft ?? command.course?.draft;
+    const chapter = target ? draft?.chapters[target.chapter] : undefined;
+    if (target && chapter?.lessons[target.lesson]?.lessonType !== 'quiz')
+      return invalid();
     const undoCourse = this.learning.checkpointCourseWrites();
     const undoQuiz = this.authoring.checkpointExamWrites();
     let committed = false;
@@ -508,13 +558,27 @@ export class FakeBackend {
           command.pool.items.length !== command.quiz.questionCount)
       )
         return invalid();
-      const draft = command.draft ?? command.course?.draft;
       const linkedReply = call(
         courseEndpoints.saveDraft,
         {
           ...draft,
           expectedVersion: saved.revision.rowVersion,
-          finalQuizId: quiz.quiz.id,
+          ...(target && draft && chapter
+            ? {
+                chapters: draft.chapters.map((item, ci) =>
+                  ci === target.chapter
+                    ? {
+                        ...chapter,
+                        lessons: chapter.lessons.map((lesson, li) =>
+                          li === target.lesson
+                            ? { ...lesson, quizId: quiz.quiz.id }
+                            : lesson,
+                        ),
+                      }
+                    : item,
+                ),
+              }
+            : { finalQuizId: quiz.quiz.id }),
         },
         {
           courseId: String(saved.course.id),
@@ -1386,6 +1450,37 @@ export class FakeBackend {
       global ||
       (person.orgId !== null && orgs.has(person.orgId)) ||
       (person.teamId !== null && teams.has(person.teamId));
+  }
+
+  private dashboardScope(request: FakeRequest) {
+    const caller = this.caller(request);
+    const grants = this.activeGrants(caller.userId).filter((grant) =>
+      ['SUPER_ADMIN', 'ADMIN', 'INSTRUCTOR'].includes(this.roleOf(grant).code),
+    );
+    if (!grants.length) return refuse('accessDenied');
+    return (course: {
+      ownerOrgId: number;
+      ownerTeamId?: number | null;
+      ownerUserId?: string | null;
+    }) =>
+      grants.some((grant) => {
+        switch (grant.scope) {
+          case 'GLOBAL':
+            return true;
+          case 'ORG':
+            return (
+              grant.orgId !== null &&
+              this.subtree(grant.orgId).includes(course.ownerOrgId)
+            );
+          case 'TEAM':
+            return grant.teamId === course.ownerTeamId;
+          case 'OWN':
+            return (
+              course.ownerOrgId === caller.orgId &&
+              course.ownerUserId === caller.userId
+            );
+        }
+      });
   }
 
   private isSuperAdmin(user: DbUser): boolean {

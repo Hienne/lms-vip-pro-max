@@ -7,42 +7,41 @@ import {
 } from '@angular/core';
 import type { RoomCommand, RoomEvent } from '@lms/contracts';
 
-type VoiceSignal = Extract<RoomCommand, { type: 'voice-signal' }>;
-type IncomingSignal = Extract<RoomEvent, { type: 'voice-signal' }>;
-
-interface VoicePeer {
-  id: string;
-  speaker: string;
-  remote: string;
-  connection: RTCPeerConnection;
-  ice: RTCIceCandidateInit[];
-  pending: Promise<void>;
-  audio?: HTMLAudioElement;
-}
+const VOICE_RATE = 16_000;
+const LOG_MU = Math.log(256);
+type IncomingFrame = Extract<RoomEvent, { type: 'voice-frame' }>;
 
 @Injectable()
 export class RoomVoiceStore {
   private readonly state = {
     available: signal(false),
-    phase: signal<'idle' | 'permission' | 'connecting' | 'talking'>('idle'),
+    listening: signal(false),
+    paused: signal(false),
+    micReady: signal(false),
+    preparingMic: signal(false),
+    phase: signal<'idle' | 'permission' | 'talking'>('idle'),
     error: signal(''),
-    playingBlocked: signal(false),
     speakers: signal<Record<string, string>>({}),
   };
   readonly available$ = this.state.available.asReadonly();
+  readonly listening$ = this.state.listening.asReadonly();
+  readonly paused$ = this.state.paused.asReadonly();
+  readonly micReady$ = this.state.micReady.asReadonly();
+  readonly preparingMic$ = this.state.preparingMic.asReadonly();
   readonly phase$ = this.state.phase.asReadonly();
   readonly error$ = this.state.error.asReadonly();
-  readonly playingBlocked$ = this.state.playingBlocked.asReadonly();
   readonly speakers$ = computed(() => Object.values(this.state.speakers()));
 
   private send?: (command: RoomCommand) => void;
-  private me = '';
-  private iceServers: RTCIceServer[] = [];
+  private context?: AudioContext;
+  private captureModule?: Promise<void>;
   private press?: string;
+  private announced = false;
   private stream?: MediaStream;
-  private peers = new Map<string, VoicePeer>();
-  private queue: { peer: VoicePeer; command: VoiceSignal }[] = [];
-  private pump?: ReturnType<typeof setInterval>;
+  private input?: MediaStreamAudioSourceNode;
+  private capture?: AudioWorkletNode;
+  private timings = new Map<string, { id: string; next: number }>();
+  private playing = new Set<AudioBufferSourceNode>();
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.reset());
@@ -52,12 +51,63 @@ export class RoomVoiceStore {
     this.send = send;
   }
 
-  identify(id: string): void {
-    this.me = id;
+  async enablePlayback(): Promise<void> {
+    if (!this.available$() || (this.listening$() && !this.paused$())) return;
+    try {
+      const context = (this.context ??= new AudioContext());
+      context.onstatechange = () => {
+        if (this.context !== context || !this.listening$()) return;
+        const paused = context.state !== 'running';
+        this.state.paused.set(paused);
+        if (paused) {
+          if (this.announced) this.release();
+          this.stopPlayback();
+        }
+      };
+      // Resume directly from a tap so mobile browsers permit audio output.
+      await context.resume();
+      if (this.context !== context) return;
+      this.state.error.set('');
+      this.state.paused.set(false);
+      this.state.listening.set(true);
+      this.send?.({ type: 'voice-listen', enabled: true });
+    } catch {
+      if (this.available$())
+        this.state.error.set('Không bật được âm thanh thoại. Bấm lại để thử.');
+    }
+  }
+
+  disablePlayback(): void {
+    this.closeAudio();
+    this.send?.({ type: 'voice-listen', enabled: false });
+  }
+
+  async prepareMicrophone(): Promise<void> {
+    const context = this.context;
+    if (!this.listening$() || this.preparingMic$()) return;
+    this.state.preparingMic.set(true);
+    this.state.error.set('');
+    try {
+      const stream = await this.openMicrophone();
+      stream.getTracks().forEach((track) => track.stop());
+      if (this.context === context) this.state.micReady.set(true);
+    } catch (error) {
+      if (this.context === context) this.microphoneError(error);
+    } finally {
+      if (this.context === context) this.state.preparingMic.set(false);
+    }
   }
 
   async pressToTalk(): Promise<void> {
-    if (!this.available$() || this.press) return;
+    const context = this.context;
+    if (
+      !this.listening$() ||
+      !context ||
+      this.paused$() ||
+      this.press ||
+      this.preparingMic$()
+    )
+      return;
     this.state.error.set('');
     if (
       !navigator.mediaDevices?.getUserMedia ||
@@ -66,113 +116,121 @@ export class RoomVoiceStore {
       this.state.error.set('Thoại cần HTTPS và trình duyệt hỗ trợ micrô.');
       return;
     }
+
     const id = crypto.randomUUID();
     this.press = id;
     this.state.phase.set('permission');
+    let stream: MediaStream;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true },
-        video: false,
-      });
-      if (this.press !== id) {
-        stream.getTracks().forEach((track) => track.stop());
+      stream = await this.openMicrophone();
+    } catch (error) {
+      if (this.press === id) {
+        this.release();
+        this.microphoneError(error);
+      }
+      return;
+    }
+    if (this.context === context) this.state.micReady.set(true);
+    if (this.press !== id) {
+      stream.getTracks().forEach((track) => track.stop());
+      return;
+    }
+
+    this.stream = stream;
+    for (const track of stream.getAudioTracks())
+      track.onended = () => this.release();
+    try {
+      this.captureModule ??= context.audioWorklet
+        .addModule(new URL('voice-capture.js', document.baseURI).href)
+        .catch((error: unknown) => {
+          if (this.context === context) this.captureModule = undefined;
+          throw error;
+        });
+      await this.captureModule;
+      if (this.press !== id) return;
+      // A system audio interruption can suspend the context even after the user enabled listening.
+      if (context.state !== 'running') {
+        this.release();
+        this.state.error.set(
+          'Âm thanh đang tạm ngắt. Bấm Tắt thoại rồi Bật âm thanh thoại lại.',
+        );
         return;
       }
-      this.stream = stream;
-      for (const track of stream.getAudioTracks())
-        track.onended = () => this.release();
-      this.state.phase.set('connecting');
-      this.send?.({ type: 'voice-talk', id });
+
+      this.input = context.createMediaStreamSource(stream);
+      this.capture = new AudioWorkletNode(context, 'room-voice-capture');
+      this.capture.port.onmessage = ({
+        data,
+      }: MessageEvent<{ frame: Uint8Array; time: number }>) => {
+        if (this.press !== id || context.currentTime - data.time > 0.25) return;
+        if (!this.announced) {
+          this.announced = true;
+          this.send?.({ type: 'voice-talk', id });
+          this.state.phase.set('talking');
+        }
+        this.send?.({
+          type: 'voice-frame',
+          id,
+          data: btoa(String.fromCharCode(...data.frame)),
+        });
+      };
+      this.input.connect(this.capture);
+      this.capture.connect(context.destination);
     } catch {
-      if (this.press !== id) return;
-      this.release();
-      this.state.error.set(
-        'Không mở được micrô. Kiểm tra quyền micrô và giữ V để thử lại.',
-      );
+      if (this.press === id) {
+        this.release();
+        this.state.error.set(
+          'Không thu được âm thanh. Thử mở phòng bằng Chrome hoặc Safari.',
+        );
+      }
     }
   }
 
   release(): void {
     this.press = undefined;
-    if (this.stream) {
-      this.stream.getTracks().forEach((track) => track.stop());
-      this.stream = undefined;
-      this.send?.({ type: 'voice-talk', id: null });
-    }
-    for (const peer of this.peers.values()) {
-      if (peer.speaker === this.me) this.close(peer);
-    }
+    this.stream?.getTracks().forEach((track) => track.stop());
+    this.stream = undefined;
+    this.input?.disconnect();
+    this.input = undefined;
+    this.capture?.disconnect();
+    this.capture?.port.close();
+    this.capture = undefined;
+    if (this.announced) this.send?.({ type: 'voice-talk', id: null });
+    this.announced = false;
     this.state.phase.set('idle');
-  }
-
-  enablePlayback(): void {
-    this.state.playingBlocked.set(false);
-    for (const peer of this.peers.values()) this.play(peer);
   }
 
   receive(event: RoomEvent): void {
     switch (event.type) {
       case 'voice-ready':
-        this.iceServers = event.iceServers;
-        this.state.available.set(typeof RTCPeerConnection !== 'undefined');
+        this.state.available.set(
+          !!event.relay && typeof AudioContext !== 'undefined',
+        );
+        if (!this.available$()) {
+          this.state.error.set(
+            event.relay
+              ? 'Trình duyệt này chưa phát được âm thanh thoại.'
+              : 'Máy chủ chưa hỗ trợ phiên bản thoại này.',
+          );
+        }
+        break;
+      case 'voice-frame':
+        this.play(event);
         break;
       case 'voice-state':
-        if (!this.available$() || event.speaker === this.me) return;
-        this.left(event.speaker, false);
-        if (
-          event.id &&
-          this.createPeer(event.id, event.speaker, event.speaker)
-        ) {
-          this.state.speakers.update((speakers) => ({
-            ...speakers,
-            [event.speaker]: event.name,
-          }));
-          this.send?.({
-            type: 'voice-watch',
-            id: event.id,
-            speaker: event.speaker,
-          });
-        }
+        if (!event.id) this.left(event.speaker);
         break;
-      case 'voice-peer':
-        if (
-          this.press === event.id &&
-          this.stream &&
-          !this.peers.has(this.key(this.me, event.peer))
-        ) {
-          const peer = this.createPeer(event.id, this.me, event.peer);
-          if (peer)
-            this.enqueue(peer, async () => {
-              const stream = this.stream;
-              if (!stream) return;
-              for (const track of stream.getAudioTracks())
-                peer.connection.addTrack(track, stream);
-              await peer.connection.setLocalDescription(
-                await peer.connection.createOffer(),
-              );
-              this.relay(
-                peer,
-                'offer',
-                peer.connection.localDescription?.sdp ?? '',
-              );
-            });
-        }
+      case 'voice-issue':
+        this.release();
+        this.state.error.set(event.message);
         break;
-      case 'voice-signal': {
-        const peer = this.peers.get(this.key(event.speaker, event.from));
-        if (peer?.id === event.id)
-          this.enqueue(peer, () => this.acceptSignal(peer, event));
-        break;
-      }
     }
   }
 
-  left(id: string, closeOutgoing = true): void {
-    for (const peer of this.peers.values()) {
-      if (peer.remote === id && (closeOutgoing || peer.speaker === id))
-        this.close(peer);
-    }
+  left(id: string): void {
+    this.timings.delete(id);
     this.state.speakers.update((speakers) => {
+      if (!(id in speakers)) return speakers;
       const remaining = { ...speakers };
       delete remaining[id];
       return remaining;
@@ -180,149 +238,85 @@ export class RoomVoiceStore {
   }
 
   reset(): void {
-    this.release();
-    for (const peer of this.peers.values()) this.close(peer);
-    clearInterval(this.pump);
-    this.pump = undefined;
-    this.queue = [];
-    this.me = '';
-    this.iceServers = [];
+    this.closeAudio();
     this.state.available.set(false);
-    this.state.playingBlocked.set(false);
+    this.state.micReady.set(false);
     this.state.error.set('');
+  }
+
+  private closeAudio(): void {
+    this.release();
+    this.stopPlayback();
+    this.state.listening.set(false);
+    this.state.paused.set(false);
+    this.state.preparingMic.set(false);
+    this.state.error.set('');
+    void this.context?.close().catch(() => undefined);
+    this.context = undefined;
+    this.captureModule = undefined;
+  }
+
+  private stopPlayback(): void {
+    for (const source of this.playing) source.stop();
+    this.playing.clear();
+    this.timings.clear();
     this.state.speakers.set({});
   }
 
-  private key(speaker: string, remote: string): string {
-    return JSON.stringify([speaker, remote]);
-  }
-
-  private current(peer: VoicePeer): boolean {
-    return this.peers.get(this.key(peer.speaker, peer.remote)) === peer;
-  }
-
-  private createPeer(
-    id: string,
-    speaker: string,
-    remote: string,
-  ): VoicePeer | undefined {
-    let connection: RTCPeerConnection;
-    try {
-      connection = new RTCPeerConnection({ iceServers: this.iceServers });
-    } catch {
-      this.state.error.set('Không khởi tạo được kết nối thoại.');
-      return;
-    }
-    const peer: VoicePeer = {
-      id,
-      speaker,
-      remote,
-      connection,
-      ice: [],
-      pending: Promise.resolve(),
-    };
-    this.peers.set(this.key(speaker, remote), peer);
-    connection.onicecandidate = ({ candidate }) => {
-      if (candidate)
-        this.relay(peer, 'ice', JSON.stringify(candidate.toJSON()));
-    };
-    connection.ontrack = ({ track, streams }) => {
-      if (!this.current(peer) || speaker === this.me || track.kind !== 'audio')
-        return;
-      peer.audio ??= new Audio();
-      peer.audio.srcObject = streams[0] ?? new MediaStream([track]);
-      this.play(peer);
-    };
-    connection.onconnectionstatechange = () => {
-      if (!this.current(peer)) return;
-      if (connection.connectionState === 'connected' && speaker === this.me) {
-        this.state.phase.set('talking');
-      } else if (connection.connectionState === 'failed') {
-        this.state.error.set(
-          'Kết nối thoại bị gián đoạn. Thử giữ V lại hoặc kiểm tra mạng.',
-        );
-        this.close(peer);
-      }
-    };
-    return peer;
-  }
-
-  private play(peer: VoicePeer): void {
-    void peer.audio?.play().catch(() => {
-      if (this.current(peer)) this.state.playingBlocked.set(true);
+  private openMicrophone(): Promise<MediaStream> {
+    return navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true },
+      video: false,
     });
   }
 
-  private close(peer: VoicePeer): void {
-    this.peers.delete(this.key(peer.speaker, peer.remote));
-    peer.connection.close();
-    if (peer.audio) {
-      peer.audio.pause();
-      peer.audio.srcObject = null;
+  private microphoneError(error: unknown): void {
+    this.state.micReady.set(false);
+    const denied =
+      error instanceof DOMException && error.name === 'NotAllowedError';
+    this.state.error.set(
+      denied
+        ? 'Micrô chưa được cấp quyền. Kiểm tra quyền của trang rồi bấm Cho phép micrô.'
+        : 'Không mở được micrô. Kiểm tra thiết bị và quyền micrô rồi thử lại.',
+    );
+  }
+
+  private play(event: IncomingFrame): void {
+    const context = this.context;
+    if (!this.listening$() || context?.state !== 'running') return;
+    const now = context.currentTime;
+    const previous = this.timings.get(event.speaker);
+    const next = previous?.id === event.id ? previous.next : 0;
+    // Drop delayed frames rather than let a congested socket build up an audio queue.
+    if (next > now + 0.24) return;
+    const bytes = atob(event.data);
+    const buffer = context.createBuffer(1, bytes.length, VOICE_RATE);
+    const samples = buffer.getChannelData(0);
+    for (let i = 0; i < samples.length; i++) {
+      const code = (bytes.charCodeAt(i) - 128) / 127;
+      samples[i] =
+        (Math.sign(code) * Math.expm1(Math.abs(code) * LOG_MU)) / 255;
     }
-    this.queue = this.queue.filter((item) => item.peer !== peer);
-  }
 
-  private enqueue(peer: VoicePeer, action: () => Promise<void>): void {
-    peer.pending = peer.pending
-      .then(async () => {
-        if (this.current(peer)) await action();
-      })
-      .catch(() => {
-        if (this.current(peer)) this.close(peer);
-      });
-  }
-
-  private relay(
-    peer: VoicePeer,
-    kind: VoiceSignal['kind'],
-    payload: string,
-  ): void {
-    if (!this.current(peer)) return;
-    this.queue.push({
-      peer,
-      command: {
-        type: 'voice-signal',
-        id: peer.id,
-        speaker: peer.speaker,
-        to: peer.remote,
-        kind,
-        payload,
-      },
+    const start = next < now ? now + 0.07 : next;
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.connect(context.destination);
+    source.onended = () => {
+      source.disconnect();
+      this.playing.delete(source);
+    };
+    this.playing.add(source);
+    source.start(start);
+    this.timings.set(event.speaker, {
+      id: event.id,
+      next: start + buffer.duration,
     });
-    // Keep ICE bursts below the room socket's packet limit.
-    this.pump ??= setInterval(() => {
-      const next = this.queue.shift();
-      if (next && this.current(next.peer)) this.send?.(next.command);
-      if (!this.queue.length) {
-        clearInterval(this.pump);
-        this.pump = undefined;
-      }
-    }, 35);
-  }
-
-  private async acceptSignal(
-    peer: VoicePeer,
-    event: IncomingSignal,
-  ): Promise<void> {
-    const connection = peer.connection;
-    if (event.kind === 'ice') {
-      const candidate = JSON.parse(event.payload) as RTCIceCandidateInit;
-      if (connection.remoteDescription)
-        await connection.addIceCandidate(candidate);
-      else if (peer.ice.length < 64) peer.ice.push(candidate);
-      return;
-    }
-    await connection.setRemoteDescription({
-      type: event.kind,
-      sdp: event.payload,
-    });
-    for (const candidate of peer.ice)
-      await connection.addIceCandidate(candidate);
-    peer.ice = [];
-    if (event.kind === 'offer') {
-      await connection.setLocalDescription(await connection.createAnswer());
-      this.relay(peer, 'answer', connection.localDescription?.sdp ?? '');
+    if (this.state.speakers()[event.speaker] !== event.name) {
+      this.state.speakers.update((speakers) => ({
+        ...speakers,
+        [event.speaker]: event.name,
+      }));
     }
   }
 }

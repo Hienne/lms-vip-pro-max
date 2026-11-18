@@ -2,11 +2,15 @@ import { Dialog } from '@angular/cdk/dialog';
 import {
   Component,
   computed,
+  DestroyRef,
+  effect,
   inject,
   input,
   linkedSignal,
   output,
   signal,
+  untracked,
+  viewChild,
 } from '@angular/core';
 import {
   applyEach,
@@ -73,6 +77,18 @@ import { firstValueFrom } from 'rxjs';
 import { lessonImageIds } from '../../../../../shared/content/markdown/lesson-html';
 import { DOCUMENT } from '@angular/core';
 import { LessonScormUploadStore } from './lesson-scorm-upload.store';
+import { CourseExamForm } from '../course-rules/components/course-exam-form/course-exam-form';
+import {
+  newExamValue,
+  type ExamFormValue,
+} from '../course-rules/data-access/course-exam.model';
+
+const NEW_QUIZ = 'new';
+
+export interface LessonSubmission {
+  readonly lesson: LessonValue;
+  readonly newExam?: ExamFormValue;
+}
 
 /** A block as the form edits it: process steps as one line each, "Tiêu đề | Mô tả". */
 type BlockFormValue = Omit<BlockValue, 'steps' | 'bodyFormat'> & {
@@ -124,11 +140,11 @@ const QUIZ_STATUS: Record<QuizSummary['status'], string> = {
   CLOSED: 'Đã đóng',
 };
 
-/** One quiz in the select; only a published quiz can be published with the course, the rest say so. */
+/** Show which linked quizzes are still drafts. */
 const quizLabel = (quiz: QuizSummary): string =>
   quiz.status === 'PUBLISHED'
     ? `${quiz.title} · ${QUIZ_TYPE[quiz.quizType]}`
-    : `${quiz.title} · ${QUIZ_TYPE[quiz.quizType]} · ${QUIZ_STATUS[quiz.status]}, chưa thể xuất bản`;
+    : `${quiz.title} · ${QUIZ_TYPE[quiz.quizType]} · ${QUIZ_STATUS[quiz.status]}`;
 
 /**
  * The lesson drawer (the mockup's `lessonDrawer`): title, length, kind and the content blocks,
@@ -143,6 +159,7 @@ const quizLabel = (quiz: QuizSummary): string =>
     Alert,
     AssetLibrary,
     Button,
+    CourseExamForm,
     DrawerOutlet,
     Dropzone,
     Field,
@@ -164,7 +181,8 @@ const quizLabel = (quiz: QuizSummary): string =>
 })
 export class LessonForm {
   readonly lesson = input.required<LessonValue>();
-  readonly submitted = output<LessonValue>();
+  readonly programId = input.required<number>();
+  readonly submitted = output<LessonSubmission>();
 
   protected readonly store = inject(CourseEditorStore);
   protected readonly scormUpload = inject(LessonScormUploadStore);
@@ -198,9 +216,56 @@ export class LessonForm {
   protected readonly holdsFile = (type: BlockType) => !!FILE_USAGE[type];
 
   private readonly model = linkedSignal(() => toFormValue(this.lesson()));
+  private readonly examForm = viewChild(CourseExamForm);
+  protected readonly isNewQuiz = computed(
+    () =>
+      this.model().lessonType === 'quiz' && this.model().quizId === NEW_QUIZ,
+  );
+  protected readonly examDefaults = computed(() => {
+    const target = this.store.editingLesson$();
+    return {
+      ...newExamValue('', undefined),
+      title: `Bài kiểm tra chương ${(target?.chapter ?? 0) + 1} bài ${(target?.lesson ?? 0) + 1}`,
+      questionCount: 1,
+      requireLessonsCompleted: false,
+      questionIds: [],
+    };
+  });
+
+  constructor() {
+    effect(() => {
+      const programId = this.programId();
+      const creating = this.isNewQuiz();
+      untracked(() =>
+        this.store.setLessonExamPool(creating ? programId : undefined),
+      );
+    });
+    inject(DestroyRef).onDestroy(() => this.store.setLessonExamPool());
+  }
   protected readonly lessonForm = form(
     this.model,
     (path) => {
+      validate(path.quizId, ({ value }) => {
+        if (this.model().lessonType !== 'quiz') return undefined;
+        const selected = value();
+        if (!selected) return undefined;
+        const valid =
+          selected === NEW_QUIZ
+            ? this.store.canCreateQuiz$() && this.programId() > 0
+            : selected === String(this.lesson().quizId) ||
+              this.store
+                .quizzes$()
+                .some(
+                  (quiz) =>
+                    String(quiz.id) === selected && quiz.status !== 'CLOSED',
+                );
+        return valid
+          ? undefined
+          : {
+              kind: 'quiz',
+              message: 'Chọn bài kiểm tra của khóa học hoặc tạo bài mới.',
+            };
+      });
       validate(path.scormPackageId, ({ value }) =>
         this.model().lessonType === 'scorm' && !value()
           ? {
@@ -255,7 +320,7 @@ export class LessonForm {
         },
       );
     },
-    { submission: { action: async () => this.apply() } },
+    { submission: { action: () => this.apply() } },
   );
 
   /** Each block's files: what it had, plus what was uploaded here. */
@@ -323,14 +388,17 @@ export class LessonForm {
   protected readonly quizOptions = computed(() => {
     const options = this.store
       .quizzes$()
+      .filter((quiz) => quiz.status !== 'CLOSED')
       .map((quiz) => ({ value: String(quiz.id), label: quizLabel(quiz) }));
     const chosen = this.model().quizId;
-    return chosen && !options.some((o) => o.value === chosen)
+    return chosen &&
+      chosen !== NEW_QUIZ &&
+      !options.some((o) => o.value === chosen)
       ? [
           ...options,
           {
             value: chosen,
-            label: `Bài kiểm tra #${chosen} (không thuộc khóa học này)`,
+            label: `Bài kiểm tra #${chosen} (không còn khả dụng)`,
           },
         ]
       : options;
@@ -464,12 +532,6 @@ export class LessonForm {
     });
   }
 
-  protected prepareExam(): void {
-    if (this.inlineUploading$() || this.store.lessonUploading$()) return;
-    this.apply();
-    this.store.goToStep(2);
-  }
-
   /** A file picked from the library goes to the block like a finished upload. */
   protected useLibraryAsset(asset: LibraryAsset): void {
     const target = this.library.target$();
@@ -493,14 +555,25 @@ export class LessonForm {
     }));
   }
 
-  private apply(): void {
-    if (this.missingFiles().length || this.scormUpload.pending$()) return;
+  private async apply(): Promise<void> {
+    if (
+      this.missingFiles().length ||
+      this.scormUpload.pending$() ||
+      this.store.lessonExamSaving$()
+    )
+      return;
+    const create = this.isNewQuiz();
+    if (create && this.store.pendingUploads$()) return;
+    const newExam = create
+      ? await this.examForm()?.validateAndRead()
+      : undefined;
+    if (create && !newExam) return;
     const value = this.model();
     const files = this.files();
-    this.submitted.emit({
+    const lesson: LessonValue = {
       ...value,
       quizId:
-        value.lessonType === 'quiz' && value.quizId
+        value.lessonType === 'quiz' && value.quizId && !create
           ? Number(value.quizId)
           : null,
       scormPackageId:
@@ -526,7 +599,8 @@ export class LessonForm {
           steps: block.blockType === 'process' ? toSteps(stepsText) : [],
         }),
       ),
-    });
+    };
+    this.submitted.emit({ lesson, newExam });
   }
 }
 

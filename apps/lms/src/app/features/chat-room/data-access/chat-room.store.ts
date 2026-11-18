@@ -232,7 +232,10 @@ export class ChatRoomStore {
   constructor() {
     this.games.connect((command) => this.socket?.send(command));
     this.media.connect((command) => this.socket?.send(command));
-    this.voice.connect((command) => this.socket?.send(command));
+    this.voice.connect((command) => {
+      if (command.type === 'voice-frame') this.socket?.send(command, 5_120);
+      else this.socket?.send(command);
+    });
     this.destroyRef.onDestroy(() => {
       this.leave();
       clearTimeout(this.copyTimer);
@@ -483,6 +486,7 @@ export class ChatRoomStore {
             boardGames: true,
             presentation: true,
             voice: true,
+            voiceRelay: true,
           });
       },
       message: (event) => {
@@ -498,7 +502,6 @@ export class ChatRoomStore {
     switch (event.type) {
       case 'welcome':
         this.media.identify(event.id);
-        this.voice.identify(event.id);
         clearTimeout(this.timeout);
         this.setStatus('online');
         this.setError('');
@@ -582,8 +585,8 @@ export class ChatRoomStore {
         break;
       case 'voice-ready':
       case 'voice-state':
-      case 'voice-peer':
-      case 'voice-signal':
+      case 'voice-frame':
+      case 'voice-issue':
         this.voice.receive(event);
         break;
       case 'correction':
