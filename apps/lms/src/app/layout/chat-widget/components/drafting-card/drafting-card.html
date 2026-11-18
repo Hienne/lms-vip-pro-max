@@ -1,0 +1,26 @@
+@let state = card();
+<div class="drafting-card">
+  @if (note(); as text) {
+  <p class="drafting-card__note">{{ text }}</p>
+  } @if (confirmable()) {
+  <button
+    uiButton
+    type="button"
+    variant="primary"
+    size="sm"
+    (click)="confirmed.emit(state)"
+  >
+    Đã chốt
+  </button>
+  } @else if (state.state === 'failed') {
+  <button
+    uiButton
+    type="button"
+    variant="secondary"
+    size="sm"
+    (click)="opened.emit(state)"
+  >
+    Mở trang soạn
+  </button>
+  }
+</div>

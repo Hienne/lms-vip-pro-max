@@ -15,8 +15,7 @@ const stepParams = sessionParams.extend({ step: DraftingStepNumberSchema });
 /**
  * Drafting sessions ("Soạn cùng trợ lý"): `/api/v1/assistant/drafting-sessions`, instructors and
  * admins with the assistant function only. No mockup file: the backend (corebanking-academy
- * `CourseDraftingController`) is the spec. Every endpoint is `served: 'mock'` until it is deployed;
- * drop that word per endpoint then.
+ * `CourseDraftingController`) is the spec, and the backend serves every endpoint here.
  */
 export const draftingSessionEndpoints = {
   /** Starts a session from an uploaded document; step 1 begins `proposing`. Counts against the daily course-generation limit. */
@@ -26,7 +25,6 @@ export const draftingSessionEndpoints = {
     encoding: 'multipart',
     body: StartDraftingCommandSchema,
     response: DraftingSessionSchema,
-    served: 'mock',
   }),
   /** Uploads the chat's attachment as a private source, not yet linked to a session. */
   uploadSource: defineEndpoint({
@@ -35,7 +33,6 @@ export const draftingSessionEndpoints = {
     encoding: 'multipart',
     body: UploadDraftingSourceCommandSchema,
     response: DraftingSourceSchema,
-    served: 'mock',
   }),
   /** The caller's session; another user's id is not found. Polled while a step is `proposing`. */
   get: defineEndpoint({
@@ -43,7 +40,6 @@ export const draftingSessionEndpoints = {
     path: '/api/v1/assistant/drafting-sessions/{sessionId}',
     params: sessionParams,
     response: DraftingSessionSchema,
-    served: 'mock',
   }),
   /** The latest session of a course, or null: how the editor resumes after a reload. */
   forCourse: defineEndpoint({
@@ -51,7 +47,6 @@ export const draftingSessionEndpoints = {
     path: '/api/v1/assistant/drafting-sessions/course/{courseId}',
     params: z.object({ courseId: z.number().int() }),
     response: DraftingSessionSchema.nullable(),
-    served: 'mock',
   }),
   /**
    * Confirms the current step with the page's values (body by step: `{course}`, `{draft}`,
@@ -64,7 +59,6 @@ export const draftingSessionEndpoints = {
     params: stepParams,
     body: ConfirmDraftingStepCommandSchema,
     response: DraftingSessionSchema,
-    served: 'mock',
   }),
   /**
    * Proposes a `proposed`, `confirmed` or `failed` step again ("Đề xuất lại", "Thử lại"); other
@@ -76,7 +70,6 @@ export const draftingSessionEndpoints = {
     path: '/api/v1/assistant/drafting-sessions/{sessionId}/steps/{step}/propose-again',
     params: stepParams,
     response: DraftingSessionSchema,
-    served: 'mock',
   }),
   /** The author fills this step and the rest by hand; the assistant proposes nothing more. */
   manual: defineEndpoint({
@@ -84,7 +77,6 @@ export const draftingSessionEndpoints = {
     path: '/api/v1/assistant/drafting-sessions/{sessionId}/steps/{step}/manual',
     params: stepParams,
     response: DraftingSessionSchema,
-    served: 'mock',
   }),
   /** Stops the running step: it keeps what exists (`proposed`), or becomes `manual`. */
   stop: defineEndpoint({
@@ -92,6 +84,5 @@ export const draftingSessionEndpoints = {
     path: '/api/v1/assistant/drafting-sessions/{sessionId}/stop',
     params: sessionParams,
     response: DraftingSessionSchema,
-    served: 'mock',
   }),
 } as const;

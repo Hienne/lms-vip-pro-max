@@ -40,6 +40,7 @@ import {
   type RoleOption,
   type SaveRoleCommand,
   type ScopeType,
+  type DraftingStepNumber,
   type TeamInfo,
   type UserDetail,
   type UserInfo,
@@ -68,12 +69,12 @@ import {
   AGENT_PROFILE_INVALID,
   AGENT_PROFILE_NOT_OFFERED,
   AGENT_PROFILE_UNCHANGED,
-  AGENT_COURSE_ADMIN_FORM,
   AGENT_COURSE_ATTACH_FIRST,
-  AGENT_COURSE_CARD_TITLE,
   AGENT_COURSE_FOR_INSTRUCTORS,
+  AGENT_COURSE_SOURCE_NOT_FOUND,
   AGENT_COURSE_STARTED,
-  agentTextEvents,
+  agentCourseDraftingEvents,
+  agentToolReplyEvents,
   AGENT_SCREEN_REFUSED,
   agentActionEvents,
   agentAiErrorEvents,
@@ -105,6 +106,10 @@ import {
 } from '../assessment/authoring.mock';
 import { CourseJobMock } from '../assistant-course/course-job.mock';
 import { DraftingSessionMock } from '../assistant-drafting/drafting-session.mock';
+import {
+  draftingFailedMessage,
+  draftingStepMessage,
+} from '../assistant-drafting/drafting-session.fixtures';
 import { LearnerQuizMock } from '../assessment/learner-quiz.mock';
 import { learningReportHandlers } from '../reports/learning-report.handlers';
 import {
@@ -202,9 +207,6 @@ const ACTION_TTL_MS = 10 * 60_000;
 /** The roles that may generate a course; the others are refused like the real server does. */
 const COURSE_JOB_ROLES = ['INSTRUCTOR', 'ADMIN', 'SUPER_ADMIN'];
 
-/** The owner of drafting sessions started by a dev build signed in to the real backend. */
-const DRAFTING_DEV_OWNER = 'dev';
-
 interface PendingProposal {
   readonly userId: string;
   readonly action: PendingAction;
@@ -292,6 +294,10 @@ export class FakeBackend {
   private pendingActions = new Map<string, PendingProposal>();
   private nextActionSeq = 1;
   private book = new ConversationBook();
+
+  constructor() {
+    this.wireDraftingChat();
+  }
 
   /** Lowers the row limit of the progress export, to see the refusal without 10,000 rows. */
   limitProgressExport(rows: number): void {
@@ -436,15 +442,6 @@ export class FakeBackend {
     }
     if (this.draftingSessions.answers(endpoint)) {
       try {
-        // `served: 'mock'`: a dev build sends a token the real backend issued, which this database
-        // does not know, so such a call is answered for one shared owner without the role check.
-        if (!request.token || !this.tokens.has(request.token)) {
-          return this.draftingSessions.handle(
-            endpoint,
-            request,
-            DRAFTING_DEV_OWNER,
-          );
-        }
         const user = this.caller(request);
         if (!this.hasRole(user.userId, COURSE_JOB_ROLES)) {
           return refuse('accessDenied');
@@ -1157,8 +1154,8 @@ export class FakeBackend {
         : parsed.data.skill === 'tao_khoa_hoc'
           ? this.courseTurn(
               user,
-              parsed.data.message,
               parsed.data.attachmentDocumentId,
+              conversation.conversationId,
             )
           : this.scriptedTurn(user, parsed.data.message, parsed.data.skill);
     const turnId = this.book.record(
@@ -1201,54 +1198,52 @@ export class FakeBackend {
   }
 
   /**
-   * The `tao_khoa_hoc` skill: a learner is told it is for instructors; without a file the user is
-   * asked to attach one; otherwise a card lists the inputs (the mock takes the question as the
-   * target learners and picks a programme and competency, where the real tool looks them up by the
-   * names the user gave).
+   * The `tao_khoa_hoc` skill, as `start_course_drafting` answers it: a learner is told it is for
+   * instructors; without a file the user is asked to attach one; otherwise a session starts from the
+   * uploaded source for this conversation and the editor opens on it.
    */
   private courseTurn(
     user: DbUser,
-    text: string,
     attachmentDocumentId: number | undefined,
+    conversationId: number,
   ) {
+    const tool = 'start_course_drafting';
     if (!this.hasRole(user.userId, COURSE_JOB_ROLES)) {
-      return agentTextEvents(AGENT_COURSE_FOR_INSTRUCTORS);
+      return agentToolReplyEvents(tool, AGENT_COURSE_FOR_INSTRUCTORS);
     }
-    if (this.hasRole(user.userId, ['ADMIN', 'SUPER_ADMIN'])) {
-      return agentRefusedEvents('start_course_job', AGENT_COURSE_ADMIN_FORM);
+    if (attachmentDocumentId === undefined) {
+      return agentToolReplyEvents(tool, AGENT_COURSE_ATTACH_FIRST);
     }
-    const document = this.documents.find((d) => d.id === attachmentDocumentId);
-    if (!document) {
-      return agentRefusedEvents('start_course_job', AGENT_COURSE_ATTACH_FIRST);
-    }
-    const action: PendingProposal['action'] = {
-      id: `agent-action-${this.nextActionSeq++}`,
-      tool: 'start_course_job',
-      title: AGENT_COURSE_CARD_TITLE,
-      changes: [
-        {
-          field: 'targetLearners',
-          label: 'Đối tượng học viên',
-          from: null,
-          to: text.slice(0, 500),
-        },
-        { field: 'level', label: 'Trình độ', from: null, to: 'Cơ bản' },
-        { field: 'chapters', label: 'Số chương', from: null, to: '3' },
-        {
-          field: 'file',
-          label: 'Tài liệu nguồn',
-          from: null,
-          to: document.fileName,
-        },
-      ],
-      expiresAt: new Date(Date.now() + ACTION_TTL_MS).toISOString(),
+    const session = this.draftingSessions.startFromSource(
+      user.userId,
+      attachmentDocumentId,
+      {},
+      conversationId,
+    );
+    return session
+      ? agentCourseDraftingEvents(session.id)
+      : agentToolReplyEvents(tool, AGENT_COURSE_SOURCE_NOT_FOUND);
+  }
+
+  /** Posts each ready step of a chat-started session to its conversation; cards read the step live. */
+  private wireDraftingChat(): void {
+    this.draftingSessions.onStepReady = (owner, session, step) => {
+      if (session.conversationId === null) return;
+      const answer =
+        step.state === 'failed'
+          ? draftingFailedMessage(step.step, step.error)
+          : draftingStepMessage(step.step, step.notes);
+      this.book.recordDraftingStep(owner, session.conversationId, answer, {
+        sessionId: session.id,
+        step: step.step,
+      });
     };
-    this.pendingActions.set(action.id, {
-      userId: user.userId,
-      action,
-      expiresAt: Date.now() + ACTION_TTL_MS,
-    });
-    return agentActionEvents(action);
+    this.book.draftingCards = (owner, sessionId, step) => {
+      const found = this.draftingSessions.stepState(owner, sessionId, step);
+      return found
+        ? { sessionId, step: step as DraftingStepNumber, ...found }
+        : undefined;
+    };
   }
 
   /** "đổi chức danh … thành <giá trị>": a card, or the words the tool would give back. */

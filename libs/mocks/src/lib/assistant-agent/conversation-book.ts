@@ -4,6 +4,7 @@ import type {
   ConversationContext,
   ConversationDetail,
   ConversationSummary,
+  DraftingCard,
   Feedback,
   RateAnswerCommand,
   StoredAction,
@@ -27,6 +28,19 @@ interface Row {
 
 type TurnEvent = AgentStreamEvent | ChatStreamEvent;
 
+/** The step a drafting step message is about; its card's state is read when the turn is. */
+interface DraftingRef {
+  readonly sessionId: number;
+  readonly step: DraftingCard['step'];
+}
+
+/** The live card of a drafting step of the owner, or `undefined` when the session is gone. */
+export type DraftingCardLookup = (
+  ownerId: string,
+  sessionId: number,
+  step: number,
+) => DraftingCard | undefined;
+
 /**
  * The saved conversations of both assistants, as the backend keeps them: per owner, newest
  * activity first, turns recorded from the events a stream sent. Another owner's id reads as not
@@ -36,6 +50,11 @@ export class ConversationBook {
   private rows: Row[] = [];
   private nextId = 1;
   private nextTurnId = 1;
+  /** The drafting step each step message points at, by turn id. */
+  private readonly drafting = new Map<number, DraftingRef>();
+
+  /** How a step message's card learns the step's state now; set by the fake backend. */
+  draftingCards: DraftingCardLookup = () => undefined;
 
   /** The conversation a stream continues, or a new one; `undefined` when `named` is not the owner's. */
   open(
@@ -126,6 +145,40 @@ export class ConversationBook {
     return id;
   }
 
+  /**
+   * The server's own message when a drafting step of a session started from this conversation is
+   * ready: no question, the text, and the step its "Đã chốt" card is about. Nothing when the
+   * conversation is gone.
+   */
+  recordDraftingStep(
+    ownerId: string,
+    conversationId: number,
+    answer: string,
+    ref: DraftingRef,
+  ): number | undefined {
+    const row = this.find(ownerId, conversationId);
+    if (!row) return undefined;
+    const now = new Date().toISOString();
+    const id = this.nextTurnId++;
+    row.turns.push({
+      id,
+      surface: 'AGENT',
+      question: '',
+      answer,
+      citations: [],
+      toolNames: [],
+      navigation: null,
+      actionId: null,
+      action: null,
+      feedback: null,
+      status: 'done',
+      createTime: now,
+    });
+    this.drafting.set(id, ref);
+    row.lastActivityTime = now;
+    return id;
+  }
+
   /** Saves or replaces the owner's thumbs on a turn; `undefined` when it is not the owner's. */
   rate(
     ownerId: string,
@@ -199,6 +252,7 @@ export class ConversationBook {
       ...summaryOf(row),
       turns: row.turns.map((turn) => ({
         ...turn,
+        ...this.cardOf(ownerId, turn.id),
         action:
           turn.action &&
           turn.action.status === 'pending' &&
@@ -229,6 +283,15 @@ export class ConversationBook {
 
   removeAll(ownerId: string): void {
     this.rows = this.rows.filter((row) => row.ownerId !== ownerId);
+  }
+
+  private cardOf(
+    ownerId: string,
+    turnId: number,
+  ): { draftingCard?: DraftingCard } {
+    const ref = this.drafting.get(turnId);
+    const card = ref && this.draftingCards(ownerId, ref.sessionId, ref.step);
+    return card ? { draftingCard: card } : {};
   }
 
   private find(ownerId: string, id: number): Row | undefined {

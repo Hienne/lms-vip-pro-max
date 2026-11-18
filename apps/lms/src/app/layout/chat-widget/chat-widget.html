@@ -114,6 +114,8 @@
       (retried)="retry($event)"
       (confirmed)="confirm($event)"
       (cancelled)="cancel($event)"
+      (draftingConfirmed)="store.confirmDraftingStep($event)"
+      (draftingOpened)="store.openDraftingStep($event)"
     />
     } @empty {
     <div class="chat__empty">

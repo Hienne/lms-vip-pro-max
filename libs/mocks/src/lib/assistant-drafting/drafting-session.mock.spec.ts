@@ -750,9 +750,7 @@ describe('FakeBackend drafting sessions', () => {
     expect(detail.revision.aiGenerated).toBe(true);
   });
 
-  it('answers a dev build whose token the real backend issued', () => {
-    expect(
-      parsed(draftingSessionEndpoints.start, startAs('real-backend-token')),
-    ).toBeTruthy();
+  it('refuses a token it did not issue, like every endpoint the backend serves', () => {
+    expect(startAs('real-backend-token')?.status).toBe(401);
   });
 });

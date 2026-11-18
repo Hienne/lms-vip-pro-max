@@ -98,6 +98,21 @@ const CONFIRM_BODIES = {
   4: ConfirmAudienceCommandSchema,
 } as const;
 
+/** A chat attachment uploaded as a course source: its uploader's, usable for one session. */
+interface MockSource {
+  readonly documentId: number;
+  readonly owner: string;
+  readonly fileName: string;
+  used: boolean;
+}
+
+/** Told when a step of a session gets its proposal, or fails: the chat's step message. */
+export type DraftingStepReady = (
+  owner: string,
+  session: DraftingSession,
+  step: DraftingStep,
+) => void;
+
 interface MockSession {
   session: DraftingSession;
   readonly owner: string;
@@ -215,6 +230,10 @@ export class DraftingSessionMock {
   private sessions: MockSession[] = [];
   private readonly failing = new Set<DraftingStepNumber>();
   private readonly takenCodes = new Set<string>();
+  private readonly sources: MockSource[] = [];
+
+  /** Called each time a step becomes `proposed` or `failed`; the fake backend posts the step message. */
+  onStepReady: DraftingStepReady | undefined;
 
   /** The next time `step` would be ready, it fails instead (once). */
   failNext(step: DraftingStepNumber): void {
@@ -244,9 +263,16 @@ export class DraftingSessionMock {
     if (endpoint === draftingSessionEndpoints.uploadSource) {
       const file = formValue(request.body, 'file');
       if (!(file instanceof Blob)) return refusal('validationFailed');
-      return ok({
+      const source: MockSource = {
         documentId: this.nextDocument++,
+        owner,
         fileName: (file as File).name || 'tai-lieu.pdf',
+        used: false,
+      };
+      this.sources.push(source);
+      return ok({
+        documentId: source.documentId,
+        fileName: source.fileName,
         status: 'ready',
       });
     }
@@ -292,6 +318,46 @@ export class DraftingSessionMock {
       }
     }
     const conversation = formValue(request.body, 'conversationId');
+    return ok(
+      this.create(
+        owner,
+        fields,
+        {
+          documentId: this.nextDocument++,
+          fileName: (file as File).name || 'tai-lieu.pdf',
+        },
+        conversation == null || conversation === ''
+          ? null
+          : Number(conversation),
+      ),
+    );
+  }
+
+  /**
+   * `start_course_drafting` with the chat's attachment: a session for this conversation, from a
+   * source the owner uploaded that no session uses yet. `undefined` for any other document.
+   */
+  startFromSource(
+    owner: string,
+    documentId: number,
+    fields: StartDraftingFields,
+    conversationId: number | null,
+  ): DraftingSession | undefined {
+    const source = this.sources.find(
+      (item) =>
+        item.documentId === documentId && item.owner === owner && !item.used,
+    );
+    if (!source) return undefined;
+    source.used = true;
+    return this.create(owner, fields, source, conversationId);
+  }
+
+  private create(
+    owner: string,
+    fields: StartDraftingFields,
+    source: { readonly documentId: number; readonly fileName: string },
+    conversationId: number | null,
+  ): DraftingSession {
     const time = now();
     const entry: MockSession = {
       owner,
@@ -304,13 +370,10 @@ export class DraftingSessionMock {
         currentStep: 1,
         courseId: null,
         revisionId: null,
-        conversationId:
-          conversation == null || conversation === ''
-            ? null
-            : Number(conversation),
+        conversationId,
         source: {
-          documentId: this.nextDocument++,
-          fileName: (file as File).name || 'tai-lieu.pdf',
+          documentId: source.documentId,
+          fileName: source.fileName,
           status: 'ready',
         },
         error: null,
@@ -320,7 +383,22 @@ export class DraftingSessionMock {
       },
     };
     this.sessions.unshift(entry);
-    return ok(this.view(entry));
+    return this.view(entry);
+  }
+
+  /** The state of a step of the owner's session now, for the chat's card; `undefined` when none. */
+  stepState(
+    owner: string,
+    sessionId: number,
+    step: number,
+  ): { state: DraftingStep['state']; courseId: number | null } | undefined {
+    const entry = this.sessions.find(
+      (item) => item.owner === owner && item.session.id === sessionId,
+    );
+    const found = entry && this.stepOf(entry, step);
+    return entry && found
+      ? { state: found.state, courseId: entry.session.courseId }
+      : undefined;
   }
 
   private confirm(
@@ -542,10 +620,17 @@ export class DraftingSessionMock {
         });
         entry.session.status = 'failed';
         entry.session.error = DRAFTING_STEP_FAILURE;
+        this.ready(entry, step.step);
         continue;
       }
       this.replace(entry, this.proposed(entry, step.step));
+      this.ready(entry, step.step);
     }
+  }
+
+  private ready(entry: MockSession, step: DraftingStepNumber): void {
+    const reached = this.stepOf(entry, step);
+    if (reached) this.onStepReady?.(entry.owner, this.view(entry), reached);
   }
 
   private proposed(entry: MockSession, step: DraftingStepNumber): DraftingStep {

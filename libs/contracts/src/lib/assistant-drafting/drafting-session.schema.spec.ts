@@ -310,9 +310,9 @@ describe('draftingSessionEndpoints', () => {
     );
   });
 
-  it('is answered by the mock until the backend has it', () => {
+  it('is answered by the backend, the mock only standing in for specs', () => {
     for (const endpoint of Object.values(draftingSessionEndpoints)) {
-      expect(endpoint.served, endpoint.path).toBe('mock');
+      expect(endpoint.served, endpoint.path).toBeUndefined();
     }
     expect(draftingSessionEndpoints.start.encoding).toBe('multipart');
     expect(draftingSessionEndpoints.uploadSource.encoding).toBe('multipart');

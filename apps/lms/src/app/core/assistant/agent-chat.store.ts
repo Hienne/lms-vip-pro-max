@@ -13,17 +13,21 @@ import { Router } from '@angular/router';
 import {
   agentEndpoints,
   answerFeedbackEndpoints,
+  draftingSessionEndpoints,
   type RateAnswerCommand,
   type AgentCommand,
   type AgentSkill,
   type AgentStreamEvent,
   type CourseFormPrefill,
   type ConversationContext,
+  type DraftingCard,
+  type DraftingStepNumber,
   type LessonContext,
   type PendingAction,
 } from '@lms/contracts';
 import { finalize, of, Subscription, switchMap } from 'rxjs';
 import { activeHref } from '../menu/menu-catalog';
+import { CourseDraftingStore } from '../course-drafting/course-drafting.store';
 import { CourseJobTrackerStore } from '../course-jobs/course-job-tracker.store';
 import { toAppError } from '../errors/app-error';
 import { isStaleBuildError, PAGE_LOCATION } from '../errors/stale-build';
@@ -74,6 +78,7 @@ export class AgentChatStore {
   private readonly conversations = inject(ConversationsStore);
   private readonly courseJobs = inject(CourseJobTrackerStore);
   private readonly prefill = inject(CourseFormPrefillStore);
+  private readonly drafting = inject(CourseDraftingStore);
   private readonly router = inject(Router);
   private readonly location = inject(PAGE_LOCATION);
   private readonly destroyRef = inject(DestroyRef);
@@ -84,8 +89,8 @@ export class AgentChatStore {
   /** The saved conversation being read back, if any. */
   private loading: Subscription | null = null;
   private lastUserId: string | undefined;
-  /** The file attached to the question on its way; it goes to the course form, never to the server. */
-  private attachedFile: File | null = null;
+  /** The step message read back last, so each change of the followed session reads once. */
+  private draftingSeen: string | null = null;
 
   private readonly userId = computed(() => this.session.user$()?.userId);
 
@@ -176,6 +181,19 @@ export class AgentChatStore {
     }
   });
 
+  /**
+   * The steps of the session the editor follows, when the open conversation started it: a step
+   * that gets its proposal, fails or is confirmed has a new message or card state on the server.
+   */
+  private readonly draftingSteps = computed((): string | null => {
+    const session = this.drafting.session$();
+    const conversationId = this.state.conversationId();
+    if (!session || conversationId === null) return null;
+    if (session.conversationId !== conversationId) return null;
+    const steps = session.steps.map((step) => `${step.step}:${step.state}`);
+    return `${conversationId}|${session.id}|${steps.join(',')}`;
+  });
+
   /** What the tab keeps: where the panel is and which saved conversation is open. */
   private readonly persisted = computed(() => {
     const userId = this.userId();
@@ -198,6 +216,14 @@ export class AgentChatStore {
     effect(() => {
       const userId = this.userId();
       untracked(() => this.userChanged(userId));
+    });
+    // The server posts a step message when a step is ready: the open conversation shows it, and
+    // each card its step's state now, while the panel is closed too.
+    effect(() => {
+      const steps = this.draftingSteps();
+      const conversationId = this.state.conversationId();
+      if (this.isAnswering$()) return;
+      untracked(() => this.draftingChanged(steps, conversationId));
     });
     // A conversation deleted from the history may be the one open here.
     this.conversations.removed
@@ -273,14 +299,39 @@ export class AgentChatStore {
   }
 
   /**
-   * Asks the `tao_khoa_hoc` skill with a file the user attached. The file is not uploaded: it is
-   * kept for the course form, which the server's `open_course_form` navigation opens, and the
-   * form uploads it only when "Tạo bằng AI" is pressed.
+   * Asks the `tao_khoa_hoc` skill with a file the user attached: the file is uploaded as a
+   * drafting source first, and the question names it, so the server's `start_course_drafting`
+   * starts a session from it for this conversation. A refused upload ends the turn with why.
    */
   askWithFile(rawQuestion: string, file: File): void {
-    if (!rawQuestion.trim() || this.isAnswering$()) return;
-    this.attachedFile = file;
-    this.ask(rawQuestion, 'tao_khoa_hoc');
+    const question = rawQuestion.trim();
+    if (!question || this.isAnswering$()) return;
+    const id = Math.max(0, ...this.turns$().map((t) => t.id)) + 1;
+    this.setTurns([...this.turns$(), { id, question, reply: WAITING }]);
+    this.setAnsweringId(id);
+    if (this.network.offline$()) {
+      this.fail(id, OFFLINE_MESSAGE);
+      return;
+    }
+    const userId = this.userId();
+    const upload = new Subscription();
+    this.streaming = upload;
+    upload.add(
+      this.client
+        .call(draftingSessionEndpoints.uploadSource, { body: { file } })
+        .subscribe({
+          next: this.sameUser(userId, (source) =>
+            this.stream(id, question, 'tao_khoa_hoc', source.documentId),
+          ),
+          error: this.sameUser(userId, (error: unknown) => {
+            const app = toAppError(error);
+            this.fail(
+              id,
+              app.kind === 'offline' ? OFFLINE_MESSAGE : app.message,
+            );
+          }),
+        }),
+    );
   }
 
   /**
@@ -396,7 +447,6 @@ export class AgentChatStore {
   stop(): void {
     const id = this.state.answeringId();
     if (id === null) return;
-    this.attachedFile = null;
     // The server holds the turn until the model call ends, so tell it to let go; a failure changes nothing here.
     const conversationId = this.state.conversationId();
     if (conversationId !== null) {
@@ -418,6 +468,26 @@ export class AgentChatStore {
     this.setConversationId(null);
     this.state.lesson.set(null);
     this.state.history.set(false);
+  }
+
+  // ---- drafting step cards --------------------------------------------------------------------
+
+  /** "Đã chốt" on a step message: the editor showing the session confirms, else it opens there. */
+  confirmDraftingStep(card: DraftingCard): void {
+    this.drafting.confirmFromChat(
+      card.sessionId,
+      card.step as DraftingStepNumber,
+      card.courseId,
+    );
+  }
+
+  /** "Mở trang soạn" on a step message whose step failed. */
+  openDraftingStep(card: DraftingCard): void {
+    this.drafting.openEditor(
+      card.sessionId,
+      card.step as DraftingStepNumber,
+      card.courseId,
+    );
   }
 
   // ---- saved conversations ---------------------------------------------------------------------
@@ -462,6 +532,30 @@ export class AgentChatStore {
           this.setConversationId(null);
         }
       }),
+    });
+  }
+
+  /**
+   * Reads the open conversation again when the session it started moved on; while an answer is on
+   * its way (its turn is newer than what the server has) it waits for the answer to end. A failed
+   * read keeps what shows.
+   */
+  private draftingChanged(
+    steps: string | null,
+    conversationId: number | null,
+  ): void {
+    if (steps === null || steps === this.draftingSeen) return;
+    this.draftingSeen = steps;
+    if (conversationId === null) return;
+    this.loading?.unsubscribe();
+    const userId = this.userId();
+    this.loading = this.conversations.detail(conversationId).subscribe({
+      next: this.sameUser(userId, (detail) => {
+        if (this.isAnswering$()) return;
+        if (this.state.conversationId() !== detail.id) return;
+        this.setTurns(detail.turns.map(turnFromStored));
+      }),
+      error: () => undefined,
     });
   }
 
@@ -679,8 +773,7 @@ export class AgentChatStore {
 
   /**
    * Only a screen under the user's own menu opens; the route guard still applies on top. A course
-   * form opened by the chat gets the attached file and the fields the user said, through the
-   * prefill store.
+   * form opened with fields the user said gets them through the prefill store.
    */
   private navigate(
     id: number,
@@ -695,10 +788,7 @@ export class AgentChatStore {
       return;
     }
     this.patchReply(id, { navigatedTo: { path, title } });
-    if (said || this.attachedFile) {
-      this.prefill.set({ file: this.attachedFile, fields: said ?? {} });
-    }
-    this.attachedFile = null;
+    if (said) this.prefill.set({ file: null, fields: said });
     Promise.resolve(this.router.navigateByUrl(path)).then(
       (opened) => {
         if (opened === false) this.prefill.clear();
@@ -724,7 +814,6 @@ export class AgentChatStore {
 
   /** Turn `id` no longer streams; a newer turn that is still answering keeps the composer locked. */
   private answered(id: number): void {
-    this.attachedFile = null;
     if (this.state.answeringId() === id) this.setAnsweringId(null);
     this.conversations.touch();
   }

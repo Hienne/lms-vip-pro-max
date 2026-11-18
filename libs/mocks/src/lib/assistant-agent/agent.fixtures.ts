@@ -33,15 +33,44 @@ export const AGENT_PROFILE_INVALID = {
   positionName: 'Chức danh dài tối đa 255 ký tự.',
 } as const;
 
+// `start_course_drafting`'s own answers (corebanking-academy `StartCourseDraftingTool`).
 export const AGENT_COURSE_FOR_INSTRUCTORS =
-  'Tính năng tạo khóa học bằng AI dành cho giảng viên.';
-export const AGENT_COURSE_ADMIN_FORM =
-  'Quản trị viên cần chọn đơn vị sở hữu khóa học: hãy mở Khóa học mới rồi bấm "Tạo bằng AI".';
+  'Tính năng tạo khóa học dành cho giảng viên.';
 export const AGENT_COURSE_ATTACH_FIRST =
-  'Hãy đính kèm một tệp .pdf, .docx hoặc .md bằng nút ghim ở ô soạn tin rồi gửi lại yêu cầu.';
+  'Bạn đính kèm tài liệu (.pdf, .docx hoặc .md, tối đa 20 MB) rồi gửi lại yêu cầu, mình sẽ đọc và soạn khóa học từ đó.';
+export const AGENT_COURSE_SOURCE_NOT_FOUND =
+  'Không tìm thấy tài liệu đính kèm.';
+export const AGENT_COURSE_DRAFTING_STARTED =
+  'Mình đang đọc tài liệu và mở trang Khóa học mới. Mình sẽ điền từng bước để bạn xem, sửa nếu cần rồi bấm "Đã chốt"; mỗi bước xong mình báo ở đây.';
 export const AGENT_COURSE_CARD_TITLE = 'Tạo khóa học bằng AI';
 export const AGENT_COURSE_STARTED =
   'Đã bắt đầu tạo khóa học. Mở màn hình rà soát để theo dõi.';
+
+/** `start_course_drafting` started session `sessionId`: the app opens the new course page on it. */
+export function agentCourseDraftingEvents(
+  sessionId: number,
+): readonly AgentStreamEvent[] {
+  return [
+    { type: 'tool', name: 'start_course_drafting' },
+    {
+      type: 'navigate',
+      path: `/admin/courses/new?session=${sessionId}`,
+      title: 'Khóa học mới',
+    },
+    { type: 'done', answer: AGENT_COURSE_DRAFTING_STARTED, citations: [] },
+  ];
+}
+
+/** A tool's own answer that ends the turn, with nothing opened. */
+export function agentToolReplyEvents(
+  tool: string,
+  text: string,
+): readonly AgentStreamEvent[] {
+  return [
+    { type: 'tool', name: tool },
+    { type: 'done', answer: text, citations: [] },
+  ];
+}
 
 /** A turn that ends in words only, as the model would say them. */
 export function agentTextEvents(text: string): readonly AgentStreamEvent[] {

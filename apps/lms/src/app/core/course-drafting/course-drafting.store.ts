@@ -1,4 +1,5 @@
 import { computed, effect, inject, Injectable, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import {
   draftingSessionEndpoints,
   type ConfirmDraftingStepCommand,
@@ -33,6 +34,7 @@ export const DRAFTING_POLL_INTERVAL_MS = 3000;
 export class CourseDraftingStore {
   private readonly client = inject(EndpointClient);
   private readonly network = inject(NetworkStore);
+  private readonly router = inject(Router);
 
   private readonly state = {
     /** The session followed; none until a page or the chat loads one. */
@@ -177,6 +179,37 @@ export class CourseDraftingStore {
     if (!page || page.sessionId !== this.followedId()) return false;
     page.confirm(step);
     return true;
+  }
+
+  /**
+   * "Đã chốt" on the chat's card for a step of `sessionId`: on a tab where the editor shows that
+   * session, the page confirms with its own values, as its bar would; elsewhere the editor opens
+   * at that step (the draft course once step 1 made it, else the new course page of the session).
+   */
+  confirmFromChat(
+    sessionId: number,
+    step: DraftingStepNumber,
+    courseId: number | null,
+  ): void {
+    const page = this.state.pageConfirm();
+    if (page?.sessionId === sessionId) {
+      page.confirm(step);
+      return;
+    }
+    this.openEditor(sessionId, step, courseId);
+  }
+
+  /** Opens the editor of `sessionId` at `step`: "Mở trang soạn" on the chat's card of a failed step. */
+  openEditor(
+    sessionId: number,
+    step: DraftingStepNumber,
+    courseId: number | null,
+  ): void {
+    void this.router.navigateByUrl(
+      courseId === null
+        ? `/admin/courses/new?session=${sessionId}`
+        : `/admin/courses/${courseId}/edit?step=${step - 1}`,
+    );
   }
 
   /**

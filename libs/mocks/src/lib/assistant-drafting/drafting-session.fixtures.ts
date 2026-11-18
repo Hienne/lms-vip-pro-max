@@ -172,3 +172,44 @@ export function draftingSessionFixture(
     updateTime: DRAFTING_FIXTURE_TIME,
   };
 }
+
+// The chat's step messages, as the backend writes them (corebanking-academy `DraftingMessages`).
+const STEP_NAMES = [
+  'Thông tin cơ bản',
+  'Nội dung khóa học',
+  'Bài kiểm tra & điều kiện',
+  'Đối tượng & xuất bản',
+] as const;
+const FILLED = [
+  'tên, mô tả ngắn, mục tiêu đầu ra, mức độ, loại khóa học, chương trình, phân hệ và mã khóa học',
+  'dàn ý gồm chương, bài và một dòng mô tả mỗi bài; nội dung bài để trống cho bạn',
+  'điều kiện hoàn thành, điểm thưởng và các câu hỏi nháp từ tài liệu',
+  'đối tượng được giao và những gì còn thiếu trước khi xuất bản',
+] as const;
+
+/** What the chat says when step `step` holds a proposal: what was filled and what to check. */
+export function draftingStepMessage(
+  step: DraftingStepNumber,
+  notes: readonly string[],
+): string {
+  const lines = notes
+    .filter((note) => note.trim())
+    .map((note) => `\n- ${note.trim()}`);
+  return (
+    `Bước ${step} · ${STEP_NAMES[step - 1]}: mình đã điền ${FILLED[step - 1]}.` +
+    lines.join('') +
+    '\n\nBạn xem lại trên trang, sửa nếu cần rồi bấm "Đã chốt".'
+  );
+}
+
+/** What the chat says when step `step` could not be proposed. */
+export function draftingFailedMessage(
+  step: DraftingStepNumber,
+  error: string | null,
+): string {
+  return (
+    `Bước ${step} · ${STEP_NAMES[step - 1]}: mình chưa soạn được bước này.` +
+    (error?.trim() ? ` ${error.trim()}` : '') +
+    '\n\nBạn mở trang soạn để bấm "Thử lại" hoặc "Tự điền".'
+  );
+}

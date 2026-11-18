@@ -4,6 +4,7 @@ import {
 } from '@angular/common/http/testing';
 import { ErrorHandler } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 import {
   draftingSessionFixture,
   draftingStepFixture,
@@ -176,5 +177,50 @@ describe('CourseDraftingStore', () => {
 
     expect(store.confirm(1)).toBe(true);
     expect(confirm).toHaveBeenCalledExactlyOnceWith(1);
+  });
+
+  describe('"Đã chốt" on the chat card', () => {
+    it('runs the confirm of the page that shows that session', () => {
+      const store = TestBed.inject(CourseDraftingStore);
+      const navigate = vi
+        .spyOn(TestBed.inject(Router), 'navigateByUrl')
+        .mockResolvedValue(true);
+      const confirm = vi.fn();
+      store.registerPageConfirm(7, confirm);
+
+      store.confirmFromChat(7, 2, 40);
+
+      expect(confirm).toHaveBeenCalledExactlyOnceWith(2);
+      expect(navigate).not.toHaveBeenCalled();
+    });
+
+    it('opens the draft course at that step when no page shows the session', () => {
+      const store = TestBed.inject(CourseDraftingStore);
+      const navigate = vi
+        .spyOn(TestBed.inject(Router), 'navigateByUrl')
+        .mockResolvedValue(true);
+      const confirm = vi.fn();
+      store.registerPageConfirm(8, confirm);
+
+      store.confirmFromChat(7, 3, 40);
+
+      expect(confirm).not.toHaveBeenCalled();
+      expect(navigate).toHaveBeenCalledExactlyOnceWith(
+        '/admin/courses/40/edit?step=2',
+      );
+    });
+
+    it('opens the new course page of the session before step 1 made the course', () => {
+      const store = TestBed.inject(CourseDraftingStore);
+      const navigate = vi
+        .spyOn(TestBed.inject(Router), 'navigateByUrl')
+        .mockResolvedValue(true);
+
+      store.confirmFromChat(7, 1, null);
+
+      expect(navigate).toHaveBeenCalledExactlyOnceWith(
+        '/admin/courses/new?session=7',
+      );
+    });
   });
 });
