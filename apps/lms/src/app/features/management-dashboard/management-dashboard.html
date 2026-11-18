@@ -1,81 +1,149 @@
-<ui-page-header
-  [title]="title"
-  description="Theo dõi hoạt động và tiến độ của các khóa học bạn quản lý."
-/>
+@let summary = store.summary$();
+<header class="dashboard__header">
+  <h1>{{ greeting() }}</h1>
+  <div class="dashboard__period">
+    <select
+      uiSelect
+      id="dashboard-period"
+      aria-label="Khoảng thời gian thống kê"
+      #period
+      (change)="store.selectPeriod(period.value)"
+    >
+      @for (days of store.periods; track days) {
+      <option [value]="days" [selected]="days === store.period()">
+        {{ days === 0 ? 'Toàn thời gian' : days + ' ngày gần đây' }}
+      </option>
+      }
+    </select>
+    @if (periodLabel(); as dates) {
+    <span class="dashboard__dates" aria-live="polite">{{ dates }}</span>
+    }
+  </div>
+</header>
+
 @if (store.loading$()) {
-<p role="status"><span uiSpinner></span> Đang tải tổng quan…</p>
+<p role="status" class="dashboard__message">
+  <span uiSpinner></span> Đang tải thống kê…
+</p>
 } @else if (store.error$(); as error) {
 <ui-error-state [message]="error.message" (retry)="store.retry()" />
-} @else if (store.summary$(); as summary) {
-<ui-stat-strip aria-label="Số liệu đào tạo">
-  <ui-stat label="Học viên" [value]="summary.counts.learners | fmtNum" />
-  <ui-stat
-    label="Lượt ghi danh"
-    [value]="summary.counts.enrollments | fmtNum"
-    [note]="(summary.counts.courses | fmtNum) + ' khóa có ghi danh'"
-  />
-  <ui-stat
-    label="Tỷ lệ hoàn thành"
-    [value]="summary.counts.completionRate | fmtPct"
-    [note]="(summary.counts.completed | fmtNum) + ' lượt hoàn thành'"
-  />
-  <ui-stat
-    label="Lượt quá hạn"
-    [value]="summary.counts.overdue | fmtNum"
-    [tone]="summary.counts.overdue ? 'danger' : 'default'"
-  />
-</ui-stat-strip>
-
-@if (summary.counts.enrollments) {
-<div class="dashboard__overview">
-  <ui-section-card title="Trạng thái học tập">
-    <ui-donut-chart
-      [data]="status()"
-      [centerValue]="summary.counts.enrollments | fmtNum"
-      centerLabel="lượt ghi danh"
+} @else if (summary) {
+<section class="dashboard__stats" aria-labelledby="dashboard-current">
+  <h2 id="dashboard-current">Hiện trạng ghi danh</h2>
+  <ui-stat-strip>
+    <ui-stat label="Học viên" [value]="summary.counts.learners | fmtNum" />
+    <ui-stat
+      label="Lượt ghi danh"
+      [value]="summary.counts.enrollments | fmtNum"
+      [note]="(summary.counts.courses | fmtNum) + ' khóa có ghi danh'"
     />
-  </ui-section-card>
-  <ui-section-card title="Hoạt động 14 ngày gần đây">
-    <div class="dashboard__trend">
-      <h3>Lượt bắt đầu khóa theo ngày</h3>
-      <div
-        class="dashboard__chart"
-        tabindex="0"
-        role="region"
-        aria-label="Biểu đồ lượt bắt đầu"
+    <ui-stat
+      label="Tỷ lệ hoàn thành"
+      [value]="summary.counts.completionRate | fmtPct"
+      [note]="(summary.counts.completed | fmtNum) + ' lượt hoàn thành'"
+    />
+    <ui-stat
+      label="Lượt quá hạn"
+      [value]="summary.counts.overdue | fmtNum"
+      [tone]="summary.counts.overdue ? 'danger' : 'default'"
+    />
+  </ui-stat-strip>
+</section>
+}
+
+<div class="dashboard__overview">
+  <div class="dashboard__sidebar">
+    @if (summary) {
+    <ui-section-card title="Trạng thái học tập">
+      @if (summary.counts.enrollments) {
+      <ui-donut-chart
+        [data]="status()"
+        [centerValue]="summary.counts.enrollments | fmtNum"
+        centerLabel="lượt ghi danh"
+        compact
+      />
+      } @else {
+      <p class="dashboard__message">Chưa có lượt ghi danh.</p>
+      }
+    </ui-section-card>
+
+    }
+    <ui-section-card class="dashboard__ranking" title="Top 5 học viên" flush>
+      <a
+        slot="action"
+        uiButton
+        variant="ghost"
+        size="sm"
+        routerLink="/leaderboard"
+        [queryParams]="store.leaderboardQuery"
+        >Xem bảng</a
       >
-        <ui-bar-chart [data]="starts()" label="Lượt bắt đầu khóa theo ngày" />
-      </div>
-    </div>
-    <div class="dashboard__trend">
-      <h3>Lượt hoàn thành khóa theo ngày</h3>
-      <div
-        class="dashboard__chart"
-        tabindex="0"
-        role="region"
-        aria-label="Biểu đồ lượt hoàn thành"
-      >
-        <ui-bar-chart
-          [data]="completions()"
-          label="Lượt hoàn thành khóa theo ngày"
+      <p class="dashboard__ranking-scope">Tháng này · Toàn hệ thống</p>
+      @if (store.leaderboardError$(); as error) {
+      <div class="dashboard__ranking-message">
+        <ui-error-state
+          title="Không tải được bảng xếp hạng"
+          [message]="error.message"
+          (retry)="store.retryLeaderboard()"
         />
       </div>
+      } @else if (store.leaderboardLoading$()) {
+      <p class="dashboard__ranking-message dashboard__message" role="status">
+        <span uiSpinner></span> Đang tải bảng xếp hạng…
+      </p>
+      } @else if (store.topLearners$().length) {
+      <table class="dashboard__leaders" aria-label="Top 5 học viên theo XP">
+        <thead>
+          <tr>
+            <th scope="col">Hạng</th>
+            <th scope="col">Học viên</th>
+            <th scope="col">XP</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (learner of store.topLearners$(); track learner.userId) {
+          <tr>
+            <td><span class="dashboard__rank">{{ learner.rank }}</span></td>
+            <th scope="row" class="dashboard__learner">
+              <span [title]="learner.fullName">{{ learner.fullName }}</span>
+            </th>
+            <td class="dashboard__result">{{ learner.points | fmtNum }}</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+      } @else {
+      <p class="dashboard__ranking-message dashboard__message">
+        Chưa có học viên trong bảng xếp hạng.
+      </p>
+      }
+    </ui-section-card>
+  </div>
+
+  @if (summary) {
+  <ui-section-card class="dashboard__activity" title="Hoạt động theo ngày" fill>
+    @if (store.period() === 0) {
+    <p class="dashboard__chart-note">
+      Biểu đồ hiển thị tối đa 30 ngày gần nhất.
+    </p>
+    }
+    <div class="dashboard__trends">
+      @for (trend of trends(); track trend.label) {
+      <section class="dashboard__trend">
+        <h3>{{ trend.label }}</h3>
+        @if (trend.hasActivity) {
+        <ui-bar-chart
+          [data]="trend.data"
+          [label]="trend.label + ' theo ngày'"
+          [max]="activityMax()"
+          compact
+        />
+        } @else {
+        <p class="dashboard__message">Chưa có lượt nào trong khoảng đã chọn.</p>
+        }
+      </section>
+      }
     </div>
   </ui-section-card>
+  }
 </div>
-} @else {
-<ui-empty
-  variant="inline"
-  title="Chưa có lượt ghi danh cho các khóa bạn quản lý."
-/>
-} } @if (links().length) {
-<ui-section-card title="Công việc đào tạo">
-  <nav class="dashboard__links" aria-label="Công việc đào tạo">
-    @for (link of links(); track link.path) {
-    <a uiButton variant="secondary" [routerLink]="link.path"
-      >{{ link.label }}</a
-    >
-    }
-  </nav>
-</ui-section-card>
-}

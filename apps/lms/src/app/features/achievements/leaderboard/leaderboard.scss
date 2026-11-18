@@ -44,6 +44,10 @@
     gap: ui.space(2);
   }
 
+  &__layout.leaderboard__layout--board-only {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   &__period {
     @include ui.num;
     @include ui.text(sm, muted);

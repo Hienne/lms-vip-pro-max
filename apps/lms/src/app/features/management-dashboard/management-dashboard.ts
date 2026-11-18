@@ -1,15 +1,14 @@
 import { Component, computed, inject } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import {
   BarChart,
   Button,
   DonutChart,
-  Empty,
   ErrorState,
   FmtNumPipe,
   FmtPctPipe,
-  PageHeader,
   SectionCard,
+  Select,
   Spinner,
   Stat,
   StatStrip,
@@ -18,48 +17,18 @@ import {
 import { SessionStore } from '../../core/session/session.store';
 import { ManagementDashboardStore } from './management-dashboard.store';
 
-const WORK_LINKS = [
-  {
-    menu: 'COURSE_MANAGEMENT',
-    path: '/admin/courses',
-    label: 'Quản lý khóa học',
-  },
-  {
-    menu: 'QUESTION_BANK',
-    path: '/admin/questions',
-    label: 'Ngân hàng câu hỏi',
-  },
-  {
-    menu: 'QUIZ_MANAGEMENT',
-    path: '/admin/quizzes',
-    label: 'Quản lý bài kiểm tra',
-  },
-  {
-    menu: 'COURSE_ASSIGNMENT',
-    path: '/admin/assignments',
-    label: 'Giao khóa học',
-  },
-  {
-    menu: 'USER_MANAGEMENT',
-    path: '/admin/users',
-    label: 'Quản lý người dùng',
-  },
-  { menu: 'REPORTING', path: '/reports/progress', label: 'Báo cáo đào tạo' },
-] as const;
-
 @Component({
   selector: 'app-management-dashboard',
   imports: [
     BarChart,
     Button,
+    RouterLink,
     DonutChart,
-    Empty,
     ErrorState,
     FmtNumPipe,
     FmtPctPipe,
-    PageHeader,
-    RouterLink,
     SectionCard,
+    Select,
     Spinner,
     Stat,
     StatStrip,
@@ -70,14 +39,12 @@ const WORK_LINKS = [
 })
 export class ManagementDashboard {
   protected readonly store = inject(ManagementDashboardStore);
-  protected readonly title =
-    inject(ActivatedRoute).snapshot.routeConfig?.path === 'instructor'
-      ? 'Tổng quan giảng viên'
-      : 'Tổng quan quản trị';
   private readonly session = inject(SessionStore);
-  protected readonly links = computed(() =>
-    WORK_LINKS.filter((link) => this.session.menus$().includes(link.menu)),
-  );
+  protected readonly greeting = computed(() => {
+    const name = this.session.user$()?.fullName.trim();
+    return name ? 'Xin chào, ' + name : 'Xin chào';
+  });
+
   protected readonly status = computed<readonly DonutDatum[]>(() => {
     const counts = this.store.summary$()?.counts;
     if (!counts) return [];
@@ -88,17 +55,49 @@ export class ManagementDashboard {
     ];
   });
 
-  protected readonly daily = computed(() =>
-    (this.store.summary$()?.daily ?? []).map((day) => ({
-      label: day.date.slice(8, 10) + '/' + day.date.slice(5, 7),
-      started: day.started,
-      completed: day.completed,
-    })),
+  private readonly days = computed(() => this.store.summary$()?.daily ?? []);
+  protected readonly periodLabel = computed(() => {
+    if (this.store.period() === 0) return '';
+    const first = this.days()[0]?.date;
+    const last = this.days().at(-1)?.date;
+    if (!first || !last) return '';
+    const start =
+      first.slice(0, 4) === last.slice(0, 4) ? first.slice(5) : first;
+    return (
+      start.split('-').reverse().join('/') +
+      ' – ' +
+      last.split('-').reverse().join('/')
+    );
+  });
+
+  protected readonly activityMax = computed(() =>
+    Math.max(1, ...this.days().flatMap((day) => [day.started, day.completed])),
   );
-  protected readonly starts = computed(() =>
-    this.daily().map(({ label, started }) => ({ label, value: started })),
-  );
-  protected readonly completions = computed(() =>
-    this.daily().map(({ label, completed }) => ({ label, value: completed })),
-  );
+
+  protected readonly trends = computed(() => {
+    const days = this.days();
+    return [
+      {
+        label: 'Lượt bắt đầu khóa',
+        data: days.map(({ date, started }) => ({
+          label: dayLabel(date),
+          value: started,
+        })),
+      },
+      {
+        label: 'Lượt hoàn thành khóa',
+        data: days.map(({ date, completed }) => ({
+          label: dayLabel(date),
+          value: completed,
+        })),
+      },
+    ].map((trend) => ({
+      ...trend,
+      hasActivity: trend.data.some(({ value }) => value > 0),
+    }));
+  });
+}
+
+function dayLabel(date: string): string {
+  return date.slice(8, 10) + '/' + date.slice(5, 7);
 }

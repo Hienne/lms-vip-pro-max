@@ -25,7 +25,10 @@
     &__header {
       @include ui.row-between(3);
       flex-wrap: nowrap;
-      padding: ui.space(4) ui.space(5);
+      padding: var(
+        --section-card-header-padding,
+        #{ui.space(4)} #{ui.space(5)}
+      );
       border-bottom: 1px solid ui.color(border);
     }
 
@@ -63,7 +66,7 @@
     }
 
     &__body {
-      padding: ui.space(5);
+      padding: var(--section-card-body-padding, #{ui.space(5)});
 
       &--flush {
         padding: 0;

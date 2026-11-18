@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { booleanAttribute, Component, computed, input } from '@angular/core';
 export interface DonutDatum {
   readonly label: string;
   readonly value: number;
@@ -14,6 +14,7 @@ export class DonutChart {
   readonly label = input('Trạng thái tham gia');
   readonly centerValue = input('');
   readonly centerLabel = input('');
+  readonly compact = input(false, { transform: booleanAttribute });
   protected readonly segments = computed(() => {
     const total = this.data().reduce((sum, d) => sum + d.value, 0) || 1;
     let offset = 0;

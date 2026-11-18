@@ -1596,15 +1596,21 @@ export class LearningBackend {
     });
     const dataAsOf = now();
     const rows = this.reportRows(request, true);
-    const daily = Array.from({ length: 14 }, (_, index) => ({
+    const days = Number(request.query['days'] ?? 0);
+    const chartDays = days === 0 ? 30 : days;
+    const daily = Array.from({ length: chartDays }, (_, index) => ({
       date: dateFormatter.format(
-        new Date(Date.parse(dataAsOf) - (13 - index) * DAY),
+        new Date(Date.parse(dataAsOf) - (chartDays - 1 - index) * DAY),
       ),
       started: 0,
       completed: 0,
     }));
     const byDate = new Map(daily.map((day) => [day.date, day]));
-    for (const { enrollment } of rows) {
+    const completions = new Map<
+      string,
+      { userId: string; fullName: string; completed: number; last: number }
+    >();
+    for (const { enrollment, fullName } of rows) {
       for (const [key, value] of [
         ['started', enrollment.startedAt],
         ['completed', enrollment.completedAt],
@@ -1612,14 +1618,48 @@ export class LearningBackend {
         const day = value
           ? byDate.get(dateFormatter.format(new Date(value)))
           : undefined;
-        if (day) day[key]++;
+        if (!day || !value) continue;
+        day[key]++;
+        if (key === 'completed' && enrollment.status === 'completed') {
+          const { userId } = enrollment;
+          const rank = completions.get(userId) ?? {
+            userId,
+            fullName: fullName ?? userId,
+            completed: 0,
+            last: 0,
+          };
+          rank.completed++;
+          rank.last = Math.max(rank.last, Date.parse(value));
+          completions.set(userId, rank);
+        }
       }
     }
+    const enrollments =
+      days === 0
+        ? rows
+        : rows.filter(
+            ({ enrollment }) =>
+              enrollment.enrolledAt &&
+              byDate.has(dateFormatter.format(new Date(enrollment.enrolledAt))),
+          );
     return ok({
       dataAsOf,
       timeZone: 'Asia/Ho_Chi_Minh',
-      counts: learningCounts(rows),
+      counts: learningCounts(enrollments),
       daily,
+      topLearners: [...completions.values()]
+        .sort(
+          (a, b) =>
+            b.completed - a.completed ||
+            b.last - a.last ||
+            a.userId.localeCompare(b.userId),
+        )
+        .slice(0, 5)
+        .map(({ userId, fullName, completed }) => ({
+          userId,
+          fullName,
+          completed,
+        })),
     });
   }
 
