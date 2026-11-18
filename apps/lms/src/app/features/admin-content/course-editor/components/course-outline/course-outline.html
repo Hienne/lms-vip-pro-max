@@ -165,8 +165,13 @@
       } }
       <span>{{ lesson.minutes }} phút</span>
     </div>
+    @if (notes().get(lesson.key); as note) {
+    <p class="course-outline__lesson-note">{{ note.text }}</p>
+    }
   </div>
-  @if (stateOf(ci, li); as state) {
+  @if (notes().get(lesson.key)?.suggested) {
+  <app-suggested-mark />
+  } @if (stateOf(ci, li); as state) {
   <span uiBadge [tone]="state.tone">{{ state.label }}</span>
   } @if (problemOf(lesson); as problem) { @if (!uploadOf(lesson)) {
   <span uiBadge tone="warning">{{ problem }}</span>

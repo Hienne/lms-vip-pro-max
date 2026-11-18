@@ -1,0 +1,100 @@
+@let rules = questionsForm().value();
+<ui-section-card title="Câu hỏi nháp cho bài kiểm tra cuối khóa">
+  <div class="drafting-questions">
+    <p class="drafting-questions__note">
+      Trợ lý soạn các câu hỏi này từ tài liệu của bạn. Câu hỏi chỉ vào ngân hàng
+      câu hỏi khi bạn bấm Đã chốt; khi đó các câu được giữ lại thành bài kiểm
+      tra cuối khóa mới của khóa học.
+    </p>
+    <ui-field
+      label="Năng lực của câu hỏi"
+      [required]="rules.questions.length > 0"
+      hint="Câu hỏi trong ngân hàng được gắn với một năng lực để báo cáo."
+    >
+      <select uiSelect [formField]="questionsForm.competencyId">
+        <option value="">Chọn năng lực</option>
+        @for (competency of store.competencies$(); track competency.id) {
+        <option [value]="'' + competency.id">{{ competency.name }}</option>
+        }
+      </select>
+      @if (competencyMarked()) {
+      <app-suggested-mark />
+      }
+    </ui-field>
+    @if (rules.questions.length === 0) {
+    <p class="drafting-questions__note">
+      Không còn câu hỏi nháp nào. Khi chốt, khóa học chỉ lưu điều kiện hoàn
+      thành và điểm thưởng.
+    </p>
+    }
+    <ol class="drafting-questions__list">
+      @for (question of questionsForm.questions; track question().value().key;
+      let index = $index) { @let value = question().value();
+      <li
+        class="drafting-questions__question"
+        [attr.aria-label]="'Câu hỏi ' + (index + 1)"
+      >
+        <div class="drafting-questions__head">
+          <span class="drafting-questions__meta"
+            >Câu {{ index + 1 }} · {{ difficulty[value.difficulty] }} · Nguồn:
+            {{ value.sourceSection }}</span
+          >
+          @if (questionMarks().has(value.key)) {
+          <app-suggested-mark />
+          }
+          <button
+            uiButton
+            size="sm"
+            variant="ghost"
+            type="button"
+            class="drafting-questions__remove"
+            (click)="remove(value.key)"
+          >
+            <ui-icon name="trash-2" size="sm" />Bỏ câu hỏi
+          </button>
+        </div>
+        <ui-field label="Nội dung câu hỏi">
+          <textarea
+            uiTextarea
+            rows="2"
+            [formField]="question.content"
+          ></textarea>
+        </ui-field>
+        <div
+          class="drafting-questions__options"
+          role="group"
+          [attr.aria-label]="'Phương án của câu ' + (index + 1)"
+        >
+          <p class="drafting-questions__meta">
+            Phương án (đánh dấu các đáp án đúng)
+          </p>
+          @for (option of question.options; track option().value().key; let at =
+          $index) {
+          <div class="drafting-questions__option">
+            <input
+              type="checkbox"
+              uiCheckbox
+              [formField]="option.correct"
+              [attr.aria-label]="'Phương án ' + (at + 1) + ' là đáp án đúng'"
+            />
+            <input
+              uiInput
+              class="drafting-questions__option-text"
+              [formField]="option.content"
+              [attr.aria-label]="'Phương án ' + (at + 1)"
+            />
+          </div>
+          }
+        </div>
+        <ui-field label="Giải thích">
+          <textarea
+            uiTextarea
+            rows="2"
+            [formField]="question.explanation"
+          ></textarea>
+        </ui-field>
+      </li>
+      }
+    </ol>
+  </div>
+</ui-section-card>

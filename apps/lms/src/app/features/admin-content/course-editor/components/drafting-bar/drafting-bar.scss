@@ -1,0 +1,15 @@
+@use 'ui';
+
+:host {
+  display: block;
+}
+
+.drafting-bar {
+  margin-bottom: ui.space(4);
+
+  // "Đề xuất lại" alone, on a step confirmed before.
+  &--again {
+    display: flex;
+    justify-content: flex-end;
+  }
+}

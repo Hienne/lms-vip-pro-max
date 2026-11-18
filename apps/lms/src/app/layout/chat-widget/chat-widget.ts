@@ -21,6 +21,7 @@ import {
   AGENT_PANEL_ID,
 } from '../../core/assistant/agent-launcher';
 import { AgentChatStore } from '../../core/assistant/agent-chat.store';
+import { CourseDraftingStore } from '../../core/course-drafting/course-drafting.store';
 import { ConversationsStore } from '../../core/assistant/conversations.store';
 import { ConversationList } from '../../shared/assistant/conversation-list/conversation-list';
 import { suggestionsFor } from '../../core/assistant/agent-suggestions';
@@ -65,6 +66,8 @@ const FOLLOW_DISTANCE = 48;
 })
 export class ChatWidget {
   protected readonly store = inject(AgentChatStore);
+  /** The drafting session a step card belongs to: its "Đã chốt" and "Mở trang soạn". */
+  protected readonly drafting = inject(CourseDraftingStore);
   protected readonly history = inject(ConversationsStore);
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);

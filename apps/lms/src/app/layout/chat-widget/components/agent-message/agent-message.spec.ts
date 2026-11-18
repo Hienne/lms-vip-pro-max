@@ -38,11 +38,13 @@ const turn = (patch: Partial<AgentReply> = {}): AgentTurn => ({
   template: `<app-agent-message
     [turn]="turn()"
     (retried)="retried.push($event)"
+    (draftingConfirmed)="confirmedSteps.push($event.step)"
   />`,
 })
 class Host {
   readonly turn = signal(turn());
   readonly retried: number[] = [];
+  readonly confirmedSteps: number[] = [];
 }
 
 describe('AgentMessage', () => {
@@ -303,5 +305,29 @@ describe('AgentMessage', () => {
       retry?.click();
       expect(fixture.componentInstance.retried).toEqual([1]);
     }
+  });
+
+  it('shows a drafting step message without a question, with its card', async () => {
+    const { el, fixture, text } = await render({
+      id: 1,
+      question: '',
+      reply: reply({
+        text: 'Bước 2 · Dàn ý: mình đã điền dàn ý.',
+        draftingCard: {
+          sessionId: 7,
+          step: 2,
+          state: 'proposed',
+          courseId: 40,
+        },
+      }),
+    });
+
+    expect(el.querySelector('.message--user')).toBeNull();
+    expect(text()).toContain('Bước 2 · Dàn ý');
+    const confirm = [...el.querySelectorAll('button')].find(
+      (b) => b.textContent?.trim() === 'Đã chốt',
+    );
+    confirm?.click();
+    expect(fixture.componentInstance.confirmedSteps).toEqual([2]);
   });
 });

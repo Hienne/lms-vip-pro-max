@@ -13,6 +13,7 @@ import { NgComponentOutlet } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { DrawerOutlet } from '@lms/ui';
 import { AgentChatStore } from '../../core/assistant/agent-chat.store';
+import { CourseDraftingStore } from '../../core/course-drafting/course-drafting.store';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { DEV_FEATURES } from '../../core/dev/dev-features';
 import { OPEN_PAGE_GUIDE } from '../../core/routing/page-guide-action';
@@ -55,9 +56,11 @@ import type { UserMenuValue } from '../header/header';
     '[style.--owl-inset.px]': 'inset()',
     '[style.--shell-gutter]': 'gutter()',
   },
+  // The drafting session is followed by both the chat panel and the course editor below it.
   providers: [
     ShellStore,
     UsageGuideStore,
+    CourseDraftingStore,
     {
       provide: OPEN_PAGE_GUIDE,
       useFactory: () => {

@@ -1,0 +1,7 @@
+@use 'ui';
+
+// As wide as its text, also in a field that stretches its children.
+:host {
+  display: inline-flex;
+  align-self: flex-start;
+}

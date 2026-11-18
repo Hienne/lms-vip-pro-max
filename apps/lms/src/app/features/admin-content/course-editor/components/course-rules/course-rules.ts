@@ -21,9 +21,13 @@ import {
 } from '@lms/ui';
 import type { CourseDraftValue } from '../../course-draft';
 import { CourseEditorStore } from '../../data-access/course-editor.store';
+import type { FillField } from '../../data-access/drafting-fill';
+import { SuggestedMark } from '../suggested-mark/suggested-mark';
+import { DraftingFillStore } from '../../data-access/drafting-fill.store';
 import { QuestionImport } from '../../../../../shared/quiz/question-import/question-import';
 import { QUESTION_IMPORT_HOST } from '../../../../../shared/quiz/question-import/data-access/question-import.host';
 import { CourseExamForm } from './components/course-exam-form/course-exam-form';
+import { DraftingQuestions } from './components/drafting-questions/drafting-questions';
 import { ProposedQuestions } from './components/proposed-questions/proposed-questions';
 import { newExamValue } from './data-access/course-exam.model';
 import { CourseExamStore } from './data-access/course-exam.store';
@@ -41,7 +45,8 @@ const QUIZ_STATUS_LABEL: Record<QuizSummary['status'], string> = {
 };
 
 /**
- * Step 3 of the editor: the questions the AI proposed (for a course it started), the course's final exam and the reward for completing it. Completion
+ * Step 3 of the editor: the questions the AI proposed (for a course it started, or the draft
+ * questions of a drafting session), the course's final exam and the reward for completing it. Completion
  * itself is measured by the server: every required lesson, a video watched past its threshold, a
  * PDF read to its last page, and the final exam when one is chosen. The card shows the exam in one
  * of three states: none, one the wizard manages (random pool over the program's bank) and one the
@@ -55,6 +60,8 @@ const QUIZ_STATUS_LABEL: Record<QuizSummary['status'], string> = {
     Card,
     CardBody,
     CourseExamForm,
+    DraftingQuestions,
+    SuggestedMark,
     Field,
     FormField,
     Icon,
@@ -85,10 +92,16 @@ const QUIZ_STATUS_LABEL: Record<QuizSummary['status'], string> = {
 export class CourseRules {
   protected readonly createOption = 'create';
   readonly draft = input.required<FieldTree<CourseDraftValue>>();
+  /** The fields that still hold what the assistant wrote: each shows "AI đề xuất". */
+  readonly suggested = input<ReadonlySet<FillField>>(new Set());
 
   protected readonly store = inject(CourseEditorStore);
   protected readonly exam = inject(CourseExamStore);
+  /** The drafting session's step 3, on the editor page that follows one. */
+  protected readonly fill = inject(DraftingFillStore, { optional: true });
   private readonly examForm = viewChild(CourseExamForm);
+  /** Step 3's draft questions of a drafting session, while they are on the page. */
+  readonly draftingQuestions = viewChild(DraftingQuestions);
   protected readonly selectedExam = computed(() =>
     this.exam.formOpen$() && this.exam.creating$()
       ? this.createOption

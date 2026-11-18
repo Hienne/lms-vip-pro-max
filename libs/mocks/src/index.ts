@@ -18,5 +18,8 @@ export * from './lib/learning/learning.backend';
 export * from './lib/knowledge/knowledge.fixtures';
 export * from './lib/assistant-agent/agent.fixtures';
 export * from './lib/assistant-course/course-job.mock';
+export * from './lib/assistant-drafting/drafting-session.fixtures';
+export * from './lib/assistant-drafting/drafting-session.mock';
+export * from './lib/assistant-external/external-connection.mock';
 export * from './lib/community/community.fixtures';
 export * from './lib/community/community.backend';

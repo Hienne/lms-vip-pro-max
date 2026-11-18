@@ -14,6 +14,8 @@ import { TargetPicker } from '../../../../../../../shared/assignment-target/targ
 import { TARGET_OWNER_ORG } from '../../../../../../../shared/assignment-target/target-picker/data-access/target-options.store';
 import { TARGET_TYPE_LABEL } from '../../../../../../../shared/assignment-target/target-labels';
 import { CourseEditorStore } from '../../../../data-access/course-editor.store';
+import { DraftingFillStore } from '../../../../data-access/drafting-fill.store';
+import { SuggestedMark } from '../../../suggested-mark/suggested-mark';
 import { REMIND_DAYS } from '../../../../data-access/publish-targets';
 
 /**
@@ -32,6 +34,7 @@ import { REMIND_DAYS } from '../../../../data-access/publish-targets';
     IconButton,
     LinkButton,
     RouterLink,
+    SuggestedMark,
     Switch,
     TargetPicker,
   ],
@@ -47,6 +50,8 @@ import { REMIND_DAYS } from '../../../../data-access/publish-targets';
 })
 export class AssignRows {
   protected readonly store = inject(CourseEditorStore);
+  /** The rows a drafting session wrote, marked "AI đề xuất" until edited or step 4 is confirmed. */
+  protected readonly fill = inject(DraftingFillStore, { optional: true });
   protected readonly typeLabel = TARGET_TYPE_LABEL;
   protected readonly remindDays = REMIND_DAYS;
 

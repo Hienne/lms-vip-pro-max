@@ -1,8 +1,9 @@
-@let reply = turn().reply; @let link = opened();
+@let reply = turn().reply; @let link = opened(); @if (turn().question) {
 <div class="message message--user">
   <span class="sr-only">Bạn:</span>
   <p class="message__text">{{ turn().question }}</p>
 </div>
+}
 <div class="message">
   <span class="sr-only">Trợ lý:</span>
   @if (status(); as line) {
@@ -36,6 +37,12 @@
     [busy]="busy()"
     (confirmed)="confirmed.emit(turn().id)"
     (cancelled)="cancelled.emit(turn().id)"
+  />
+  } @if (reply.draftingCard; as step) {
+  <app-drafting-card
+    [card]="step"
+    (confirmed)="draftingConfirmed.emit($event)"
+    (opened)="draftingOpened.emit($event)"
   />
   } @if (sourcesShown()) {
   <app-agent-sources [turnId]="turn().id" [citations]="reply.citations" />

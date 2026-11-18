@@ -6,13 +6,20 @@
         [formField]="draft().title"
         placeholder="Ví dụ: Quy trình đối soát cuối ngày"
       />
+      @if (suggested().has('title')) {
+      <app-suggested-mark class="course-info__suggested" />
+      }
     </ui-field>
     <div class="course-info__pair">
       <ui-field
         [showErrors]="showErrors()"
         label="Chương trình"
         required
-        [hint]="draft().programId().disabled() ? programLockedHint : ''"
+        [hint]="
+          draft().programId().disabled()
+            ? programLockedHint
+            : (shownHints().programId ?? '')
+        "
       >
         <select
           uiSelect
@@ -32,7 +39,9 @@
           </option>
           }
         </select>
-        @if (store.programsError$()) {
+        @if (suggested().has('programId')) {
+        <app-suggested-mark class="course-info__suggested" />
+        } @if (store.programsError$()) {
         <button
           uiButton
           type="button"
@@ -68,7 +77,10 @@
       <ui-field
         [showErrors]="showErrors()"
         label="Phân hệ nghiệp vụ"
-        [hint]="draft().programId().value() ? '' : 'Chọn chương trình trước.'"
+        [hint]="
+          shownHints().moduleId ??
+          (draft().programId().value() ? '' : 'Chọn chương trình trước.')
+        "
       >
         <select uiSelect [formField]="draft().moduleId">
           <option value="" [selected]="!draft().moduleId().value()">
@@ -83,7 +95,9 @@
           </option>
           }
         </select>
-        @if (store.modulesError$()) {
+        @if (suggested().has('moduleId')) {
+        <app-suggested-mark class="course-info__suggested" />
+        } @if (store.modulesError$()) {
         <button uiButton type="button" size="sm" (click)="store.retryModules()">
           Tải lại phân hệ
         </button>
@@ -97,6 +111,9 @@
         hint="Duy nhất trong hệ thống, không đổi sau khi tạo."
       >
         <input uiInput [formField]="draft().code" />
+        @if (suggested().has('code')) {
+        <app-suggested-mark class="course-info__suggested" />
+        }
       </ui-field>
       } @else {
       <ui-field
@@ -121,6 +138,9 @@
           </option>
           }
         </select>
+        @if (suggested().has('level')) {
+        <app-suggested-mark class="course-info__suggested" />
+        }
       </ui-field>
     </div>
     @if (create() && ownerName()) {
@@ -129,6 +149,9 @@
 
     <fieldset class="course-info__kind">
       <legend>Loại khóa học</legend>
+      @if (suggested().has('defaultRequirement')) {
+      <app-suggested-mark class="course-info__suggested" />
+      }
       <div class="course-info__pair">
         <ui-option-card
           title="Bắt buộc"
@@ -155,11 +178,16 @@
 
     <ui-field [showErrors]="showErrors()" label="Mô tả ngắn">
       <textarea uiTextarea rows="3" [formField]="draft().summary"></textarea>
+      @if (suggested().has('summary')) {
+      <app-suggested-mark class="course-info__suggested" />
+      }
     </ui-field>
 
     <fieldset class="course-info__objectives">
       <legend>Mục tiêu đầu ra</legend>
-      @for (objective of draft().objectives; track $index; let i = $index) {
+      @if (suggested().has('objectives')) {
+      <app-suggested-mark class="course-info__suggested" />
+      } @for (objective of draft().objectives; track $index; let i = $index) {
       <div class="course-info__objective">
         <input
           uiInput
@@ -292,10 +320,6 @@
     </section>
   </aside>
 </div>
-
-@if (ai()) {
-<app-ai-course-section class="course-info__ai" />
-}
 
 <ng-template
   [uiDrawer]="library.target$() !== null"

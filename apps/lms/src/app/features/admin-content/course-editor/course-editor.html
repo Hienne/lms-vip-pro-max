@@ -23,31 +23,26 @@
   "
 >
   <div slot="actions" class="course-editor__head-state">
-    @if (!editing && canGenerate()) {
-    <label class="course-editor__ai-toggle">
-      <input
-        type="checkbox"
-        uiSwitch
-        [checked]="aiEnabled()"
-        (change)="toggleAi($event)"
-      />
-      Soạn bằng AI
-    </label>
-    } @if (showAi()) {
+    @if (canDraftWithAssistant()) {
+    <!-- The picker opens in the button's own click, so the browser allows it. -->
+    <input
+      #sourcePicker
+      type="file"
+      class="sr-only"
+      tabindex="-1"
+      aria-hidden="true"
+      [accept]="sourceAccept"
+      (change)="sourcePicked($event)"
+    />
     <button
       type="button"
       uiButton
       variant="secondary"
       size="sm"
-      aria-describedby="ai-problem"
-      [disabled]="aiProblem() !== null || generating()"
-      (click)="generateWithAi()"
+      (click)="sourcePicker.click()"
     >
-      <ui-icon name="sparkles" size="sm" />Tạo bằng AI
+      Soạn cùng trợ lý
     </button>
-    <span id="ai-problem" class="course-editor__ai-problem"
-      >{{ aiProblem() }}</span
-    >
     } @if (store.course$()) {
     <app-catalog-status [status]="store.status$()" />
     }
@@ -122,10 +117,19 @@
 </ui-alert>
 } @if (store.step$() === 1) {
 <app-course-ai-status [unsaved]="dirty()" />
+} @if (fill.attached$()) {
+<app-drafting-bar
+  [problem]="draftingProblem()"
+  [suggestedCode]="suggestedCode()"
+  (confirmed)="confirmDraftingStep($event)"
+/>
 }
 
 <form id="course-editor-form" [formRoot]="courseForm">
-  <fieldset class="course-editor__body" [disabled]="!store.isDraft$()">
+  <fieldset
+    class="course-editor__body"
+    [disabled]="!store.isDraft$() || fill.locked$()"
+  >
     <legend class="sr-only">{{ steps[store.step$()].label }}</legend>
     @switch (store.step$()) { @case (0) {
     <app-course-info
@@ -136,7 +140,8 @@
       [ownerName]="store.ownerName$()"
       [programs]="store.programs$()"
       [modules]="store.modules$()"
-      [ai]="showAi()"
+      [suggested]="suggested()"
+      [hints]="fill.emptyHints$()"
       [coverAssetId]="draftValue().coverAssetId"
       (programPicked)="store.pickProgram($event)"
       (coverRemoved)="removeCover()"
@@ -153,6 +158,7 @@
     <app-course-outline
       [draft]="courseForm"
       [editable]="store.isDraft$()"
+      [lessonNotes]="fill.lessonNotes$()"
       [uploads]="store.uploads$()"
       (uploadsDropped)="store.cancelUploads($event)"
       (editLesson)="store.editLesson($event)"
@@ -160,7 +166,11 @@
     } @case (3) {
     <app-course-review [draft]="courseForm" (goToStep)="navigate($event)" />
     } }
-    <app-course-rules [hidden]="store.step$() !== 2" [draft]="courseForm" />
+    <app-course-rules
+      [hidden]="store.step$() !== 2"
+      [draft]="courseForm"
+      [suggested]="suggested()"
+    />
   </fieldset>
 </form>
 
@@ -180,15 +190,16 @@
     uiButton
     type="submit"
     form="course-editor-form"
-    [disabled]="store.isSaving$() || store.pendingUploads$() > 0 || (store.isCreate$() && !store.ownerOrgId$())"
+    [disabled]="store.isSaving$() || store.pendingUploads$() > 0 || (store.isCreate$() && !store.ownerOrgId$()) || fill.locked$()"
   >
     <ui-icon name="archive" size="sm" />Lưu nháp
   </button>
   } @if (store.step$() < steps.length - 1) {
+  <!-- While the bar offers "Đã chốt", it is the one primary action. -->
   <button
     uiButton
-    variant="primary"
-    [disabled]="continueBlocked() || store.isSaving$() || (store.isCreate$() && !store.ownerOrgId$())"
+    [variant]="fill.confirmStep$() === null ? 'primary' : 'secondary'"
+    [disabled]="continueBlocked() || store.isSaving$() || (store.isCreate$() && !store.ownerOrgId$()) || fill.locked$()"
     (click)="continue()"
   >
     Tiếp theo<ui-icon name="chevron-right" size="sm" />
@@ -196,8 +207,8 @@
   } @else if (store.isDraft$()) {
   <button
     uiButton
-    variant="primary"
-    [disabled]="store.isSaving$() || store.pendingUploads$() > 0 || (store.isCreate$() && !store.ownerOrgId$())"
+    [variant]="fill.confirmStep$() === null ? 'primary' : 'secondary'"
+    [disabled]="store.isSaving$() || store.pendingUploads$() > 0 || (store.isCreate$() && !store.ownerOrgId$()) || fill.locked$()"
     (click)="publish()"
   >
     <ui-icon name="check" size="sm" />{{ store.publishRows$().length ? 'Xuất bản

@@ -2,8 +2,23 @@ import { TestBed } from '@angular/core/testing';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { of } from 'rxjs';
 import { provideRouter } from '@angular/router';
-import { seedProfile } from '../../core/session/session.testing';
+import { parseAppConfig, provideAppConfig } from '../../core/config/app-config';
+import { testAppConfig } from '../../core/config/app-config.testing';
+import { provideEnvelopeHttpClient } from '../../core/http/http.testing';
+import { SessionStore } from '../../core/session/session.store';
+import {
+  FakeSessionStore,
+  seedProfile,
+} from '../../core/session/session.testing';
 import { Header } from './header';
+
+/** What the header's own children read: the Trợ lý ngoài button asks the server nothing here. */
+const HEADER_PROVIDERS = [
+  provideRouter([]),
+  provideAppConfig(parseAppConfig(testAppConfig())),
+  provideEnvelopeHttpClient(),
+  { provide: SessionStore, useClass: FakeSessionStore },
+];
 
 describe('Header user menu', () => {
   afterEach(() =>
@@ -13,7 +28,7 @@ describe('Header user menu', () => {
   );
 
   async function open(levelName: string | null, guideAvailable = false) {
-    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    TestBed.configureTestingModule({ providers: HEADER_PROVIDERS });
     const fixture = TestBed.createComponent(Header);
     fixture.componentRef.setInput('user', seedProfile('000004'));
     fixture.componentRef.setInput('levelName', levelName);
@@ -53,7 +68,7 @@ describe('Header user menu', () => {
   it('opens a full search field on mobile, emits the query and closes the popover', async () => {
     TestBed.configureTestingModule({
       providers: [
-        provideRouter([]),
+        ...HEADER_PROVIDERS,
         {
           provide: BreakpointObserver,
           useValue: { observe: () => of({ matches: true, breakpoints: {} }) },

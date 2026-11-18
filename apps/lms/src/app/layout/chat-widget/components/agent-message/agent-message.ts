@@ -1,19 +1,26 @@
 import { DOCUMENT } from '@angular/common';
 import { Component, computed, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import type { RateAnswerCommand } from '@lms/contracts';
+import type {
+  DraftingCard as DraftingCardState,
+  RateAnswerCommand,
+} from '@lms/contracts';
 import { Icon, IconButton, LinkButton, Spinner, Toaster } from '@lms/ui';
 import type { AgentTurn } from '../../../../core/assistant/agent-chat.model';
 import { toolStatusText } from '../../../../core/assistant/agent-status';
 import { ActionCard } from '../action-card/action-card';
 import { AgentSources, agentSourceId } from '../agent-sources/agent-sources';
+import { DraftingCard } from '../drafting-card/drafting-card';
 import { AnswerFeedback } from '../../../../shared/assistant/answer-feedback/answer-feedback';
 import { AssistantMarkdown } from '../../../../shared/assistant/assistant-markdown/assistant-markdown';
 import { copyText } from '../../../../core/browser/secure-context';
 
 const COMPOSING = 'Đang soạn câu trả lời…';
 
-/** One question of the quick assistant and its reply, in whatever state the reply is. */
+/**
+ * One question of the quick assistant and its reply, in whatever state the reply is. A drafting
+ * step message, which the server posts without a question, shows only the reply and its card.
+ */
 @Component({
   selector: 'app-agent-message',
   imports: [
@@ -21,6 +28,7 @@ const COMPOSING = 'Đang soạn câu trả lời…';
     AgentSources,
     AnswerFeedback,
     AssistantMarkdown,
+    DraftingCard,
     Icon,
     IconButton,
     LinkButton,
@@ -39,6 +47,9 @@ export class AgentMessage {
   readonly busy = input(false);
   readonly confirmed = output<number>();
   readonly cancelled = output<number>();
+  /** "Đã chốt" or "Mở trang soạn" on a drafting step message's card. */
+  readonly draftingConfirmed = output<DraftingCardState>();
+  readonly draftingOpened = output<DraftingCardState>();
   /** Another reply is streaming, so "Thử lại" waits. */
   readonly answering = input(false);
   readonly retried = output<number>();

@@ -26,7 +26,7 @@ function cardOf(action: StoredAction): ActionCard {
 /**
  * A turn the server saved, as the quick chat shows it. The text, sources, opened screen and the
  * card's state are all the server's; nothing is recomputed here, so a card that expired or was
- * confirmed in another tab reads that way.
+ * confirmed in another tab reads that way. A step message of a drafting session has no question.
  */
 export function turnFromStored(turn: StoredTurn): AgentTurn {
   return {
@@ -47,6 +47,7 @@ export function turnFromStored(turn: StoredTurn): AgentTurn {
       grounded: turn.grounded,
       navigatedTo: turn.navigation,
       action: turn.action ? cardOf(turn.action) : null,
+      draftingCard: turn.draftingCard ?? null,
       error: turn.status === 'error' ? STORED_ERROR_MESSAGE : null,
     },
   };

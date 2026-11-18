@@ -12,8 +12,9 @@ import {
   viewChild,
 } from '@angular/core';
 import { form, FormRoot, submit } from '@angular/forms/signals';
-import { Router, RouterLink } from '@angular/router';
-import { courseJobReviewPath, type CourseDetail } from '@lms/contracts';
+import { RouterLink } from '@angular/router';
+import { type CourseDetail, type DraftingStepNumber } from '@lms/contracts';
+import { UPLOAD_ACCEPT } from '../../../core/knowledge/upload-rules';
 import {
   Alert,
   AlertAction,
@@ -28,18 +29,17 @@ import {
   Spinner,
   Stepper,
   PageHeader,
-  Switch,
   Toaster,
 } from '@lms/ui';
-import { CourseFormPrefillStore } from '../../../core/assistant/course-form-prefill.store';
+import { AgentChatStore } from '../../../core/assistant/agent-chat.store';
 import { KeptDrafts } from '../../../core/session/kept-drafts';
 import { CourseJobAccess } from '../../../core/course-jobs/course-job-access';
 import type { HasUnsavedChanges } from '../../../core/routing/unsaved-changes.guard';
 import { BottomBar } from '../../../layout/shell-insets';
 import { CatalogStatus } from '../../../shared/status/catalog-status';
-import { StartCourseStore } from '../ai-course/ai-course-section/data-access/start-course.store';
 import { firstValueFrom } from 'rxjs';
 import { CourseAiStatus } from './components/course-ai-status/course-ai-status';
+import { DraftingBar } from './components/drafting-bar/drafting-bar';
 import { CourseInfo } from './components/course-info/course-info';
 import { CourseOutline } from './components/course-outline/course-outline';
 import { CourseReview } from './components/course-review/course-review';
@@ -60,6 +60,13 @@ import {
 } from './course-draft';
 import { courseCodeSchema, courseDraftSchema } from './course-draft.schema';
 import { CourseAiJobStore } from './data-access/course-ai-job.store';
+import { markedFields } from './data-access/drafting-fill';
+import {
+  DraftingFillStore,
+  type DraftingPageFacts,
+  type QueuedPatch,
+} from './data-access/drafting-fill.store';
+import { DraftingQuestionsStore } from './data-access/drafting-questions.store';
 import {
   COVER_KEY,
   CourseEditorStore,
@@ -73,6 +80,15 @@ export const RESTORE_LABEL = 'Khôi phục';
 /** The draft without its row keys, to tell whether the author changed anything. */
 const fingerprint = (value: CourseDraftValue) =>
   JSON.stringify([value.code, toSaveDraftCommand(value, 0)]);
+
+/** The last write of the assistant a form value already holds. */
+const lastSeq = (queue: readonly QueuedPatch[]) => queue.at(-1)?.seq ?? 0;
+
+/** What the form follows: the server's draft, and the assistant's writes into it. */
+interface ModelSource {
+  readonly detail: CourseDetail | undefined;
+  readonly queue: readonly QueuedPatch[];
+}
 
 /**
  * The course editor (the mockup's `courseWizard`): four steps over one draft, saved whole. The
@@ -94,6 +110,7 @@ const fingerprint = (value: CourseDraftValue) =>
     CourseOutline,
     CourseReview,
     CourseRules,
+    DraftingBar,
     DrawerOutlet,
     ErrorState,
     FormActions,
@@ -104,16 +121,19 @@ const fingerprint = (value: CourseDraftValue) =>
     RouterLink,
     Spinner,
     Stepper,
-    Switch,
   ],
-  providers: [CourseEditorStore, CourseAiJobStore, StartCourseStore],
+  providers: [
+    CourseEditorStore,
+    CourseAiJobStore,
+    DraftingQuestionsStore,
+    DraftingFillStore,
+  ],
   templateUrl: './course-editor.html',
   styleUrl: './course-editor.scss',
 })
 export class CourseEditor implements HasUnsavedChanges {
   protected readonly store = inject(CourseEditorStore);
   protected readonly steps = EDITOR_STEPS;
-  private readonly router = inject(Router);
   private readonly dialog = inject(Dialog);
   private readonly injector = inject(Injector);
   protected readonly validationRequested = signal<readonly boolean[]>([
@@ -122,60 +142,36 @@ export class CourseEditor implements HasUnsavedChanges {
     false,
   ]);
   protected readonly ai = inject(CourseAiJobStore);
-  private readonly starter = inject(StartCourseStore);
-  private readonly chatPrefill = inject(CourseFormPrefillStore);
+  /** The assistant's proposal written into the form, on a course drafted with it. */
+  protected readonly fill = inject(DraftingFillStore);
   private readonly keptDrafts = inject(KeptDrafts);
   private readonly toaster = inject(Toaster);
-  /** "Tạo bằng AI" is offered to instructors and admins on a new course only. */
-  protected readonly canGenerate = inject(CourseJobAccess).canGenerate$;
-  protected readonly generating = this.starter.isStarting$;
+  private readonly chat = inject(AgentChatStore);
+  private readonly canGenerate = inject(CourseJobAccess).canGenerate$;
   /**
-   * The author's choice to write the new course with AI. Off by default: a course is typed by
-   * hand unless the author turns it on (or the chat opened the form to generate one).
+   * "Soạn cùng trợ lý" is offered on a new course that no session fills yet, to instructors and
+   * admins who have the assistant.
    */
-  protected readonly aiEnabled = signal(false);
-  /** The "Tạo bằng AI" section and button are shown: a new course, a role that may generate, switched on. */
-  protected readonly showAi = computed(
-    () => !this.store.course$() && this.canGenerate() && this.aiEnabled(),
+  protected readonly canDraftWithAssistant = computed(
+    () =>
+      this.store.isCreate$() &&
+      !this.fill.attached$() &&
+      this.canGenerate() &&
+      this.chat.available$(),
   );
 
-  protected toggleAi(event: Event): void {
-    this.aiEnabled.set((event.target as HTMLInputElement).checked);
-  }
+  /** The kinds of document a session is drafted from, as the chat's paperclip offers them. */
+  protected readonly sourceAccept = UPLOAD_ACCEPT;
 
   /**
-   * Why "Tạo bằng AI" is not available yet: step 1's own fields first, then the AI section's.
-   * Null when the button may be pressed.
+   * The document picked from "Soạn cùng trợ lý" (the picker opens in the button's own click): the
+   * chat opens on a new conversation and sends it, which starts the session.
    */
-  protected readonly aiProblem = computed((): string | null => {
-    if (this.stepFields()[0].some((field) => field().invalid())) {
-      return 'Hoàn thành thông tin cơ bản của khóa học ở trên';
-    }
-    return this.starter.problem$();
-  });
-
-  /**
-   * Starts the job: the server creates it together with the draft course, and the editor moves
-   * to step 2 of that course, where the outline appears as it is written.
-   */
-  protected generateWithAi(): void {
-    if (!this.showAi() || this.aiProblem() !== null) return;
-    const value = this.draftValue();
-    this.starter.start(
-      {
-        title: value.title,
-        description: value.summary,
-        programmeId: Number(value.programId),
-      },
-      (job) => {
-        if (job.courseId == null) {
-          // A job made without a course (an older server): the review screen still shows it.
-          void this.router.navigateByUrl(courseJobReviewPath(job.jobId));
-          return;
-        }
-        this.store.moveToCourse(job.courseId, 1);
-      },
-    );
+  protected sourcePicked(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (file) this.chat.draftFrom(file);
   }
 
   /**
@@ -183,23 +179,46 @@ export class CourseEditor implements HasUnsavedChanges {
    * draft is read again every few seconds, and an edit in progress must survive that, so the
    * lessons the author did not touch are taken from the server and the rest stays as typed.
    */
-  private readonly model = linkedSignal<
-    CourseDetail | undefined,
-    CourseDraftValue
-  >({
-    source: () => this.store.course$(),
-    computation: (detail, previous) => {
-      if (!detail) return emptyDraftValue();
-      const fresh = toDraftValue(detail);
-      const before = previous?.source;
-      const followsAi =
-        !!before &&
-        before.course.id === detail.course.id &&
-        untracked(() => this.ai.job$()) !== undefined;
-      return followsAi
-        ? mergeLive(toDraftValue(before), previous.value, fresh)
-        : fresh;
+  private readonly model = linkedSignal<ModelSource, CourseDraftValue>({
+    source: () => ({ detail: this.store.course$(), queue: this.fill.queue$() }),
+    computation: (source, previous) => {
+      const value =
+        previous && previous.source.detail === source.detail
+          ? previous.value
+          : this.fromServer(source.detail, previous);
+      // The drafting session's writes the form does not hold yet, in order.
+      const after = previous ? lastSeq(previous.source.queue) : 0;
+      return source.queue
+        .filter((entry) => entry.seq > after)
+        .reduce((draft, entry) => entry.patch.apply(draft), value);
     },
+  });
+
+  private fromServer(
+    detail: CourseDetail | undefined,
+    previous: { source: ModelSource; value: CourseDraftValue } | undefined,
+  ): CourseDraftValue {
+    if (!detail) return emptyDraftValue();
+    const fresh = toDraftValue(detail);
+    const before = previous?.source.detail;
+    const followsAi =
+      !!before &&
+      before.course.id === detail.course.id &&
+      untracked(() => this.ai.job$()) !== undefined;
+    return followsAi && previous
+      ? mergeLive(toDraftValue(before), previous.value, fresh)
+      : fresh;
+  }
+
+  /** The fields that still hold what the assistant wrote: each shows "AI đề xuất". */
+  protected readonly suggested = computed(() =>
+    markedFields(this.model(), this.fill.written$()),
+  );
+
+  /** The code the server proposed after a taken one, while the code field holds another. */
+  protected readonly suggestedCode = computed(() => {
+    const code = this.fill.proposedCode$();
+    return code !== null && code !== this.model().code.trim() ? code : null;
   });
   protected readonly courseForm = form(
     this.model,
@@ -237,21 +256,6 @@ export class CourseEditor implements HasUnsavedChanges {
       ? { ...value, coverAssetId: cover.asset.assetId }
       : value;
   });
-
-  /**
-   * A new course opened by the chat (`open_course_form`) starts with what the user said and the
-   * file they attached. The hand-over is read once and cleared; it is taken on every open so a
-   * prefill is never left for a later one, but only a new course for a role that may generate
-   * uses it.
-   */
-  private applyChatPrefill(): void {
-    const prefill = this.chatPrefill.take();
-    if (!prefill || !this.store.isCreate$() || !this.canGenerate()) return;
-    this.aiEnabled.set(true);
-    const title = prefill.fields.title?.trim();
-    if (title) this.model.update((value) => ({ ...value, title }));
-    this.starter.applyPrefill(prefill.fields, prefill.file);
-  }
 
   /**
    * A 401 ends the session under unsaved edits: they are kept in this tab and, once the user has
@@ -356,7 +360,6 @@ export class CourseEditor implements HasUnsavedChanges {
 
   constructor() {
     this.keepDraftWhenTheSessionEnds();
-    this.applyChatPrefill();
     this.store.registerBlockPositions(this.blockPositions);
     this.store.registerAssetAttacher((blockKey, asset) =>
       this.model.update((value) => ({
@@ -448,6 +451,48 @@ export class CourseEditor implements HasUnsavedChanges {
       ? `Còn ${pending} tệp đang tải. Rời trang sẽ dừng tải; lần sau mở lại, chọn lại đúng tệp để tải tiếp.`
       : undefined;
   }
+
+  /** A field of the step shown is invalid. */
+  private readonly stepInvalid = computed(() =>
+    (this.stepFields()[this.store.step$()] ?? []).some((field) =>
+      field().invalid(),
+    ),
+  );
+
+  /** What "Đã chốt" needs from the page: its draft, its validity and step 3's kept questions. */
+  private readonly draftingFacts = computed((): DraftingPageFacts => {
+    const questions = this.rules()?.draftingQuestions();
+    return {
+      value: this.draftValue(),
+      stepInvalid: this.stepInvalid(),
+      rulesProblem: questions?.problem() ?? null,
+      rules: questions?.command() ?? null,
+    };
+  });
+
+  /** Why "Đã chốt" cannot confirm the step shown yet (the store says); null when it can. */
+  protected readonly draftingProblem = computed(() =>
+    this.fill.problemFor(this.draftingFacts()),
+  );
+
+  /**
+   * "Đã chốt" on the bar or on the chat's card: the store confirms the step with the page's values,
+   * or opens the step named; an invalid field of the step shown then gets focus.
+   */
+  protected confirmDraftingStep(step: DraftingStepNumber): void {
+    const outcome = this.fill.confirm(step, this.draftingFacts());
+    if (outcome !== 'sent' && this.stepInvalid()) this.showInvalidStep();
+  }
+
+  /** The chat card's "Đã chốt" for this page's session: confirmed here, as from the bar. */
+  private readonly confirmFromChat = afterRenderEffect(() => {
+    const step = this.fill.confirmRequested$();
+    if (step === null) return;
+    untracked(() => {
+      this.fill.confirmRequestTaken();
+      this.confirmDraftingStep(step);
+    });
+  });
 
   /** "Tiếp theo": when the step stays because of an error, the first one gets focus. */
   protected continue(): void {

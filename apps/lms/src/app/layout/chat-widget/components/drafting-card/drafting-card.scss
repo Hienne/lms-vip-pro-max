@@ -1,0 +1,11 @@
+@use 'ui';
+
+.drafting-card {
+  @include ui.row(2);
+  flex-wrap: wrap;
+
+  &__note {
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+}

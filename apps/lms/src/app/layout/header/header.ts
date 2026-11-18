@@ -24,6 +24,7 @@ import {
   type MenuEntry,
 } from '@lms/ui';
 import type { Profile } from '../../core/session/profile';
+import { ExternalAssistant } from './external-assistant/external-assistant';
 import { NotificationBell } from './notification-bell/notification-bell';
 import type { LearnerNavGroup } from './learner-navigation';
 import { searchPlaceholder } from './search-target';
@@ -53,6 +54,7 @@ type PanelId = LearnerNavGroup['id'] | 'account';
     Menu,
     Popover,
     Tooltip,
+    ExternalAssistant,
     NotificationBell,
     RouterLink,
     ThemePicker,

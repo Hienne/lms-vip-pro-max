@@ -73,6 +73,11 @@
     flex-wrap: wrap;
   }
 
+  &__lesson-note {
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+
   // The progress of the files still uploading: a fixed-width bar and its percentage.
   &__upload {
     @include ui.row(2);
