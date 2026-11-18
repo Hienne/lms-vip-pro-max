@@ -5,6 +5,8 @@ import type {
   RoomGesture,
   RoomHighFive,
   RoomPlayer,
+  RoomReactionId,
+  RoomBoardTables,
 } from '@lms/contracts';
 
 export function inRoomArea(
@@ -23,6 +25,10 @@ export function inRoomArea(
 
 export interface RoomSpeech extends RoomChat {
   readonly expiresAt: number;
+}
+export interface RoomReaction {
+  readonly reaction: RoomReactionId;
+  readonly startedAt: number;
 }
 export type TimedRoomGesture = (
   | RoomGesture
@@ -50,4 +56,7 @@ export interface RoomCanvasState {
   readonly speech: Readonly<Record<string, RoomSpeech>>;
   readonly gestures: Readonly<Record<string, TimedRoomGesture>>;
   readonly correction: { readonly x: number; readonly y: number } | null;
+  readonly reactions?: Readonly<Record<string, RoomReaction>>;
+  readonly boardTables?: RoomBoardTables;
+  readonly floorTarget?: string;
 }

@@ -935,7 +935,11 @@ export class LessonStore {
     this.channel.send({ type: 'PAUSE', playing: false, positionSeconds });
   }
 
-  /** A seek from `from` to `to`; the range played up to `from` is closed first. */
+  /** A seek the author allows, to this second: reported without a range. */
+  videoSeek(positionSeconds: number): void {
+    this.channel.send({ type: 'SEEK', playing: false, positionSeconds });
+  }
+
   pdfPage(pdfPage: number): void {
     this.channel.send({ type: 'PDF_PAGE', pdfPage });
   }

@@ -11,6 +11,7 @@
 } @else {
 <button
   uiButton
+  [class.menu-trigger--translucent]="translucent()"
   ngMenuTrigger
   [menu]="menu()"
   [variant]="variant()"
@@ -37,6 +38,7 @@
     ngMenu
     #menuRef="ngMenu"
     class="menu"
+    [class.menu--translucent]="translucent()"
     [attr.aria-label]="label()"
     (itemSelected)="choose($event)"
   >

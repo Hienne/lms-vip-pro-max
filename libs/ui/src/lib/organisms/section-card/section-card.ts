@@ -17,6 +17,7 @@ let nextId = 0;
   hostDirectives: [Card],
   host: {
     class: 'section-card',
+    '[class.section-card--fill]': 'fill()',
     role: 'region',
     '[attr.aria-labelledby]': 'titleId()',
   },
@@ -34,6 +35,8 @@ let nextId = 0;
 })
 export class SectionCard {
   readonly title = input.required<string>();
+  /** Fill a bounded panel while keeping its header visible. */
+  readonly fill = input(false, { transform: booleanAttribute });
   /** Drop the body padding; the content spans the card edge to edge. */
   readonly flush = input(false, { transform: booleanAttribute });
 

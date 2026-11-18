@@ -49,21 +49,7 @@ games.caroTable$();
     store.players$().length }} người trong phòng }
   </span>
   <div class="row">
-    @if (caroTable) {
-    <button uiButton size="sm" (click)="store.openGame('caro')">
-      Bàn Caro {{ caroTable.table }}
-    </button>
-    } @else if (balance !== null && map.caroTables?.length &&
-    store.interactionsEnabled$()) {
-    <button
-      uiButton
-      size="sm"
-      [disabled]="store.self$()?.seat !== undefined"
-      (click)="store.interact({ type: 'seat', action: 'sit', caro: true })"
-    >
-      Ngồi bàn Caro
-    </button>
-    } @if (store.entered$() && !store.online$()) {
+    @if (store.entered$() && !store.online$()) {
     <button
       uiButton
       size="sm"
@@ -89,6 +75,8 @@ match.timeout === 'away') {
     [view]="store.canvas$()"
     [gesturesEnabled]="store.gesturesEnabled$()"
     [interactionsEnabled]="store.interactionsEnabled$()"
+    [reactionsEnabled]="store.playground$().reactions"
+    (reacted)="store.react($event)"
     [invitation]="store.invitation$()"
     [gestureNotice]="store.gestureNotice$()"
     (moved)="store.move($event)"
@@ -97,22 +85,18 @@ match.timeout === 'away') {
     (ready)="store.rendererReady()"
     (failed)="store.rendererFailed($event)"
   />
-  @if (store.nearDice$() && !panel) {
-  <button
-    uiButton
-    size="sm"
-    class="chat-room__dice-entry"
-    (click)="store.openGame('dice')"
-  >
-    Mở bàn Trên/Dưới
-  </button>
-  } @if (panel && balance !== null) {
+  @if(store.online$()) {
+  <app-room-screen (surfaceReady)="attachScreen($event)" /> }
+  @if(store.online$() && !panel && !store.chatOpen$()) {
+  <app-room-playground /> } @if (panel && balance !== null) {
   <aside
     #gamePanel
     class="chat-room__game"
     tabindex="-1"
     aria-label="Trò chơi trong phòng"
     [class.chat-room__game--caro]="panel === 'caro'"
+    [class.chat-room__game--board]="panel === 'board'"
+    [class.chat-room__game--waiting]="(panel === 'board' && (!games.board$()?.match || games.boardPreparing$())) || (panel === 'caro' && !games.visibleCaro$())"
   >
     @switch (panel) { @case ('dice') {
     <app-room-dice
@@ -140,7 +124,9 @@ match.timeout === 'away') {
       (stood)="store.interact({ type: 'seat', action: 'stand' })"
       (restarted)="games.newCaro()"
     />
-    } } @case ('rank') {
+    } } @case ('board') {
+    <app-room-board (closed)="closeGame()" />
+    } @case ('rank') {
     <ui-section-card class="chat-room__rank" title="Bảng CPoint">
       <button
         slot="action"
@@ -214,7 +200,7 @@ match.timeout === 'away') {
   <div class="chat-room__footer">
     <p class="chat-room__hint">
       WASD hoặc phím mũi tên để đi · Enter để chat · Space để nhảy @if (balance
-      !== null) { · Caro cạnh bàn Trên/Dưới ở góc dưới bên phải }
+      !== null) { · Chọn trò chơi trong Thách đấu trí tuệ }
     </p>
   </div>
 </section>

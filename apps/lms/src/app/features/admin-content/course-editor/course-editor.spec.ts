@@ -472,6 +472,61 @@ describe('CourseEditor', () => {
     expect(video?.transcript).toEqual(ARCHITECTURE_VIDEO.transcript);
   });
 
+  describe('"Cho phép tua video"', () => {
+    const VIDEO_LESSON = 'Kiến trúc tổng thể hệ thống Core Banking';
+    const seekingSwitch = () =>
+      screen
+        .drawer()
+        ?.querySelector<HTMLInputElement>('input[role="switch"]') ?? null;
+    const sentVideo = () => {
+      const { chapters } = screen.lastCall(courseEndpoints.saveDraft)
+        ?.body as SaveDraftCommand;
+      return chapters
+        .flatMap((c) => c.lessons)
+        .flatMap((l) => l.blocks)
+        .find((b) => b.blockType === 'video');
+    };
+
+    it('is off on a loaded video block and is sent as off', async () => {
+      await screen.open('/admin/courses/1/edit');
+      await screen.click(screen.button('Mở bản nháp để sửa'));
+      await step('Nội dung khóa học');
+      await screen.click(editLessonButton(VIDEO_LESSON));
+      expect(screen.drawer()?.textContent).toContain('Cho phép tua video');
+      expect(seekingSwitch()?.checked).toBe(false);
+      await screen.click(screen.button('Lưu', screen.drawer()!));
+      await screen.click(screen.button('Lưu nháp'));
+      expect(sentVideo()?.allowSeeking).toBe(false);
+    });
+
+    it('is saved when switched on and still on when the lesson is reopened', async () => {
+      await screen.open('/admin/courses/1/edit');
+      await screen.click(screen.button('Mở bản nháp để sửa'));
+      await step('Nội dung khóa học');
+      await screen.click(editLessonButton(VIDEO_LESSON));
+      await screen.click(seekingSwitch()!);
+      expect(seekingSwitch()?.checked).toBe(true);
+      await screen.click(screen.button('Lưu', screen.drawer()!));
+      await screen.click(screen.button('Lưu nháp'));
+      expect(sentVideo()?.allowSeeking).toBe(true);
+
+      await screen.click(editLessonButton(VIDEO_LESSON));
+      expect(seekingSwitch()?.checked).toBe(true);
+    });
+
+    it('is not offered on a block that is not a video, and a new video block starts off', async () => {
+      await screen.open('/admin/courses/6/edit');
+      await step('Nội dung khóa học');
+      await screen.click(screen.button('Thêm chương'));
+      await screen.click(screen.button('Thêm bài học'));
+      const drawer = screen.drawer()!;
+      await screen.click(screen.button('Văn bản', drawer));
+      expect(seekingSwitch()).toBeNull();
+      await screen.click(screen.button('Video', drawer));
+      expect(seekingSwitch()?.checked).toBe(false);
+    });
+  });
+
   it('focuses the new chapter’s title, labelled with its number, after "Thêm chương"', async () => {
     await screen.open('/admin/courses/6/edit');
     await step('Nội dung khóa học');

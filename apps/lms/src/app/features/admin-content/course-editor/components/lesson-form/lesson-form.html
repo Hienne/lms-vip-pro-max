@@ -380,6 +380,17 @@
       <ui-field label="Chú thích hình">
         <input uiInput [formField]="block.body" />
       </ui-field>
+      } @case ('video') {
+      <div class="lesson-form__seeking">
+        <label class="lesson-form__toggle">
+          <input type="checkbox" uiSwitch [formField]="block.allowSeeking" />
+          Cho phép tua video
+        </label>
+        <p class="lesson-form__hint">
+          Người học có thể tua tới hoặc lùi; đoạn tua qua không được tính vào
+          tiến độ.
+        </p>
+      </div>
       } }
     </div>
     } @empty {

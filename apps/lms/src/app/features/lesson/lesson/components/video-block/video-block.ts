@@ -19,9 +19,15 @@ import { VideoTranscript } from './components/video-transcript/video-transcript'
 /** A playing video reports its range this often; the heartbeat keeps the media cookie alive. */
 export const VIDEO_BEAT_MS = 20_000;
 
+/** How far the back and forward buttons jump, in seconds. */
+export const SKIP_SECONDS = 10;
+
 /**
- * A video with playback controls that expose no seek actions. The server's resume position
- * and restarting a finished video are the only deliberate changes to currentTime.
+ * A video with playback controls. Unless the author allows seeking (`allowSeeking`), they expose
+ * no seek actions: the server's resume position and restarting a finished video are the only
+ * deliberate changes to currentTime, and any other seek snaps back. When seeking is allowed the
+ * learner gets a progress bar, back and forward buttons and clickable chapters and lines; the
+ * page is told of each seek (`sought`) so the skipped part is never reported as watched.
  */
 @Component({
   selector: 'app-video-block',
@@ -48,6 +54,8 @@ export class VideoBlock {
   readonly bookmarked = input(false);
   /** A bookmark change is in flight, so the button waits. */
   readonly busy = input(false);
+  /** The author lets the learner seek freely; off, a seek snaps back. */
+  readonly allowSeeking = input(false);
 
   readonly played = output<number>();
   readonly paused = output<number>();
@@ -58,6 +66,8 @@ export class VideoBlock {
   readonly bookmark = output<number>();
   /** "Thử lại": the page claims the block again, which renews the media cookie. */
   readonly retry = output<void>();
+  /** The learner moved the video to this second; only when seeking is allowed. */
+  readonly sought = output<number>();
 
   protected readonly failed = signal(false);
   protected readonly second = signal(0);
@@ -65,7 +75,10 @@ export class VideoBlock {
   protected readonly playing = signal(false);
   protected readonly muted = signal(false);
   protected readonly fullscreen = signal(false);
+  /** The second the progress bar shows while the learner drags it, before the video moves. */
+  protected readonly scrub = signal<number | null>(null);
   protected readonly clock = clock;
+  protected readonly skipSeconds = SKIP_SECONDS;
 
   private readonly document = inject(DOCUMENT);
   protected readonly fullscreenAvailable = this.document.fullscreenEnabled;
@@ -154,12 +167,7 @@ export class VideoBlock {
     this.playing.set(true);
     this.last = position;
     this.played.emit(position);
-    this.stopBeat();
-    this.beating = interval(VIDEO_BEAT_MS).subscribe(() => {
-      if (this.player()?.nativeElement.seeking) return;
-      this.last = this.position();
-      this.beat.emit(this.last);
-    });
+    this.startBeat();
   }
 
   protected pause(): void {
@@ -192,7 +200,37 @@ export class VideoBlock {
     if (restoringTo !== null && Math.abs(to - restoringTo) < 0.01) {
       return;
     }
+    if (this.allowSeeking()) {
+      this.moved(to);
+      return;
+    }
     if (Math.abs(to - this.last) >= 0.01) this.setPosition(video, this.last);
+  }
+
+  /** The progress bar is being dragged: show where it is without moving the video yet. */
+  protected scrubbing(event: Event): void {
+    this.scrub.set(Number((event.target as HTMLInputElement).value));
+  }
+
+  /** The progress bar was released, or a key moved it: move the video there. */
+  protected scrubbed(event: Event): void {
+    this.scrub.set(null);
+    this.jumpTo(Number((event.target as HTMLInputElement).value));
+  }
+
+  /** Back or forward by `by` seconds, kept between the start and the end. */
+  protected skip(by: number): void {
+    const video = this.player()?.nativeElement;
+    if (!video) return;
+    this.jumpTo(video.currentTime + by);
+  }
+
+  /** Moves the video, when the author allows it; the `seeking` event then reports it. */
+  jumpTo(seconds: number): void {
+    const video = this.player()?.nativeElement;
+    if (!video || !this.allowSeeking() || !this.ready) return;
+    const end = this.duration() > 0 ? this.duration() : seconds;
+    video.currentTime = Math.min(Math.max(0, seconds), end);
   }
 
   protected tick(): void {
@@ -233,6 +271,34 @@ export class VideoBlock {
     if (this.beating) this.pause();
     this.ready = false;
     this.failed.set(true);
+  }
+
+  /**
+   * The learner moved the video from `last` to `to`. A video that was playing first closes its range
+   * at `last`, then the seek is reported without one, and playing again opens a range at `to`, so
+   * the part skipped is never counted as watched.
+   */
+  private moved(to: number): void {
+    const from = this.last;
+    if (Math.abs(to - from) < 0.01) return;
+    const wasPlaying = this.playing();
+    if (wasPlaying) this.beat.emit(from);
+    this.last = to;
+    this.seen(to);
+    this.sought.emit(to);
+    if (wasPlaying) {
+      this.played.emit(to);
+      this.startBeat();
+    }
+  }
+
+  private startBeat(): void {
+    this.stopBeat();
+    this.beating = interval(VIDEO_BEAT_MS).subscribe(() => {
+      if (this.player()?.nativeElement.seeking) return;
+      this.last = this.position();
+      this.beat.emit(this.last);
+    });
   }
 
   private setPosition(video: HTMLVideoElement, position: number): void {

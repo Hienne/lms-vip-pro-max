@@ -7,6 +7,22 @@
     display: inline-flex;
   }
 
+  .menu-anchor .menu-trigger--translucent,
+  .menu.menu--translucent {
+    background: color-mix(
+      in srgb,
+      var(--color-primary-subtle) 85%,
+      transparent
+    );
+    color: var(--color-primary);
+  }
+
+  .menu.menu--translucent {
+    max-height: calc(100dvh - 2 * var(--spacing-2));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
   .menu {
     min-width: var(--container-menu);
     padding: var(--spacing-1);

@@ -1,0 +1,203 @@
+@use 'ui';
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
+}
+.board {
+  &__layout {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2.5fr);
+    gap: ui.space(3);
+    padding: ui.space(3);
+    @include ui.bp-below(sm) {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: ui.space(2);
+      padding: ui.space(2);
+    }
+  }
+  &__info {
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: ui.space(2);
+    @include ui.text(sm);
+    p {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+  }
+  &__play {
+    container-type: size;
+    display: grid;
+    place-items: center;
+    min-height: 0;
+    min-width: 0;
+  }
+  &__grid {
+    container-type: inline-size;
+    display: grid;
+    width: min(100cqw, calc(100cqh * var(--board-aspect)));
+    aspect-ratio: var(--board-aspect);
+    grid-template-columns: repeat(var(--board-width), minmax(0, 1fr));
+    grid-template-rows: repeat(8, minmax(0, 1fr));
+    border: 1px solid ui.color(border);
+  }
+  &__cell {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    border: 1px solid ui.color(border);
+    background: ui.color(surface);
+    color: ui.color(text);
+    font-size: min(ui.text-size(3xl), calc(75cqw / var(--board-width)));
+    cursor: pointer;
+    touch-action: manipulation;
+    &--dark {
+      background: ui.color(surface-2);
+    }
+    &--last {
+      background: ui.color(
+        primary-subtle
+      ); // design-drift-allow: subtle-fill identifies the current turn or last confirmed move
+    }
+    &--legal {
+      outline: 2px dotted ui.color(primary);
+      outline-offset: -3px;
+    }
+    &--selected {
+      outline: 3px solid ui.color(primary);
+      z-index: 1;
+    }
+    &--first {
+      color: ui.color(primary);
+    }
+    &:focus-visible {
+      @include ui.focus-ring;
+      z-index: 1;
+    }
+  }
+  &__grid--xiangqi {
+    grid-template-rows: repeat(5, minmax(0, 1fr)) minmax(0, 0.4fr) repeat(
+        5,
+        minmax(0, 1fr)
+      );
+    .board__cell {
+      &--first {
+        color: ui.color(danger);
+      }
+      background: ui.color(surface);
+      border: 0;
+      &::before,
+      &::after {
+        content: '';
+        position: absolute;
+        background: ui.color(border);
+      }
+      &::before {
+        height: 1px;
+        width: 100%;
+        top: 50%;
+      }
+      &::after {
+        width: 1px;
+        height: 100%;
+        left: 50%;
+      }
+      span {
+        position: relative;
+        z-index: 1;
+        background: ui.color(surface);
+        border: 1px solid currentColor;
+        border-radius: 50%; // design-drift-allow: own-radius Xiangqi discs must be round at the board intersections
+        width: 85%;
+        line-height: 1.2;
+      }
+      span:empty {
+        border: 0;
+      }
+      &--last {
+        background: ui.color(
+          primary-subtle
+        ); // design-drift-allow: subtle-fill identifies the current turn or last confirmed move
+      }
+    }
+  }
+  &__river {
+    grid-column: 1 / -1;
+    border-block: 1px solid ui.color(border);
+  }
+  &__palace {
+    position: absolute;
+    width: 200%;
+    height: 200%;
+    left: -50%;
+    top: -50%;
+    pointer-events: none;
+    z-index: 1;
+    stroke: ui.color(border);
+    stroke-width: 1;
+    fill: none;
+  }
+  &__players {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: ui.space(2);
+    p {
+      margin: 0;
+      padding: ui.space(2);
+    }
+    time {
+      display: block;
+      font-variant-numeric: tabular-nums;
+    }
+    @include ui.bp-below(sm) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      p {
+        padding: ui.space(1);
+      }
+    }
+  }
+  &__turn {
+    background: ui.color(
+      primary-subtle
+    ); // design-drift-allow: subtle-fill identifies the current turn or last confirmed move
+  }
+  &__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.space(2);
+    align-items: center;
+  }
+  &__moves {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+    @include ui.bp-below(sm) {
+      max-height: calc(2 * ui.layout(control-sm));
+    }
+  }
+  &__history {
+    min-height: 0;
+    overflow-y: auto;
+    margin: ui.space(1) 0 0;
+    padding-inline-start: ui.space(5);
+    overscroll-behavior: contain;
+  }
+  &__lobby {
+    padding: ui.space(3);
+    overflow-y: auto;
+  }
+  &__ready {
+    display: grid;
+    gap: ui.space(2);
+  }
+}

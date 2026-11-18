@@ -12,6 +12,10 @@ import { RoomCaro } from './components/room-caro/room-caro';
 import { RoomComposer } from './components/room-composer/room-composer';
 import { RoomDice } from './components/room-dice/room-dice';
 import { RoomJoin } from './components/room-join/room-join';
+import { RoomBoard } from './components/room-board/room-board';
+import { RoomPlayground } from './components/room-playground/room-playground';
+import { RoomScreen } from './components/room-screen/room-screen';
+import { RoomMediaStore } from './data-access/room-media.store';
 import { ChatRoomStore } from './data-access/chat-room.store';
 import { RoomGamesStore } from './data-access/room-games.store';
 
@@ -27,9 +31,12 @@ import { RoomGamesStore } from './data-access/room-games.store';
     RoomComposer,
     RoomDice,
     RoomJoin,
+    RoomBoard,
+    RoomPlayground,
+    RoomScreen,
     SectionCard,
   ],
-  providers: [ChatRoomStore, RoomGamesStore],
+  providers: [ChatRoomStore, RoomGamesStore, RoomMediaStore],
   templateUrl: './chat-room.html',
   styleUrl: './chat-room.scss',
   host: { '(window:keydown)': 'shortcut($event)' },
@@ -42,6 +49,9 @@ export class ChatRoom {
   private readonly gamePanel = viewChild<ElementRef<HTMLElement>>('gamePanel');
   private readonly chatLog = viewChild<ElementRef<HTMLElement>>('chatLog');
   private followChat = true;
+  protected attachScreen(element: HTMLElement | null): void {
+    this.canvas()?.attachScreen(element);
+  }
   constructor() {
     afterRenderEffect(() =>
       this.gamePanel()?.nativeElement.focus({ preventScroll: true }),
@@ -77,6 +87,11 @@ export class ChatRoom {
     }
     const target = event.target as HTMLElement;
     if (
+      event.defaultPrevented ||
+      target.closest?.('[role="menu"], [role="menuitem"], [data-room-screen]')
+    )
+      return;
+    if (
       event.code === 'Space' &&
       this.store.gesturesEnabled$() &&
       !this.store.chatOpen$() &&
@@ -99,7 +114,9 @@ export class ChatRoom {
     if (
       event.key === 'Enter' &&
       this.store.online$() &&
-      !['INPUT', 'TEXTAREA', 'BUTTON', 'SELECT'].includes(target?.tagName)
+      !['INPUT', 'TEXTAREA', 'BUTTON', 'SELECT', 'SUMMARY'].includes(
+        target?.tagName,
+      )
     ) {
       event.preventDefault();
       this.store.openChat();

@@ -1,0 +1,99 @@
+@use 'ui';
+:host {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+.screen {
+  &__actions {
+    position: absolute;
+    right: ui.space(3);
+    top: calc(ui.space(3) + ui.layout(control-sm) + ui.space(2));
+    display: flex;
+    align-items: center;
+    gap: ui.space(1);
+    pointer-events: auto;
+  }
+  &__settings {
+    position: absolute;
+    right: ui.space(3);
+    top: calc(ui.space(3) + 2 * ui.layout(control-sm) + ui.space(5));
+    width: min(ui.layout(panel), calc(100% - 2 * ui.space(3)));
+    max-height: calc(100% - 2 * ui.layout(control-sm) - ui.space(10));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    pointer-events: auto;
+  }
+  &__controls,
+  &__playback {
+    display: grid;
+    gap: ui.space(3);
+    button {
+      width: 100%;
+      min-height: ui.layout(control);
+    }
+    p {
+      margin: 0;
+    }
+  }
+  &__form {
+    display: grid;
+    gap: ui.space(2);
+  }
+  &__surface {
+    position: absolute;
+    width: 960px;
+    height: 540px;
+    pointer-events: auto;
+    overflow: hidden;
+    background: ui.color(surface);
+    backface-visibility: hidden;
+    &--idle {
+      visibility: hidden;
+    }
+    &:fullscreen {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: 100dvh !important;
+      transform: none !important;
+    }
+  }
+  &__content {
+    position: absolute;
+    inset: 0;
+  }
+  &__placeholder {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    text-align: center;
+    pointer-events: none;
+  }
+  &__toolbar {
+    position: absolute;
+    left: ui.space(2);
+    right: ui.space(2);
+    top: ui.space(2);
+    display: flex;
+    gap: ui.space(2);
+    align-items: center;
+    justify-content: flex-end;
+    background: ui.color(surface);
+    padding: ui.space(2);
+    span {
+      margin-inline-end: auto;
+    }
+  }
+  &__error {
+    position: absolute;
+    right: ui.space(3);
+    bottom: ui.space(3);
+    max-width: min(ui.layout(panel), calc(100% - 2 * ui.space(3)));
+    padding: ui.space(2);
+    background: ui.color(surface);
+    pointer-events: auto;
+  }
+}

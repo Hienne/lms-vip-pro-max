@@ -200,6 +200,43 @@ describe('study protocol', () => {
       }
     });
 
+    it('keeps a range from spanning a seek: close at the old spot, SEEK with none, play, then range from the new spot', () => {
+      const events: StudyEvent[] = [
+        { type: 'HEARTBEAT', playing: true, positionSeconds: 25 },
+        { type: 'SEEK', playing: false, positionSeconds: 60 },
+        { type: 'PLAY', playing: true, positionSeconds: 60 },
+        { type: 'HEARTBEAT', playing: true, positionSeconds: 80 },
+      ];
+      let tracker: PlayTracker = playing(10);
+      const sent = events.map((event) => {
+        const next = toCommand(state, tracker, event);
+        tracker = next.tracker;
+        return next.command;
+      });
+
+      expect(
+        sent.map((c) => [c.watchedFromSeconds, c.watchedToSeconds]),
+      ).toEqual([
+        [10, 25],
+        [undefined, undefined],
+        [undefined, undefined],
+        [60, 80],
+      ]);
+      expect(sent[1]).toMatchObject({
+        eventType: 'SEEK',
+        videoPositionSeconds: 60,
+      });
+      // No range covers any second between 25 and 60.
+      expect(
+        sent.some(
+          (c) =>
+            c.watchedFromSeconds !== undefined &&
+            c.watchedFromSeconds < 60 &&
+            (c.watchedToSeconds ?? 0) > 25,
+        ),
+      ).toBe(false);
+    });
+
     it('is absent after a pause: the next heartbeat did not follow a playing event', () => {
       const { command } = toCommand(
         state,
@@ -252,6 +289,84 @@ describe('study protocol', () => {
       expect(enqueue([play], pause)).toEqual([play, pause]);
       expect(enqueue([play], beat(10))).toEqual([play, beat(10)]);
       expect(enqueue([beat(10)], pause)).toEqual([beat(10), pause]);
+    });
+
+    describe('a burst of seeks', () => {
+      const seek = (position: number): StudyEvent => ({
+        type: 'SEEK',
+        playing: false,
+        positionSeconds: position,
+      });
+      const play = (position: number): StudyEvent => ({
+        type: 'PLAY',
+        playing: true,
+        positionSeconds: position,
+      });
+
+      /** What the player queues for each seek while playing: close, seek, play again. */
+      function seekWhilePlaying(
+        waiting: readonly StudyEvent[],
+        from: number,
+        to: number,
+      ): readonly StudyEvent[] {
+        return [beat(from), seek(to), play(to)].reduce(enqueue, waiting);
+      }
+
+      it('replaces a seek still waiting, with the playback queued after it', () => {
+        const waiting = [beat(30), seek(40), play(40), beat(41)];
+        expect(enqueue(waiting, seek(50))).toEqual([beat(30), seek(50)]);
+      });
+
+      it('replaces a seek still waiting while paused', () => {
+        expect(enqueue([seek(40)], seek(50))).toEqual([seek(50)]);
+      });
+
+      it('keeps a seek once a pause or another event follows it', () => {
+        const pause: StudyEvent = { type: 'PAUSE', positionSeconds: 45 };
+        expect(enqueue([seek(40), pause], seek(50))).toEqual([
+          seek(40),
+          pause,
+          seek(50),
+        ]);
+      });
+
+      it('keeps ten seeks in a row to three waiting events', () => {
+        let waiting: readonly StudyEvent[] = [];
+        let at = 30;
+        for (let step = 1; step <= 10; step++) {
+          waiting = seekWhilePlaying(waiting, at, at + 10);
+          at += 10;
+        }
+        expect(waiting).toEqual([beat(30), seek(130), play(130)]);
+      });
+
+      it('never sends a range over the part skipped by the burst', () => {
+        let waiting: readonly StudyEvent[] = [];
+        for (const [from, to] of [
+          [30, 40],
+          [40.4, 50],
+          [50.2, 60],
+        ]) {
+          waiting = seekWhilePlaying(waiting, from, to);
+        }
+        waiting = enqueue(waiting, beat(80));
+
+        let tracker: PlayTracker = { playing: true, position: 10 };
+        const ranges = waiting.map((event) => {
+          const next = toCommand(state, tracker, event);
+          tracker = next.tracker;
+          return [
+            next.command.watchedFromSeconds,
+            next.command.watchedToSeconds,
+          ];
+        });
+        expect(ranges).toEqual([
+          [10, 30],
+          [undefined, undefined],
+          [undefined, undefined],
+          [60, 80],
+        ]);
+      });
     });
   });
 

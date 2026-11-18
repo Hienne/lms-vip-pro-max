@@ -40,6 +40,20 @@
     font-weight: ui.weight(semibold);
   }
 
+  &__seeking {
+    @include ui.stack(1);
+  }
+
+  &__toggle {
+    @include ui.row(3);
+    @include ui.text(sm);
+    cursor: pointer;
+  }
+
+  &__hint {
+    @include ui.text(sm, muted);
+  }
+
   &__files {
     @include ui.stack(2);
   }

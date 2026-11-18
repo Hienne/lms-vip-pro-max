@@ -17,6 +17,19 @@
     <ol class="transcript__lines">
       @for (item of shown(); track item.line.startSeconds) {
       <li>
+        @if (seekable()) {
+        <button
+          type="button"
+          class="transcript__line transcript__line--jump"
+          [attr.aria-current]="item.playing ? 'true' : null"
+          [attr.aria-label]="'Tua tới ' + clock(item.line.startSeconds) + ': ' + item.line.text"
+          (click)="jump.emit(item.line.startSeconds)"
+        >
+          <span class="transcript__time"
+            >{{ clock(item.line.startSeconds) }}</span
+          >{{ ' ' }}<span class="transcript__text">{{ item.line.text }}</span>
+        </button>
+        } @else {
         <div
           class="transcript__line"
           [attr.aria-current]="item.playing ? 'true' : null"
@@ -25,6 +38,7 @@
             >{{ clock(item.line.startSeconds) }}</span
           >{{ ' ' }}<span class="transcript__text">{{ item.line.text }}</span>
         </div>
+        }
       </li>
       }
     </ol>
