@@ -398,6 +398,53 @@ describe('video chapters and transcript', () => {
   });
 });
 
+describe('allowSeeking on a video block', () => {
+  const block = {
+    id: 9,
+    lessonId: 3,
+    blockType: 'video',
+    title: 'Video',
+    completionMode: 'video_coverage',
+    sortNo: 0,
+    ...stamp,
+  };
+  const input = {
+    blockType: 'video',
+    title: 'Video',
+    completionMode: 'video_coverage',
+    assets: [],
+    steps: [],
+  };
+  const lesson = (blocks: unknown[]) => ({
+    title: 'Bài',
+    lessonType: 'content',
+    estimatedDurationSeconds: 60,
+    blocks,
+  });
+
+  it('reads as off when an older backend omits it', () => {
+    expect(LessonBlockSchema.parse(block).allowSeeking).toBe(false);
+  });
+
+  it('reads the value the backend sends', () => {
+    expect(
+      LessonBlockSchema.parse({ ...block, allowSeeking: true }).allowSeeking,
+    ).toBe(true);
+  });
+
+  it('is optional in a saved block and keeps its value', () => {
+    expect(LessonInputSchema.safeParse(lesson([input])).success).toBe(true);
+    const parsed = LessonInputSchema.parse(
+      lesson([{ ...input, allowSeeking: true }]),
+    );
+    expect(parsed.blocks[0].allowSeeking).toBe(true);
+    expect(
+      LessonInputSchema.safeParse(lesson([{ ...input, allowSeeking: 'yes' }]))
+        .success,
+    ).toBe(false);
+  });
+});
+
 describe('a create with a draft captured from the local backend', () => {
   it('accepts the command that was sent', () => {
     const command = CreateCourseCommandSchema.parse(
