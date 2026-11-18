@@ -106,6 +106,7 @@ import {
 } from '../assessment/authoring.mock';
 import { CourseJobMock } from '../assistant-course/course-job.mock';
 import { DraftingSessionMock } from '../assistant-drafting/drafting-session.mock';
+import { ExternalConnectionMock } from '../assistant-external/external-connection.mock';
 import {
   draftingFailedMessage,
   draftingStepMessage,
@@ -259,6 +260,7 @@ export class FakeBackend {
   private readonly courseJobs = new CourseJobMock();
   /** Public so a spec can turn its knobs (`failNext`, `takeCodeOnConfirm`, `pollsBeforeProposal`). */
   readonly draftingSessions = new DraftingSessionMock();
+  readonly externalConnections = new ExternalConnectionMock();
   private orgs: Mutable<SeedOrg>[] = SEED_ORGS.map((o) => ({ ...o }));
   private teams: Mutable<SeedTeam>[] = SEED_TEAMS.map((t) => ({ ...t }));
   private users: DbUser[] = SEED_USERS.map((u, index) => ({
@@ -411,6 +413,7 @@ export class FakeBackend {
       this.learnerQuiz.answers(endpoint) ||
       this.courseJobs.answers(endpoint) ||
       this.draftingSessions.answers(endpoint) ||
+      this.externalConnections.answers(endpoint) ||
       learningReportHandlers.has(endpoint)
     );
   }
@@ -435,6 +438,24 @@ export class FakeBackend {
           return refuse('accessDenied');
         }
         return this.courseJobs.handle(endpoint, request, user.userId);
+      } catch (error) {
+        if (error instanceof Refused) return error.reply;
+        throw error;
+      }
+    }
+    if (this.externalConnections.answers(endpoint)) {
+      try {
+        const user = this.caller(request);
+        // The server's rule: a Soạn cùng trợ lý role and the assistant function, read at each call.
+        const allowed =
+          this.hasRole(user.userId, COURSE_JOB_ROLES) &&
+          this.functionsOf(user.userId).some((f) => f.code === 'AI_ASSISTANT');
+        return this.externalConnections.handle(
+          endpoint,
+          request,
+          user.userId,
+          allowed,
+        );
       } catch (error) {
         if (error instanceof Refused) return error.reply;
         throw error;
