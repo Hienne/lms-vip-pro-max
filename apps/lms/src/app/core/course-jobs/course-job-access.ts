@@ -9,10 +9,12 @@ const COURSE_MANAGER_ROLES: readonly string[] = [
 ];
 
 /**
- * Temporarily hides every AI course-composing entry point (the course editor's "Tạo bằng AI"
- * toggle and section, the chat's attach button, the job tracker). Set to `true` to bring it back.
+ * Temporarily hides drafting with the in-house assistant: the course editor's "Soạn cùng trợ lý"
+ * button, the chat's attach button and the job tracker. Courses are drafted only with a Trợ lý
+ * ngoài meanwhile; its key button and its sessions in the editor do not depend on this. Set to
+ * `true` to bring the in-house assistant back.
  */
-export const AI_COURSE_COMPOSE_ENABLED = true;
+export const AI_COURSE_COMPOSE_ENABLED = false;
 
 /**
  * What the signed-in user may do with AI course generation. It only decides what to show: the

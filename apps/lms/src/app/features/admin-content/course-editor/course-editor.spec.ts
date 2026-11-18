@@ -2145,7 +2145,7 @@ describe('CourseEditor', () => {
       expect(kept).not.toHaveBeenCalled();
     });
 
-    // Hidden with the rest of AI course composing while AI_COURSE_COMPOSE_ENABLED is off.
+    // Hidden while AI_COURSE_COMPOSE_ENABLED is off; a test below checks it stays hidden then.
     describe.skipIf(!AI_COURSE_COMPOSE_ENABLED)('"Soạn cùng trợ lý"', () => {
       const draftButton = () => screen.button('Soạn cùng trợ lý');
 
@@ -2235,6 +2235,20 @@ describe('CourseEditor', () => {
         widget.destroy();
       });
     });
+
+    it.skipIf(AI_COURSE_COMPOSE_ENABLED)(
+      'offers no "Soạn cùng trợ lý" while drafting with the in-house assistant is off',
+      async () => {
+        await screen.open('/admin/courses/new');
+
+        expect(screen.button('Soạn cùng trợ lý')).toBeUndefined();
+        expect(
+          screen.el.querySelector(
+            '.course-editor__head-state input[type="file"]',
+          ),
+        ).toBeNull();
+      },
+    );
 
     it('stays on an empty first step on "Tiếp theo", lists it and focuses its first error', async () => {
       await screen.open('/admin/courses/new');

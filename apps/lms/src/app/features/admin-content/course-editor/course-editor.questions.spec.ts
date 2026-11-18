@@ -1,3 +1,4 @@
+import { AI_COURSE_COMPOSE_ENABLED } from '../../../core/course-jobs/course-job-access';
 import { TestBed } from '@angular/core/testing';
 import {
   courseContentEndpoints,
@@ -73,136 +74,140 @@ const contentOf = (decisions: readonly (ProposalState | undefined)[]) =>
     ],
   }) satisfies CourseContent;
 
-describe('CourseEditor step 3 with proposed questions', () => {
-  const screen = setUpAdminScreen([
-    { provide: Sha256Hasher, useValue: new FakeHasher() },
-  ]);
+// The AI job UI is hidden while AI_COURSE_COMPOSE_ENABLED is off.
+describe.skipIf(!AI_COURSE_COMPOSE_ENABLED)(
+  'CourseEditor step 3 with proposed questions',
+  () => {
+    const screen = setUpAdminScreen([
+      { provide: Sha256Hasher, useValue: new FakeHasher() },
+    ]);
 
-  const original = (endpoint: unknown, request: unknown): FakeReply =>
-    MockBackend.prototype.handle.call(
-      TestBed.inject(MockBackend),
-      endpoint as never,
-      request as never,
-    ) as FakeReply;
+    const original = (endpoint: unknown, request: unknown): FakeReply =>
+      MockBackend.prototype.handle.call(
+        TestBed.inject(MockBackend),
+        endpoint as never,
+        request as never,
+      ) as FakeReply;
 
-  /**
-   * The course is the AI's and its job is `job`. The server keeps the decisions in `decisions`
-   * (what a reload reads back): accepting turns a proposal into `added`, as the backend does.
-   */
-  function aiCourse(
-    job: CourseJob,
-    decisions: (ProposalState | undefined)[],
-  ): void {
-    screen.calls.mockImplementation((endpoint, request) => {
-      if (endpoint === courseEndpoints.getCourse) {
-        const detail = (
-          original(endpoint, request).body as { data: CourseDetail }
-        ).data;
-        return ok({
-          ...detail,
-          revision: { ...detail.revision, aiGenerated: true },
-        });
-      }
-      if (endpoint === courseJobEndpoints.list) {
-        return ok([{ ...job, sourceFileName: null, createdDraftId: null }]);
-      }
-      if (endpoint === courseJobEndpoints.get) return ok(job);
-      if (endpoint === courseContentEndpoints.content) {
-        return ok(contentOf(decisions));
-      }
-      if (endpoint === courseContentEndpoints.decideQuestion) {
-        const index = Number(request.params['index']);
-        const decision = (request.body as { decision: string }).decision;
-        decisions[index] = decision === 'accepted' ? 'added' : 'rejected';
-        return ok(contentOf(decisions));
-      }
-      if (endpoint === courseContentEndpoints.retry) {
-        return ok(contentOf(decisions));
-      }
-      return original(endpoint, request);
+    /**
+     * The course is the AI's and its job is `job`. The server keeps the decisions in `decisions`
+     * (what a reload reads back): accepting turns a proposal into `added`, as the backend does.
+     */
+    function aiCourse(
+      job: CourseJob,
+      decisions: (ProposalState | undefined)[],
+    ): void {
+      screen.calls.mockImplementation((endpoint, request) => {
+        if (endpoint === courseEndpoints.getCourse) {
+          const detail = (
+            original(endpoint, request).body as { data: CourseDetail }
+          ).data;
+          return ok({
+            ...detail,
+            revision: { ...detail.revision, aiGenerated: true },
+          });
+        }
+        if (endpoint === courseJobEndpoints.list) {
+          return ok([{ ...job, sourceFileName: null, createdDraftId: null }]);
+        }
+        if (endpoint === courseJobEndpoints.get) return ok(job);
+        if (endpoint === courseContentEndpoints.content) {
+          return ok(contentOf(decisions));
+        }
+        if (endpoint === courseContentEndpoints.decideQuestion) {
+          const index = Number(request.params['index']);
+          const decision = (request.body as { decision: string }).decision;
+          decisions[index] = decision === 'accepted' ? 'added' : 'rejected';
+          return ok(contentOf(decisions));
+        }
+        if (endpoint === courseContentEndpoints.retry) {
+          return ok(contentOf(decisions));
+        }
+        return original(endpoint, request);
+      });
+    }
+
+    const openStep3 = async () => {
+      await screen.open(`/admin/courses/${COURSE}/edit?step=2`);
+      await screen.settle();
+    };
+
+    it('lists the proposed questions by lesson with accept and reject', async () => {
+      aiCourse(jobOf(), [undefined, 'pending']);
+      await openStep3();
+
+      expect(screen.text()).toContain('Câu hỏi AI đề xuất');
+      expect(screen.text()).toContain('Bài 1.1: Đối soát');
+      expect(screen.text()).toContain('Câu 1?');
+      expect(screen.text()).toContain('Câu 2?');
+      expect(screen.el.querySelectorAll('button').length).toBeGreaterThan(0);
+      expect(
+        [...screen.el.querySelectorAll('button')].filter(
+          (b) => b.textContent?.trim() === 'Chấp nhận',
+        ),
+      ).toHaveLength(2);
     });
-  }
 
-  const openStep3 = async () => {
-    await screen.open(`/admin/courses/${COURSE}/edit?step=2`);
-    await screen.settle();
-  };
+    it('adds an accepted question and keeps it listed as added', async () => {
+      aiCourse(jobOf(), [undefined, undefined]);
+      await openStep3();
 
-  it('lists the proposed questions by lesson with accept and reject', async () => {
-    aiCourse(jobOf(), [undefined, 'pending']);
-    await openStep3();
+      await screen.click(screen.button('Chấp nhận'));
 
-    expect(screen.text()).toContain('Câu hỏi AI đề xuất');
-    expect(screen.text()).toContain('Bài 1.1: Đối soát');
-    expect(screen.text()).toContain('Câu 1?');
-    expect(screen.text()).toContain('Câu 2?');
-    expect(screen.el.querySelectorAll('button').length).toBeGreaterThan(0);
-    expect(
-      [...screen.el.querySelectorAll('button')].filter(
-        (b) => b.textContent?.trim() === 'Chấp nhận',
-      ),
-    ).toHaveLength(2);
-  });
-
-  it('adds an accepted question and keeps it listed as added', async () => {
-    aiCourse(jobOf(), [undefined, undefined]);
-    await openStep3();
-
-    await screen.click(screen.button('Chấp nhận'));
-
-    expect(
-      screen.lastCall(courseContentEndpoints.decideQuestion),
-    ).toMatchObject({
-      params: { jobId: '7', key: 'c1l1', index: '0' },
-      body: { decision: 'accepted' },
+      expect(
+        screen.lastCall(courseContentEndpoints.decideQuestion),
+      ).toMatchObject({
+        params: { jobId: '7', key: 'c1l1', index: '0' },
+        body: { decision: 'accepted' },
+      });
+      await screen.settle();
+      expect(screen.text()).toContain('Đã thêm vào ngân hàng câu hỏi');
+      expect(screen.text()).toContain('Câu 2?');
     });
-    await screen.settle();
-    expect(screen.text()).toContain('Đã thêm vào ngân hàng câu hỏi');
-    expect(screen.text()).toContain('Câu 2?');
-  });
 
-  it('removes a rejected proposal from the list', async () => {
-    aiCourse(jobOf(), [undefined, undefined]);
-    await openStep3();
+    it('removes a rejected proposal from the list', async () => {
+      aiCourse(jobOf(), [undefined, undefined]);
+      await openStep3();
 
-    await screen.click(screen.button('Từ chối'));
+      await screen.click(screen.button('Từ chối'));
 
-    expect(
-      screen.lastCall(courseContentEndpoints.decideQuestion),
-    ).toMatchObject({ body: { decision: 'rejected' } });
-    await screen.settle();
-    expect(screen.text()).not.toContain('Câu 1?');
-    expect(screen.text()).toContain('Câu 2?');
-  });
+      expect(
+        screen.lastCall(courseContentEndpoints.decideQuestion),
+      ).toMatchObject({ body: { decision: 'rejected' } });
+      await screen.settle();
+      expect(screen.text()).not.toContain('Câu 1?');
+      expect(screen.text()).toContain('Câu 2?');
+    });
 
-  it('shows the decisions the server kept after a reload', async () => {
-    aiCourse(jobOf(), ['added', 'rejected', undefined]);
-    await openStep3();
+    it('shows the decisions the server kept after a reload', async () => {
+      aiCourse(jobOf(), ['added', 'rejected', undefined]);
+      await openStep3();
 
-    expect(screen.text()).toContain('Câu 1?');
-    expect(screen.text()).toContain('Đã thêm vào ngân hàng câu hỏi');
-    expect(screen.text()).not.toContain('Câu 2?');
-    expect(screen.text()).toContain('Câu 3?');
-  });
+      expect(screen.text()).toContain('Câu 1?');
+      expect(screen.text()).toContain('Đã thêm vào ngân hàng câu hỏi');
+      expect(screen.text()).not.toContain('Câu 2?');
+      expect(screen.text()).toContain('Câu 3?');
+    });
 
-  it('reports a failed question step here and retries it', async () => {
-    aiCourse(
-      jobOf({ status: 'failed', step: 'questions', error: 'Mô hình lỗi' }),
-      [],
-    );
-    await openStep3();
+    it('reports a failed question step here and retries it', async () => {
+      aiCourse(
+        jobOf({ status: 'failed', step: 'questions', error: 'Mô hình lỗi' }),
+        [],
+      );
+      await openStep3();
 
-    expect(screen.text()).toContain('AI không đề xuất được câu hỏi');
-    expect(screen.text()).toContain('Mô hình lỗi');
-    await screen.click(screen.button('Thử lại'));
+      expect(screen.text()).toContain('AI không đề xuất được câu hỏi');
+      expect(screen.text()).toContain('Mô hình lỗi');
+      await screen.click(screen.button('Thử lại'));
 
-    expect(screen.callsTo(courseContentEndpoints.retry)).toBe(1);
-  });
+      expect(screen.callsTo(courseContentEndpoints.retry)).toBe(1);
+    });
 
-  it('shows nothing about proposals for a course the AI did not start', async () => {
-    await openStep3();
+    it('shows nothing about proposals for a course the AI did not start', async () => {
+      await openStep3();
 
-    expect(screen.text()).not.toContain('Câu hỏi AI đề xuất');
-    expect(screen.callsTo(courseContentEndpoints.content)).toBe(0);
-  });
-});
+      expect(screen.text()).not.toContain('Câu hỏi AI đề xuất');
+      expect(screen.callsTo(courseContentEndpoints.content)).toBe(0);
+    });
+  },
+);
