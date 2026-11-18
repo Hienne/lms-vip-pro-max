@@ -2,6 +2,7 @@ import {
   HttpTestingController,
   type TestRequest,
 } from '@angular/common/http/testing';
+import { AI_COURSE_COMPOSE_ENABLED } from './course-job-access';
 import { ErrorHandler } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { CourseJobSummary } from '@lms/contracts';
@@ -33,7 +34,7 @@ const job = (patch: Partial<CourseJobSummary> = {}): CourseJobSummary => ({
   ...patch,
 });
 
-describe('CourseJobTrackerStore', () => {
+describe.skipIf(!AI_COURSE_COMPOSE_ENABLED)('CourseJobTrackerStore', () => {
   let backend: HttpTestingController;
   let session: FakeSessionStore;
 

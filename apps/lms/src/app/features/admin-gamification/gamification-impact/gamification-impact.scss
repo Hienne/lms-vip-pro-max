@@ -67,3 +67,10 @@
     padding-block: ui.space(10);
   }
 }
+
+.gamification-impact__navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: ui.space(1);
+  border-bottom: 1px solid ui.color(border);
+}

@@ -101,7 +101,8 @@ describe('UsageGuideStore', () => {
     expect(store.mode$()).toBe('page');
     expect(store.stage$()).toBe('tour');
     expect(store.step$()?.title).toBe('Tìm thêm khóa học');
-    await store.next();
+    expect(store.total$()).toBe(3);
+    for (let i = 0; i < store.total$(); i++) await store.next();
     expect(router.navigateByUrl).not.toHaveBeenCalled();
     expect(store.stage$()).toBe('closed');
     expect(
@@ -127,10 +128,26 @@ describe('UsageGuideStore', () => {
     expect(store.mode$()).toBe('intro');
     expect(store.total$()).toBe(3);
     store.openPage('/course/25');
-    expect(store.steps$()).toHaveLength(2);
+    expect(store.steps$()).toHaveLength(3);
     expect(store.steps$().every((step) => step.path === '/course/25')).toBe(
       true,
     );
+  });
+
+  it('opens the authoring steps on an existing course without navigating', () => {
+    const store = setup('000005');
+    store.openPage('/admin/courses/25/edit?step=2');
+    expect(store.steps$().map((step) => step.title)).toEqual([
+      'Nhập thông tin cơ bản',
+      'Tạo chương và soạn bài học',
+      'Gắn bài kiểm tra vào bài học',
+      'Chọn điều kiện cuối khóa',
+      'Chọn đối tượng và xuất bản',
+    ]);
+    expect(
+      store.steps$().every((step) => step.path === '/admin/courses/25/edit'),
+    ).toBe(true);
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
   });
 
   it.each(['000001', '000002', '000003'])(

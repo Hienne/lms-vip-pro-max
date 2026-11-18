@@ -15,3 +15,6 @@ export function returnToParams(url: string | null | undefined): Params {
   const next = readReturnTo(url);
   return next && next !== '/' ? { next } : {};
 }
+
+/** Transient router info for the first page reached after an explicit sign-in. */
+export const SIGN_IN_NAVIGATION = Symbol('sign-in');

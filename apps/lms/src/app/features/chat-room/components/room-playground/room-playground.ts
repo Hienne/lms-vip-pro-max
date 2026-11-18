@@ -14,22 +14,13 @@ export class RoomPlayground {
   private readonly games = inject(RoomGamesStore);
   protected readonly entries = computed<readonly MenuEntry[]>(() => [
     { kind: 'label', label: 'Caro' },
-    ...(this.room.map$()?.caroTables ?? []).map((_, index) => ({
-      kind: 'item' as const,
-      value: `caro:${index}`,
-      label: `Caro ${index + 1}`,
-    })),
+    ...(this.room.map$()?.caroTables ?? []).map((_, index) =>
+      this.tableEntry(`caro:${index}`, `Caro ${index + 1}`),
+    ),
     { kind: 'separator' },
-    ...(this.room.map$()?.boardTables ?? []).map((table) => {
-      const status = this.games
-        .boardTables$()
-        .find((state) => state.id === table.id)?.status;
-      return {
-        kind: 'item' as const,
-        value: table.id,
-        label: `${table.name} · ${status === 'playing' ? 'Đang chơi' : status === 'waiting' ? 'Chờ bạn chơi' : 'Trống'}`,
-      };
-    }),
+    ...(this.room.map$()?.boardTables ?? []).map((table) =>
+      this.tableEntry(table.id, table.name),
+    ),
     { kind: 'separator' },
     {
       kind: 'item',
@@ -38,4 +29,15 @@ export class RoomPlayground {
       disabled: this.games.balance$() === null,
     },
   ]);
+
+  private tableEntry(id: string, name: string): MenuEntry {
+    const status = this.games
+      .boardTables$()
+      .find((table) => table.id === id)?.status;
+    return {
+      kind: 'item',
+      value: id,
+      label: `${name} · ${status === 'playing' ? 'Đang chơi' : status === 'waiting' ? 'Chờ bạn chơi' : 'Trống'}`,
+    };
+  }
 }

@@ -29,6 +29,7 @@
     >{{tab.label}}</a
   >
   }
+  <a uiButton variant="ghost" routerLink="/reports/gamification">Tương tác</a>
 </nav>
 <div class="row-between">
   <div class="row row--gap-3">
@@ -76,12 +77,10 @@
         (change)="store.selectPeriod(period.value)"
       >
         <option value="all">Toàn thời gian</option>
-        <option value="month">Tháng này</option>
         <option value="30days">30 ngày qua</option>
+        <option value="90days">90 ngày qua</option>
         <option value="custom">Tùy chọn</option>
       </select></label
-    ><a uiButton variant="ghost" size="sm" routerLink="/reports/gamification"
-      >Tương tác</a
     >
   </div>
 </div>

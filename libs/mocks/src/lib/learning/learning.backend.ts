@@ -98,10 +98,18 @@ export interface LearningDirectory {
   ): string | undefined;
   /** The status of a quiz in the assessment service; `undefined` when it does not exist. */
   quizStatus(quizId: number): string | undefined;
+  publishLessonQuizzes(
+    request: FakeRequest,
+    courseId: number,
+    ids: readonly number[],
+  ): void;
   /** Whether the caller is a system admin (an admin role with a GLOBAL grant). */
   isSystemAdmin(request: FakeRequest): boolean;
   /** Who the caller's report grants cover; refuses (403) a caller with no report grant. */
   reportScope(request: FakeRequest): (person: LearningPerson) => boolean;
+  dashboardScope(
+    request: FakeRequest,
+  ): (course: CourseDetail['course']) => boolean;
 }
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
@@ -327,6 +335,7 @@ export class LearningBackend {
       [learnerEndpoints.dashboard, (r) => this.dashboard(r)],
       [learnerEndpoints.dashboardPrograms, (r) => this.dashboardPrograms(r)],
       [learnerEndpoints.exportProgress, (r) => this.exportProgress(r)],
+      [learningReportEndpoints.dashboard, (r) => this.managementDashboard(r)],
       [
         learningReportEndpoints.summary,
         (r) =>
@@ -1143,6 +1152,19 @@ export class LearningBackend {
     try {
       this.shareOnPublish(request, record, shareOrgIds);
       this.assignOnPublish(request, record, draft, assignments);
+      const quizzes = new Set(
+        draft.chapters.flatMap((chapter) =>
+          chapter.lessons.flatMap(({ lesson }) =>
+            lesson.lessonType === 'quiz' && lesson.quizId
+              ? [lesson.quizId]
+              : [],
+          ),
+        ),
+      );
+      if (quizzes.size)
+        this.directory.publishLessonQuizzes(request, record.course.id, [
+          ...quizzes,
+        ]);
     } catch (error) {
       record.published = before.published;
       record.draft = draft;
@@ -1511,15 +1533,29 @@ export class LearningBackend {
    * Every enrolment in the caller's report scope that matches the filter, with the names the
    * report resolves. The org and team are the learner's current ones: the seed keeps no snapshot.
    */
-  private reportRows(request: FakeRequest): LearningReportEnrollmentRow[] {
-    const covers = this.directory.reportScope(request);
+  private reportRows(
+    request: FakeRequest,
+    dashboard = false,
+  ): LearningReportEnrollmentRow[] {
+    const coversCourse = dashboard
+      ? this.directory.dashboardScope(request)
+      : undefined;
+    const coversPerson = dashboard
+      ? undefined
+      : this.directory.reportScope(request);
     const people = new Map(this.directory.people().map((p) => [p.userId, p]));
     const rows = this.enrollments.all().flatMap((enrolled) => {
       const person = people.get(enrolled.enrollment.userId);
       const record = this.courses.find(
         (r) => r.course.id === enrolled.enrollment.courseId,
       );
-      if (!person || !record?.published || !covers(person)) return [];
+      if (
+        !person ||
+        !record?.published ||
+        (coversCourse && !coversCourse(record.course)) ||
+        (coversPerson && !coversPerson(person))
+      )
+        return [];
       const card = this.learnerCard(record, enrolled);
       const e = enrolled.enrollment;
       const orgId = e.orgIdSnapshot ?? person.orgId;
@@ -1559,6 +1595,42 @@ export class LearningBackend {
       return [row];
     });
     return filterRows(rows, request.query);
+  }
+
+  private managementDashboard(request: FakeRequest): FakeReply {
+    const dateFormatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const dataAsOf = now();
+    const rows = this.reportRows(request, true);
+    const daily = Array.from({ length: 14 }, (_, index) => ({
+      date: dateFormatter.format(
+        new Date(Date.parse(dataAsOf) - (13 - index) * DAY),
+      ),
+      started: 0,
+      completed: 0,
+    }));
+    const byDate = new Map(daily.map((day) => [day.date, day]));
+    for (const { enrollment } of rows) {
+      for (const [key, value] of [
+        ['started', enrollment.startedAt],
+        ['completed', enrollment.completedAt],
+      ] as const) {
+        const day = value
+          ? byDate.get(dateFormatter.format(new Date(value)))
+          : undefined;
+        if (day) day[key]++;
+      }
+    }
+    return ok({
+      dataAsOf,
+      timeZone: 'Asia/Ho_Chi_Minh',
+      counts: learningCounts(rows),
+      daily,
+    });
   }
 
   private exportReport(request: FakeRequest): FakeReply {

@@ -391,13 +391,17 @@ describe('assessment report integration', () => {
     expect(store.rows$().length).toBeGreaterThan(0);
     expect(store.error$()).toBeUndefined();
   });
-  it('applies a local calendar month as a half-open date range and clears it', async () => {
+  it('applies 90 calendar days as a half-open date range and clears it', async () => {
     const store = await open('/reports/results');
-    store.selectPeriod('month');
+    store.selectPeriod('90days');
     await settle();
     const now = new Date();
     expect(store.filters$().from).toBe(
-      new Date(now.getFullYear(), now.getMonth(), 1).toISOString(),
+      new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() - 89,
+      ).toISOString(),
     );
     expect(store.filters$().to).toBe(
       new Date(

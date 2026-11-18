@@ -1,15 +1,18 @@
 import { computed, inject, Injectable, Injector, signal } from '@angular/core';
 import {
+  competencyReviewEndpoints,
   learnerEndpoints,
   type CourseCard,
   type LearningReminder,
   type MyCoursesQuery,
 } from '@lms/contracts';
+import { Router } from '@angular/router';
 import { NOW } from '@lms/ui';
 import { EMPTY, expand, filter, reduce } from 'rxjs';
 import { serverData } from '../../../../core/data-access/server-data';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { dueReminders } from '../../../../core/learning/due-reminders';
+import { SIGN_IN_NAVIGATION } from '../../../../core/routing/return-to';
 import { SessionStore } from '../../../../core/session/session.store';
 import type { CourseCardView } from '../../../../shared/course/course-card';
 import { toCourseCardView } from '../../../../shared/course/course-card-view';
@@ -96,6 +99,11 @@ export class LearnStore {
   private readonly client = inject(EndpointClient);
   private readonly injector = inject(Injector);
   private readonly session = inject(SessionStore);
+  readonly learnerName$ = computed(
+    () => this.session.user$()?.fullName.trim() ?? '',
+  );
+  readonly showSignInWelcome =
+    inject(Router).currentNavigation()?.extras.info === SIGN_IN_NAVIGATION;
   private readonly now = inject(NOW);
 
   private readonly state = {
@@ -182,6 +190,13 @@ export class LearnStore {
     (this.coursesData.value() ?? []).map((card) => card.coverAssetId),
   );
 
+  /** The weakest competency and the lessons its mistakes come from; empty when nothing is weak. */
+  private readonly reviewData = serverData(() =>
+    this.client.call(competencyReviewEndpoints.review, {
+      query: { limit: 1 },
+    }),
+  );
+
   private readonly dueData = serverData(() =>
     this.client.call(learnerEndpoints.myCourses, {
       query: { sort: 'dueAt,asc', size: 10 },
@@ -209,16 +224,6 @@ export class LearnStore {
   readonly summary$ = this.summaryData.value;
   readonly summaryError$ = this.summaryData.error;
   readonly isSummaryLoading$ = this.summaryData.isLoading;
-
-  /** Today, as the date beside the page title. */
-  readonly today$ = computed(() =>
-    new Date(this.now()).toLocaleDateString('vi-VN', {
-      weekday: 'long',
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    }),
-  );
 
   readonly points$ = this.pointsData.value;
   readonly pointsError$ = this.pointsData.error;
@@ -291,6 +296,9 @@ export class LearnStore {
     ),
   );
 
+  readonly review$ = computed(() => this.reviewData.value() ?? []);
+  readonly reviewError$ = this.reviewData.error;
+  readonly isReviewLoading$ = this.reviewData.isLoading;
   readonly dueError$ = this.dueData.error;
   readonly isDueLoading$ = this.dueData.isLoading;
 
@@ -311,22 +319,6 @@ export class LearnStore {
         link: `/course/${card.courseId}`,
       })),
   );
-
-  /**
-   * One sentence on what needs attention first: the overdue count, else the nearest deadline, else
-   * that the learner is on track. Empty until the summary and the due list are read.
-   */
-  readonly headline$ = computed((): string => {
-    const summary = this.summaryData.value();
-    if (!summary || this.dueData.isLoading()) return '';
-    if (summary.counts.overdue) {
-      return `Bạn có ${summary.counts.overdue} khóa đã quá hạn, nên hoàn thành trước.`;
-    }
-    const next = this.due$()[0];
-    if (!next) return 'Bạn đã theo kịp toàn bộ lộ trình được giao.';
-    const days = Math.ceil((new Date(next.dueAt).getTime() - this.now()) / DAY);
-    return `Khóa gần hạn nhất: "${next.title}" (${days} ngày).`;
-  });
 
   readonly remindersError$ = this.remindersData.error;
   readonly isRemindersLoading$ = this.remindersData.isLoading;
@@ -381,6 +373,10 @@ export class LearnStore {
 
   retryCourses(): void {
     this.coursesData.reload();
+  }
+
+  retryReview(): void {
+    this.reviewData.reload();
   }
 
   retryDue(): void {

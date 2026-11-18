@@ -5,6 +5,7 @@ import type { ForbiddenState } from './forbidden-state';
 import { menuOf } from './route-table';
 import { EndpointClient } from '../http/endpoint-client';
 import type { RouteMeta } from './route-table';
+import { staffHomeFor } from '../session/function-access';
 
 /**
  * A signed-in user whose role does not grant the route's `data.menu` goes to `/403`, told which
@@ -17,11 +18,13 @@ export const menuGuard: CanMatchFn = async (route, segments) => {
   const client = inject(EndpointClient);
   await session.whenReady();
   const menu = menuOf(route.data);
-  const requires =
-    (route.data as Partial<RouteMeta> | undefined)?.requires ?? [];
+  const meta = route.data as Partial<RouteMeta> | undefined;
+  const requires = meta?.requires ?? [];
+  const staffHome = staffHomeFor(session.user$()?.grants ?? []);
   if (
     !session.isSignedIn$() ||
-    ((!menu || session.menus$().includes(menu)) &&
+    ((!meta?.staffOnly || staffHome) &&
+      (!menu || session.menus$().includes(menu)) &&
       requires.every((endpoint) => client.isServed(endpoint)))
   ) {
     return true;

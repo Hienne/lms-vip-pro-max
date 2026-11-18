@@ -16,6 +16,7 @@ import { AgentChatStore } from '../../core/assistant/agent-chat.store';
 import { CourseDraftingStore } from '../../core/course-drafting/course-drafting.store';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { DEV_FEATURES } from '../../core/dev/dev-features';
+import { OPEN_PAGE_GUIDE } from '../../core/routing/page-guide-action';
 import { MyLevelStore } from '../../core/learning/my-level.store';
 import { ChatWidget } from '../chat-widget/chat-widget';
 import { Header } from '../header/header';
@@ -56,7 +57,19 @@ import type { UserMenuValue } from '../header/header';
     '[style.--shell-gutter]': 'gutter()',
   },
   // The drafting session is followed by both the chat panel and the course editor below it.
-  providers: [ShellStore, UsageGuideStore, CourseDraftingStore],
+  providers: [
+    ShellStore,
+    UsageGuideStore,
+    CourseDraftingStore,
+    {
+      provide: OPEN_PAGE_GUIDE,
+      useFactory: () => {
+        const store = inject(ShellStore);
+        const guide = inject(UsageGuideStore);
+        return () => guide.openPage(store.path$());
+      },
+    },
+  ],
   templateUrl: './app-shell.html',
   styleUrl: './app-shell.scss',
 })

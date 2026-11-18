@@ -22,6 +22,7 @@ type ScreenLoad = NonNullable<Route['loadComponent']>;
 export interface Screen {
   /** A secondary route may reuse a function without adding a sidebar entry. */
   readonly access?: FunctionCode;
+  readonly staffOnly?: boolean;
   readonly requires?: readonly AnyEndpoint[];
   /** Angular path, without a leading slash. */
   readonly path: string;
@@ -752,7 +753,7 @@ export const SCREEN_TABLE = {
     },
     {
       path: 'instructor',
-      access: 'COURSE_MANAGEMENT',
+      staffOnly: true,
       title: 'Tổng quan giảng viên',
       mockupPage: 'instructor',
       load: () =>
@@ -768,7 +769,7 @@ export const SCREEN_TABLE = {
     },
     {
       path: 'admin',
-      access: 'USER_MANAGEMENT',
+      staffOnly: true,
       title: 'Tổng quan quản trị',
       mockupPage: 'adminHome',
       load: () =>
@@ -852,6 +853,7 @@ export function metaOf({ screen, menu }: ScreenEntry): RouteMeta {
   const access = menu ?? screen.access;
   return {
     ...(access ? { menu: access } : {}),
+    ...(screen.staffOnly ? { staffOnly: true } : {}),
     ...(screen.requires ? { requires: screen.requires } : {}),
     layout: screen.layout ?? 'app',
     mockupPage: screen.mockupPage,

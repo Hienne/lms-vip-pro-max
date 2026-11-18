@@ -114,9 +114,9 @@ describe('toProfile', () => {
     expect(profile.menus).not.toContain('FUTURE_SCREEN');
   });
 
-  it('homes a learner on the learning screens and an admin on course management', () => {
+  it('homes a learner on the learning screens and an admin on the staff dashboard', () => {
     expect(toProfile(seedMe('000004')).homePath).toBe('/learn');
-    expect(toProfile(seedMe('000002')).homePath).toBe('/admin/courses');
+    expect(toProfile(seedMe('000002')).homePath).toBe('/admin');
   });
 
   it('homes a user who only holds the profile on the profile', () => {

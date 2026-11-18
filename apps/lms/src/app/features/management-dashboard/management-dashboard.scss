@@ -1,23 +1,40 @@
 @use 'ui';
+
 :host {
+  @include ui.page(wide);
+  @include ui.stack(5);
+}
+
+.dashboard__overview {
   display: grid;
   gap: ui.space(4);
+  align-items: start;
+
+  @include ui.bp(lg) {
+    grid-template-columns: minmax(16rem, 1fr) minmax(0, 2fr);
+  }
 }
-dl {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: ui.space(2) ui.space(4);
+
+.dashboard__trend + .dashboard__trend {
+  margin-top: ui.space(4);
+  padding-top: ui.space(4);
+  border-top: 1px solid ui.color(border);
 }
-dt {
-  @include ui.text(sm, muted);
+
+.dashboard__trend h3 {
+  @include ui.text(sm);
+  margin: 0 0 ui.space(2);
+  font-weight: ui.weight(semibold);
 }
-dd {
-  margin: 0;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
+
+.dashboard__chart {
+  overflow-x: auto;
+  ui-bar-chart {
+    display: block;
+    min-width: 32rem;
+  }
 }
-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: ui.space(2);
+
+.dashboard__links {
+  @include ui.row(2);
 }

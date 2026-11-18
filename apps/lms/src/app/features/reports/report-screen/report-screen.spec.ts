@@ -82,13 +82,14 @@ describe('ReportScreen', () => {
     });
   });
 
-  it('shows three report groups and opens filters with an icon before the label', async () => {
+  it('shows four report groups and opens filters with an icon before the label', async () => {
     const { root } = await open('/reports');
     const links = root.querySelectorAll('nav[aria-label="Nhóm báo cáo"] a');
     expect(Array.from(links).map((link) => link.textContent?.trim())).toEqual([
       'Tổng quan',
       'Học tập',
       'Đánh giá',
+      'Tương tác',
     ]);
     const button = root.querySelector<HTMLButtonElement>(
       '[aria-controls="report-filters"]',

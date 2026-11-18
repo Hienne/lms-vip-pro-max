@@ -5,6 +5,7 @@ import {
   FormRoot,
   validateStandardSchema,
 } from '@angular/forms/signals';
+import { RouterLink } from '@angular/router';
 import type { ImpactAssigned, ImpactSource } from '@lms/contracts';
 import {
   BarChart,
@@ -75,6 +76,7 @@ const filterSchema = z
     FormRoot,
     Icon,
     PageHeader,
+    RouterLink,
     Select,
     Spinner,
     Table,

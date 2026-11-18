@@ -50,6 +50,15 @@
       [disabled]="agent.isAnswering$()"
       (selected)="assist($event)"
     />
+    } @if (openPageGuide; as openGuide) {
+    <button
+      uiIconButton
+      size="sm"
+      label="Hướng dẫn bài học"
+      (click)="openGuide()"
+    >
+      <ui-icon name="circle-help" size="sm" />
+    </button>
     } @if (store.lesson$()) {
     <button
       uiButton
@@ -297,6 +306,16 @@
         </div>
       </section>
 
+      <app-lesson-checkpoint class="lesson__checkpoint" />
+      @if (store.lesson$() && canAsk()) {
+      <div class="lesson__explain-entry">
+        <button uiButton variant="ghost" (click)="store.openSelfExplain()">
+          <ui-icon name="notebook-pen" size="sm" />Giải thích lại bằng lời của
+          bạn
+        </button>
+      </div>
+      }
+
       <div uiCard class="lesson__stepbar">
         <nav class="lesson__stepbar-nav" aria-label="Chuyển khối và bài học">
           @if (store.prevBlockId$(); as previous) {
@@ -439,6 +458,16 @@
         (follow)="store.followAnchor($event)"
         (retry)="store.retryNotes()"
       />
+    </div>
+    <div uiTabPanel="review" class="lesson__side-panel">
+      <p class="lesson__progress">
+        Ôn lại bài vừa học bằng vài câu hỏi nhanh. Không tính điểm và không ảnh
+        hưởng tiến độ.
+      </p>
+      <button uiButton (click)="store.openCheckpoint()">
+        <ui-icon name="circle-help" size="sm" />Làm câu hỏi nhanh
+      </button>
+      <app-self-explain />
     </div>
   </ui-tabs>
 </ng-template>

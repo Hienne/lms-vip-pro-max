@@ -1,0 +1,24 @@
+@use 'ui';
+
+:host {
+  @include ui.stack(4);
+  display: flex;
+}
+
+.review {
+  &__group {
+    @include ui.stack(2);
+  }
+
+  &__title {
+    @include ui.text(md);
+    margin: 0;
+    font-weight: ui.weight(semibold);
+  }
+
+  &__done {
+    @include ui.text(sm);
+    margin: 0;
+    color: ui.color(text-secondary);
+  }
+}

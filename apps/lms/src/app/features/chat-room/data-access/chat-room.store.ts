@@ -41,6 +41,7 @@ import type {
 import { inRoomArea } from './chat-room.model';
 import { RoomGamesStore } from './room-games.store';
 import { RoomMediaStore } from './room-media.store';
+import { RoomVoiceStore } from './room-voice.store';
 import { copyText } from '../../../core/browser/secure-context';
 
 type ConnectionStatus =
@@ -60,6 +61,7 @@ export class ChatRoomStore {
   private readonly session = inject(SessionStore);
   readonly games = inject(RoomGamesStore);
   readonly media = inject(RoomMediaStore);
+  readonly voice = inject(RoomVoiceStore);
 
   // Socket events are continuous server values; serverData owns the finite HTTP map request.
   private readonly state = {
@@ -162,6 +164,19 @@ export class ChatRoomStore {
   readonly self$ = computed(() =>
     this.players$().find((person) => person.id === this.me$()),
   );
+  readonly seatedBoard$ = computed(() => {
+    const seat = this.self$()?.seat;
+    return seat === undefined
+      ? undefined
+      : this.map$()?.boardTables.find((table) => table.chairs.includes(seat));
+  });
+  readonly canReopenTable$ = computed(
+    () =>
+      this.online$() &&
+      this.games.balance$() !== null &&
+      !this.games.panel$() &&
+      !!(this.games.caroTable$() || this.seatedBoard$()),
+  );
   readonly nearDice$ = computed(() => {
     const player = this.self$();
     return (
@@ -217,6 +232,10 @@ export class ChatRoomStore {
   constructor() {
     this.games.connect((command) => this.socket?.send(command));
     this.media.connect((command) => this.socket?.send(command));
+    this.voice.connect((command) => {
+      if (command.type === 'voice-frame') this.socket?.send(command, 5_120);
+      else this.socket?.send(command);
+    });
     this.destroyRef.onDestroy(() => {
       this.leave();
       clearTimeout(this.copyTimer);
@@ -335,6 +354,15 @@ export class ChatRoomStore {
   }
   private setChallengeDice(value: boolean): void {
     this.state.challengeDice.set(value);
+  }
+  reopenTable(): void {
+    if (!this.canReopenTable$()) return;
+    if (this.games.caroTable$()) {
+      this.openGame('caro');
+    } else {
+      const table = this.seatedBoard$();
+      if (table) this.chooseChallenge(table.id);
+    }
   }
   choosePresentation(): void {
     if (this.media.controller$()) {
@@ -457,6 +485,8 @@ export class ChatRoomStore {
             reactions: true,
             boardGames: true,
             presentation: true,
+            voice: true,
+            voiceRelay: true,
           });
       },
       message: (event) => {
@@ -499,6 +529,7 @@ export class ChatRoomStore {
         break;
       case 'left':
         this.media.left(event.id);
+        this.voice.left(event.id);
         this.clearReaction(event.id);
         this.setPlayers(this.players$().filter((p) => p.id !== event.id));
         if (!this.invitation$()) this.clearInvitation();
@@ -551,6 +582,12 @@ export class ChatRoomStore {
       case 'media-signal':
       case 'media-error':
         this.media.receive(event);
+        break;
+      case 'voice-ready':
+      case 'voice-state':
+      case 'voice-frame':
+      case 'voice-issue':
+        this.voice.receive(event);
         break;
       case 'correction':
         this.setCorrection({ x: event.x, y: event.y });
@@ -701,6 +738,7 @@ export class ChatRoomStore {
     this.setStatus('offline');
   }
   private stopSocket(): void {
+    this.voice.reset();
     this.media.reset();
     this.setChallengeDice(false);
     this.generation++;
