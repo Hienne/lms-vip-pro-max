@@ -13,6 +13,8 @@ const map: RoomMap = {
   speed: 190,
   spawn: { x: 80, y: 100 },
   objects: [{ kind: 'desk', x: 150, y: 150, w: 100, h: 60 }],
+  boardTables: [],
+  colorTiles: [],
 };
 
 describe('shared room movement', () => {

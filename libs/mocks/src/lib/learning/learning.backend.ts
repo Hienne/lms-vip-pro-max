@@ -915,6 +915,7 @@ export class LearningBackend {
           })),
           videoChapters: b.block.videoChapters,
           transcript: b.block.transcript,
+          allowSeeking: b.block.allowSeeking,
         })),
       })),
     }));
@@ -983,6 +984,7 @@ export class LearningBackend {
                     sourceBlockId: sourceLesson?.blocks[bi]?.block.id ?? null,
                     videoChapters: block.videoChapters ?? [],
                     transcript: block.transcript ?? [],
+                    allowSeeking: block.allowSeeking ?? false,
                     ...stamp,
                   },
                   assets: block.assets.flatMap((use, ai) => {

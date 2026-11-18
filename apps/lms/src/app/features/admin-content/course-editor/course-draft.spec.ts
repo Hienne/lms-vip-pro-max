@@ -147,6 +147,43 @@ describe('course draft', () => {
     expect(text).not.toHaveProperty('videoChapters');
   });
 
+  it('sends allowSeeking only for a video block, off for a new one, and loads it back', () => {
+    expect(newBlock('video').allowSeeking).toBe(false);
+    expect(newBlock('text').allowSeeking).toBe(false);
+
+    const lesson: LessonValue = {
+      ...newLesson(1),
+      blocks: [
+        newBlock('video'),
+        { ...newBlock('video'), allowSeeking: true },
+        newBlock('text'),
+      ],
+    };
+    const value = {
+      ...toDraftValue(eod),
+      chapters: [{ key: 'a', title: 'C', lessons: [lesson] }],
+    };
+    const [off, on, text] = toSaveDraftCommand(value, 0).chapters[0].lessons[0]
+      .blocks;
+    expect(off.allowSeeking).toBe(false);
+    expect(on.allowSeeking).toBe(true);
+    expect(text).not.toHaveProperty('allowSeeking');
+
+    const detail = structuredClone(
+      courseDetailFixtures.find((d) => d.course.code === 'NV-101')!,
+    );
+    const block = detail.chapters
+      .flatMap((c) => c.lessons)
+      .flatMap((l) => l.blocks)
+      .find((b) => b.block.blockType === 'video')!;
+    block.block.allowSeeking = true;
+    const loaded = toDraftValue(detail)
+      .chapters.flatMap((c) => c.lessons)
+      .flatMap((l) => l.blocks)
+      .find((b) => b.blockType === 'video');
+    expect(loaded?.allowSeeking).toBe(true);
+  });
+
   it('keeps the quiz of a quiz lesson both ways and drops it from a content lesson', () => {
     const detail = structuredClone(eod);
     const lessons = detail.chapters[0].lessons;

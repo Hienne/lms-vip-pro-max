@@ -107,6 +107,7 @@ export class Menu<V extends string = string> {
   readonly variant = input<ButtonVariant>('secondary');
   readonly size = input<ButtonSize>('md');
   readonly disabled = input(false, { transform: booleanAttribute });
+  readonly translucent = input(false, { transform: booleanAttribute });
   readonly selected = output<V>();
 
   protected readonly positions = POSITIONS;

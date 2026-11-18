@@ -56,6 +56,8 @@ export interface BlockValue {
    */
   readonly videoChapters: readonly VideoChapter[];
   readonly transcript: readonly TranscriptLine[];
+  /** Learners may seek freely in a video block; off for a new block and for every other type. */
+  readonly allowSeeking: boolean;
 }
 
 export interface LessonValue {
@@ -168,6 +170,7 @@ export function newBlock(blockType: BlockType): BlockValue {
     steps: [],
     videoChapters: [],
     transcript: [],
+    allowSeeking: false,
   };
 }
 
@@ -215,6 +218,7 @@ function toBlockValue({ block, assets, steps }: BlockDetail): BlockValue {
     // Copies, because the signal forms mark the objects they hold.
     videoChapters: block.videoChapters.map((c) => ({ ...c })),
     transcript: block.transcript.map((t) => ({ ...t })),
+    allowSeeking: block.blockType === 'video' && block.allowSeeking,
   };
 }
 
@@ -315,6 +319,9 @@ function toBlockInput(block: BlockValue): BlockInput {
             text,
           })),
         }
+      : {}),
+    ...(block.blockType === 'video'
+      ? { allowSeeking: block.allowSeeking }
       : {}),
   };
 }

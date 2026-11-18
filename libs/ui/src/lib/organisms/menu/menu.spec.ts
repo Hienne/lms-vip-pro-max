@@ -23,11 +23,13 @@ const ENTRIES: readonly MenuEntry[] = [
     label="Hành động"
     icon="ellipsis"
     [entries]="entries"
+    [translucent]="translucent()"
     (selected)="chosen.set($event)"
   />`,
 })
 class Host {
   readonly entries = ENTRIES;
+  readonly translucent = signal(false);
   readonly chosen = signal<string | null>(null);
 }
 
@@ -84,6 +86,15 @@ describe('Menu', () => {
   afterEach(() => {
     TestBed.resetTestingModule();
     document.querySelector('.cdk-overlay-container')?.remove();
+  });
+
+  it('applies the optional translucent appearance to its trigger and overlay', async () => {
+    const { fixture, trigger, host, open, menu } = await render();
+    host.translucent.set(true);
+    await settle(fixture);
+    expect(trigger.classList.contains('menu-trigger--translucent')).toBe(true);
+    await open();
+    expect(menu()?.classList.contains('menu--translucent')).toBe(true);
   });
 
   it('is closed until the trigger is activated, and the trigger says it opens a menu', async () => {

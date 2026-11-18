@@ -1,12 +1,24 @@
 <ul class="chapters" aria-label="Mốc nội dung video">
   @for (chapter of chapters(); track $index) {
   <li>
+    @if (seekable()) {
+    <button
+      type="button"
+      class="chapters__item chapters__item--jump"
+      [attr.aria-current]="$index === current() ? 'true' : null"
+      [attr.aria-label]="'Tua tới ' + clock(chapter.startSeconds) + ': ' + chapter.title"
+      (click)="jump.emit(chapter.startSeconds)"
+    >
+      {{ clock(chapter.startSeconds) }} · {{ chapter.title }}
+    </button>
+    } @else {
     <span
       class="chapters__item"
       [attr.aria-current]="$index === current() ? 'true' : null"
     >
       {{ clock(chapter.startSeconds) }} · {{ chapter.title }}
     </span>
+    }
   </li>
   }
 </ul>

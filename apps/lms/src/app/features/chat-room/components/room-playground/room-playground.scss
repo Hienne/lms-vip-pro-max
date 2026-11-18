@@ -1,0 +1,15 @@
+@use 'ui';
+:host {
+  position: absolute;
+  top: ui.space(3);
+  left: 30%;
+  z-index: 1;
+  max-width: 45%;
+}
+@include ui.bp-below(sm) {
+  :host {
+    top: ui.space(18);
+    left: ui.space(3);
+    max-width: calc(100% - 2 * ui.space(3));
+  }
+}

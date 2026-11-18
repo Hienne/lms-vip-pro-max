@@ -138,9 +138,31 @@ export function enqueue(
   event: StudyEvent,
 ): readonly StudyEvent[] {
   const last = waiting.at(-1);
-  return event.type === 'HEARTBEAT' && last?.type === 'HEARTBEAT'
-    ? [...waiting.slice(0, -1), event]
-    : [...waiting, event];
+  if (event.type === 'HEARTBEAT' && last?.type === 'HEARTBEAT') {
+    return [...waiting.slice(0, -1), event];
+  }
+  if (event.type === 'SEEK') {
+    const replaced = unsentSeek(waiting);
+    if (replaced >= 0) return [...waiting.slice(0, replaced), event];
+  }
+  return [...waiting, event];
+}
+
+/**
+ * Where a seek still waiting starts, when only playback after it has been queued since (its PLAY and
+ * heartbeats); -1 otherwise. A newer seek replaces that whole run: the range before the first seek
+ * was already closed by the heartbeat ahead of it, a seek carries no range, and the PLAY after the
+ * newer seek opens the next one, so dropping the run only ever drops watched time, never adds any.
+ * Holding an arrow key on the progress bar then keeps the queue at a few events, not one burst per
+ * key repeat.
+ */
+function unsentSeek(waiting: readonly StudyEvent[]): number {
+  for (let index = waiting.length - 1; index >= 0; index--) {
+    const type = waiting[index].type;
+    if (type === 'SEEK') return index;
+    if (type !== 'PLAY' && type !== 'HEARTBEAT') return -1;
+  }
+  return -1;
 }
 
 /** Where a refusal happened: the claim, an event, or the silent claim after `SESSION_EXPIRED`. */

@@ -41,6 +41,7 @@ import {
   Input,
   Select,
   SearchSelect,
+  Switch,
   Textarea,
   UploadItem,
 } from '@lms/ui';
@@ -153,6 +154,7 @@ const quizLabel = (quiz: QuizSummary): string =>
     LessonTextEditor,
     Select,
     SearchSelect,
+    Switch,
     Textarea,
     UploadItem,
   ],

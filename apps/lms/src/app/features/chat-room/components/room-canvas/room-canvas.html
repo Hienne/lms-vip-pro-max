@@ -28,6 +28,15 @@
       >
         Vẫy chào
       </button>
+      @if (reactionsEnabled()) {
+      <ui-menu
+        label="Thả cảm xúc"
+        translucent
+        size="sm"
+        [entries]="reactionEntries"
+        (selected)="chooseReaction($event)"
+      />
+      }
     </div>
     } @if (interactionsEnabled()) {
     <div class="row row--gap-1" role="group" aria-label="Tương tác trong phòng">
