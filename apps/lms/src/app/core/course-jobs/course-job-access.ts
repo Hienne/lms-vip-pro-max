@@ -12,7 +12,7 @@ const COURSE_MANAGER_ROLES: readonly string[] = [
  * Temporarily hides every AI course-composing entry point (the course editor's "Tạo bằng AI"
  * toggle and section, the chat's attach button, the job tracker). Set to `true` to bring it back.
  */
-export const AI_COURSE_COMPOSE_ENABLED = false;
+export const AI_COURSE_COMPOSE_ENABLED = true;
 
 /**
  * What the signed-in user may do with AI course generation. It only decides what to show: the
