@@ -183,7 +183,9 @@ export class LessonCheckpointStore {
     if (!this.lesson.checkpointWanted$()) return 'hidden';
     // Reached by itself at the end of a lesson, the card stays out of the way unless it has questions.
     const asked = this.lesson.checkpointAsked$();
-    if (this.checkpointData.isLoading()) return asked ? 'loading' : 'hidden';
+    // A card already on screen ("Làm lại") keeps its place while the new questions load.
+    if (this.checkpointData.isLoading())
+      return asked || this.total$() > 0 ? 'loading' : 'hidden';
     if (this.loadError$()) return asked ? 'error' : 'hidden';
     if (this.total$() === 0) return asked ? 'empty' : 'hidden';
     return this.index$() >= this.total$() ? 'summary' : 'question';
