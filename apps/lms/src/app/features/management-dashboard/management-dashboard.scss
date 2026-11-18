@@ -2,22 +2,107 @@
 
 :host {
   @include ui.page(wide);
-  @include ui.stack(5);
+  @include ui.stack(3);
+  --dashboard-extra-space: 0px;
+  --dashboard-padding-block: calc(
+    #{ui.space(3)} + var(--dashboard-extra-space)
+  );
+  --section-card-header-padding: calc(
+      #{ui.space(1)} + var(--dashboard-extra-space)
+    )
+    calc(#{ui.space(4)} + var(--dashboard-extra-space) / 2);
+  --section-card-body-padding: calc(
+      #{ui.space(1)} + var(--dashboard-extra-space) * 0.75
+    )
+    calc(#{ui.space(4)} + var(--dashboard-extra-space) / 2);
+  --stat-cell-padding: calc(#{ui.space(2)} + var(--dashboard-extra-space) / 2)
+    calc(#{ui.space(4)} + var(--dashboard-extra-space) / 2);
+  padding-block: var(--dashboard-padding-block);
+  gap: calc(#{ui.space(3)} + var(--dashboard-extra-space) / 2);
+
+  @include ui.bp(md) {
+    padding-block: var(--dashboard-padding-block);
+  }
+
+  @include ui.bp(lg) {
+    // Add breathing room only as the desktop viewport gains vertical space.
+    --dashboard-extra-space: clamp(0px, calc((100dvh - 740px) / 12), 12px);
+  }
+}
+
+.dashboard__header {
+  @include ui.row(3);
+  align-items: center;
+  justify-content: space-between;
+  padding-block: calc(var(--dashboard-extra-space) / 2);
+
+  h1 {
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+.dashboard__period {
+  @include ui.row(2);
+
+  select {
+    min-inline-size: 9.75rem;
+  }
+}
+
+.dashboard__dates {
+  @include ui.num;
+  @include ui.text(xs, muted);
+}
+
+.dashboard__stats {
+  @include ui.stack(1);
+
+  h2 {
+    @include ui.text(sm, muted);
+    margin: 0;
+    font-weight: ui.weight(semibold);
+  }
 }
 
 .dashboard__overview {
   display: grid;
-  gap: ui.space(4);
-  align-items: start;
+  gap: ui.space(3);
+  align-items: stretch;
 
   @include ui.bp(lg) {
-    grid-template-columns: minmax(16rem, 1fr) minmax(0, 2fr);
+    grid-template-columns: minmax(23rem, 2fr) minmax(0, 3fr);
   }
 }
 
+.dashboard__sidebar {
+  @include ui.stack(3);
+  min-width: 0;
+}
+
+.dashboard__ranking {
+  flex: 1;
+}
+
+.dashboard__activity {
+  --chart-compact-height: clamp(5.5rem, 13vh, 7.5rem);
+}
+
+.dashboard__chart-note {
+  @include ui.text(xs, muted);
+  margin: 0 0 ui.space(2);
+}
+
+.dashboard__trends {
+  display: grid;
+  flex: 1;
+  grid-template-rows: repeat(2, minmax(min-content, 1fr));
+  gap: ui.space(2);
+}
+
 .dashboard__trend + .dashboard__trend {
-  margin-top: ui.space(4);
-  padding-top: ui.space(4);
+  padding-top: ui.space(2);
   border-top: 1px solid ui.color(border);
 }
 
@@ -27,14 +112,80 @@
   font-weight: ui.weight(semibold);
 }
 
-.dashboard__chart {
-  overflow-x: auto;
-  ui-bar-chart {
-    display: block;
-    min-width: 32rem;
+.dashboard__message {
+  @include ui.text(sm, muted);
+  margin: 0;
+}
+
+.dashboard__ranking-message {
+  padding: ui.space(3) ui.space(5);
+}
+
+.dashboard__ranking-scope {
+  @include ui.text(xs, muted);
+  margin: 0;
+  padding: 2px ui.space(4);
+}
+
+.dashboard__leaders {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+
+  th,
+  td {
+    padding: 2px ui.space(4);
+    text-align: left;
+    border-top: 1px solid ui.color(border);
+    @include ui.text(sm);
+  }
+
+  thead th {
+    @include ui.text(xs, muted);
+    font-weight: ui.weight(semibold);
+  }
+
+  thead th:first-child,
+  thead th:last-child {
+    width: 4.25rem;
+  }
+
+  th:last-child,
+  td:last-child {
+    text-align: right;
+  }
+
+  tbody tr:first-child .dashboard__rank {
+    background: ui.color(primary-subtle);
+    color: ui.color(primary);
   }
 }
 
-.dashboard__links {
-  @include ui.row(2);
+.dashboard__rank {
+  @include ui.num;
+  display: grid;
+  place-items: center;
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  border-radius: 50%;
+  background: ui.color(surface-sunken);
+  color: ui.color(text-muted);
+  font-weight: ui.weight(semibold);
+}
+
+.dashboard__learner {
+  font-weight: ui.weight(medium);
+
+  span {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.dashboard__result {
+  @include ui.num;
+  white-space: nowrap;
+  font-weight: ui.weight(semibold);
 }

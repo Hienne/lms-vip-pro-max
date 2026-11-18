@@ -40,6 +40,15 @@ export const LearningReportSummarySchema = z.object({
 });
 export type LearningReportSummary = z.infer<typeof LearningReportSummarySchema>;
 
+/** Zero selects all enrollments. Daily activity is capped at 30 days in that mode. */
+export const MANAGEMENT_DASHBOARD_PERIODS = [0, 7, 14, 30] as const;
+export type ManagementDashboardPeriod =
+  (typeof MANAGEMENT_DASHBOARD_PERIODS)[number];
+
+export const ManagementDashboardQuerySchema = z.object({
+  days: z.literal(MANAGEMENT_DASHBOARD_PERIODS).optional(),
+});
+
 export const ManagementDashboardSchema = LearningReportSummarySchema.extend({
   daily: z.array(
     z.object({

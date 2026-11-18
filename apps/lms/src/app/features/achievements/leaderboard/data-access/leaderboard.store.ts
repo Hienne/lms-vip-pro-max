@@ -14,6 +14,8 @@ import {
 import { LOCAL_STORAGE } from '../../../../core/storage/local-storage';
 import { serverData } from '../../../../core/data-access/server-data';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
+import { canOpenFunction } from '../../../../core/session/function-access';
+import { SessionStore } from '../../../../core/session/session.store';
 
 /** What the board ranks: learners, or units (branches). */
 export type LeaderboardView = 'people' | 'units';
@@ -91,6 +93,10 @@ export class LeaderboardStore {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly storage = inject(LOCAL_STORAGE);
+  private readonly session = inject(SessionStore);
+  readonly hasLearningAchievements$ = computed(() =>
+    canOpenFunction('COURSE_LEARNING', this.session.user$()?.grants ?? []),
+  );
 
   private readonly initial = this.route.snapshot.queryParams;
 
@@ -134,8 +140,9 @@ export class LeaderboardStore {
     },
   );
 
-  private readonly pointsData = serverData(() =>
-    this.client.call(learnerEndpoints.myPoints),
+  private readonly pointsData = serverData(
+    () => this.client.call(learnerEndpoints.myPoints),
+    { params: () => (this.hasLearningAchievements$() ? true : undefined) },
   );
 
   private readonly noticeDismissed = signal(this.readNoticeDismissed());

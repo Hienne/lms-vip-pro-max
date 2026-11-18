@@ -33,6 +33,7 @@ export class RoomVoiceStore {
   readonly speakers$ = computed(() => Object.values(this.state.speakers()));
 
   private send?: (command: RoomCommand) => void;
+  private wantsListening = false;
   private context?: AudioContext;
   private captureModule?: Promise<void>;
   private press?: string;
@@ -51,26 +52,36 @@ export class RoomVoiceStore {
     this.send = send;
   }
 
-  async enablePlayback(): Promise<void> {
-    if (!this.available$() || (this.listening$() && !this.paused$())) return;
+  startListeningByDefault(): void {
+    this.wantsListening = true;
+    void this.resumeAudio();
+  }
+
+  enablePlayback(): void {
+    if (this.available$()) this.startListeningByDefault();
+  }
+
+  private async resumeAudio(): Promise<void> {
+    if (typeof AudioContext === 'undefined') return;
     try {
       const context = (this.context ??= new AudioContext());
       context.onstatechange = () => {
-        if (this.context !== context || !this.listening$()) return;
+        if (this.context !== context) return;
         const paused = context.state !== 'running';
         this.state.paused.set(paused);
         if (paused) {
           if (this.announced) this.release();
           this.stopPlayback();
+        } else {
+          this.subscribeToVoice();
         }
       };
-      // Resume directly from a tap so mobile browsers permit audio output.
+      // Start within the join gesture, before the ticket or socket handshake.
       await context.resume();
       if (this.context !== context) return;
-      this.state.error.set('');
+      if (this.available$()) this.state.error.set('');
       this.state.paused.set(false);
-      this.state.listening.set(true);
-      this.send?.({ type: 'voice-listen', enabled: true });
+      this.subscribeToVoice();
     } catch {
       if (this.available$())
         this.state.error.set('Không bật được âm thanh thoại. Bấm lại để thử.');
@@ -78,8 +89,21 @@ export class RoomVoiceStore {
   }
 
   disablePlayback(): void {
+    this.wantsListening = false;
     this.closeAudio();
     this.send?.({ type: 'voice-listen', enabled: false });
+  }
+
+  private subscribeToVoice(): void {
+    if (
+      !this.wantsListening ||
+      !this.available$() ||
+      this.listening$() ||
+      this.context?.state !== 'running'
+    )
+      return;
+    this.state.listening.set(true);
+    this.send?.({ type: 'voice-listen', enabled: true });
   }
 
   async prepareMicrophone(): Promise<void> {
@@ -213,6 +237,7 @@ export class RoomVoiceStore {
               : 'Máy chủ chưa hỗ trợ phiên bản thoại này.',
           );
         }
+        this.subscribeToVoice();
         break;
       case 'voice-frame':
         this.play(event);
@@ -237,11 +262,19 @@ export class RoomVoiceStore {
     });
   }
 
+  disconnect(): void {
+    this.release();
+    this.stopPlayback();
+    this.state.listening.set(false);
+    this.state.available.set(false);
+    this.state.error.set('');
+  }
+
   reset(): void {
+    this.wantsListening = false;
     this.closeAudio();
     this.state.available.set(false);
     this.state.micReady.set(false);
-    this.state.error.set('');
   }
 
   private closeAudio(): void {

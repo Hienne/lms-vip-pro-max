@@ -10,6 +10,7 @@ import {
   LearningReportGroupSchema,
   LearningReportSummarySchema,
   ManagementDashboardSchema,
+  ManagementDashboardQuerySchema,
 } from './learning-reports.schema';
 
 /** Learning progress reports; the server enforces the report scope on every call. */
@@ -17,6 +18,7 @@ export const learningReportEndpoints = {
   dashboard: defineEndpoint({
     method: 'get',
     path: '/api/v1/reports/learning/dashboard',
+    query: ManagementDashboardQuerySchema,
     response: ManagementDashboardSchema,
   }),
   /** The counts of the scope, with the instant and time zone they are computed for. */

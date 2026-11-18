@@ -281,6 +281,7 @@ export class ChatRoomStore {
 
   join(identity: RoomIdentity): void {
     this.leave();
+    this.voice.startListeningByDefault();
     this.identity = identity;
     this.active = true;
     this.setEntered(true);
@@ -439,6 +440,7 @@ export class ChatRoomStore {
   leave(): void {
     this.active = false;
     this.stopSocket();
+    this.voice.reset();
     this.ticketMutation.reset();
     this.identity = null;
     clearTimeout(this.cooldown);
@@ -738,7 +740,7 @@ export class ChatRoomStore {
     this.setStatus('offline');
   }
   private stopSocket(): void {
-    this.voice.reset();
+    this.voice.disconnect();
     this.media.reset();
     this.setChallengeDice(false);
     this.generation++;

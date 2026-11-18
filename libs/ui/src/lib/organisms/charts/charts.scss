@@ -35,6 +35,30 @@
   font-size: 12px;
   font-family: ui.font(sans);
 }
+.chart-view__plot--compact {
+  position: relative;
+
+  .chart-view__svg {
+    height: var(--chart-compact-height, clamp(6.5rem, 10vw, 9rem));
+  }
+}
+.chart-view__compact-axis {
+  position: relative;
+  height: 1rem;
+}
+.chart-view__compact-axis span,
+.chart-view__compact-value {
+  @include ui.num;
+  position: absolute;
+  color: ui.color(text-muted);
+  font-size: 11px;
+  line-height: 1rem;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+.chart-view__compact-value {
+  transform: translate(-50%, calc(-100% - 2px));
+}
 .chart-view__value {
   fill: ui.color(text);
   font-weight: ui.weight(semibold);
@@ -106,6 +130,28 @@
   }
   strong {
     color: ui.color(text);
+  }
+}
+.chart-view--donut-compact {
+  flex-direction: row;
+  column-gap: ui.space(3);
+  row-gap: ui.space(2);
+
+  .chart-view__donut {
+    width: 174px;
+    height: 174px;
+  }
+
+  .chart-view__parts {
+    min-width: 8.75rem;
+  }
+
+  .chart-view__center-label {
+    font-size: 14px;
+  }
+
+  .chart-view__part {
+    gap: ui.space(1);
   }
 }
 .chart-view__segment--success {
