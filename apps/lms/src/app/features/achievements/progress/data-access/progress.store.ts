@@ -7,6 +7,7 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, Router, type Params } from '@angular/router';
 import {
+  competencyReviewEndpoints,
   learnerEndpoints,
   learnerQuizEndpoints,
   LearningStatusSchema,
@@ -30,6 +31,9 @@ export const PROGRESS_PAGE_SIZE = 10;
 
 /** Number of graded attempts requested per history page. */
 export const EXAM_HISTORY_SIZE = 10;
+
+/** How many weak competencies "Ôn lại" lists. */
+export const REVIEW_COMPETENCIES = 10;
 
 export type ProgressStatusFilter = 'all' | LearningStatus;
 export type ProgressTab = 'courses' | 'competency' | 'history';
@@ -175,6 +179,13 @@ export class ProgressStore {
     this.client.call(learnerQuizEndpoints.myCompetency, { query: {} }),
   );
 
+  /** The weak competencies and the lessons their mistakes come from (the server's, weakest first). */
+  private readonly reviewData = serverData(() =>
+    this.client.call(competencyReviewEndpoints.review, {
+      query: { limit: REVIEW_COMPETENCIES },
+    }),
+  );
+
   private readonly historySearch = signal('');
   private readonly historyResult = signal('all');
   private readonly historyPage = signal(1);
@@ -270,6 +281,9 @@ export class ProgressStore {
   readonly competency$ = this.competencyData.value;
   readonly competencyError$ = this.competencyData.error;
   readonly isCompetencyLoading$ = this.competencyData.isLoading;
+  readonly review$ = computed(() => this.reviewData.value() ?? []);
+  readonly reviewError$ = this.reviewData.error;
+  readonly isReviewLoading$ = this.reviewData.isLoading;
 
   /** The server's counts and availabilities; no filter touches them. */
   readonly summary$ = this.summaryData.value;
@@ -408,6 +422,10 @@ export class ProgressStore {
 
   retryCompetency(): void {
     this.competencyData.reload();
+  }
+
+  retryReview(): void {
+    this.reviewData.reload();
   }
 
   retryAttempts(): void {

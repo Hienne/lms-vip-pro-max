@@ -1,0 +1,146 @@
+@switch (store.status$()) { @case ('loading') {
+<ui-section-card title="Câu hỏi nhanh" class="checkpoint">
+  <div class="checkpoint__body" aria-busy="true">
+    <div uiSkeleton variant="text"></div>
+    <div uiSkeleton variant="block"></div>
+  </div>
+</ui-section-card>
+} @case ('error') {
+<ui-section-card title="Câu hỏi nhanh" class="checkpoint">
+  <ui-error-state
+    title="Không tải được câu hỏi nhanh"
+    [headingLevel]="3"
+    (retry)="store.retry()"
+  />
+  <button
+    slot="action"
+    uiButton
+    variant="ghost"
+    size="sm"
+    (click)="store.skip()"
+  >
+    Bỏ qua
+  </button>
+</ui-section-card>
+} @case ('empty') {
+<ui-section-card title="Câu hỏi nhanh" class="checkpoint">
+  <p class="checkpoint__note">
+    Bài này chưa có câu hỏi nhanh. Giảng viên chưa công bố thẻ ôn tập cho bài.
+  </p>
+  <button
+    slot="action"
+    uiButton
+    variant="ghost"
+    size="sm"
+    (click)="store.skip()"
+  >
+    Đóng
+  </button>
+</ui-section-card>
+} @case ('question') { @let question = store.current$(); @let graded =
+store.graded$(); @if (question) {
+<ui-section-card title="Câu hỏi nhanh" class="checkpoint">
+  <button
+    slot="action"
+    uiButton
+    variant="ghost"
+    size="sm"
+    (click)="store.skip()"
+  >
+    Bỏ qua
+  </button>
+  <div class="checkpoint__body">
+    <p class="checkpoint__count">
+      Câu {{ store.index$() + 1 }}/{{ store.total$() }} · không tính điểm
+    </p>
+    @if (store.refreshed$()) {
+    <ui-alert tone="info">
+      Câu hỏi vừa được cập nhật nên các câu đã được tải lại.
+    </ui-alert>
+    }
+    <fieldset class="checkpoint__answers">
+      <legend class="checkpoint__question">{{ question.content }}</legend>
+      <p class="checkpoint__hint">
+        {{ question.questionType === 'MULTIPLE' ? 'Chọn tất cả đáp án đúng.' :
+        'Chọn 1 đáp án đúng.' }}
+      </p>
+      @for (row of store.rows$(); track row.id) {
+      <ui-option-card
+        [title]="row.content"
+        [letter]="row.letter"
+        [tone]="row.tone"
+        [chosen]="row.picked"
+      >
+        @if (!row.tone) {
+        <input
+          [type]="question.questionType === 'MULTIPLE' ? 'checkbox' : 'radio'"
+          [name]="'checkpoint-' + question.questionId"
+          [attr.aria-label]="row.content"
+          [checked]="row.picked"
+          [disabled]="store.locked$()"
+          (change)="store.toggle(row.id)"
+        />
+        }
+      </ui-option-card>
+      }
+    </fieldset>
+    @if (graded) {
+    <p class="checkpoint__verdict" role="status">
+      <ui-icon
+        [name]="graded.result.correct ? 'circle-check' : 'circle-x'"
+        size="sm"
+      />
+      {{ graded.result.correct ? 'Đúng rồi.' : 'Chưa đúng.' }}
+    </p>
+    @if (graded.result.explanation; as explanation) {
+    <p class="checkpoint__explanation">{{ explanation }}</p>
+    } }
+    <div class="checkpoint__actions">
+      @if (graded) {
+      <button uiButton variant="primary" (click)="store.next()">
+        {{ store.isLast$() ? 'Xem kết quả' : 'Câu tiếp' }}
+        <ui-icon name="arrow-right" size="sm" />
+      </button>
+      } @else {
+      <button
+        uiButton
+        variant="primary"
+        [disabled]="!store.canCheck$()"
+        (click)="store.check()"
+      >
+        Kiểm tra
+      </button>
+      }
+    </div>
+  </div>
+</ui-section-card>
+} } @case ('summary') {
+<ui-section-card title="Câu hỏi nhanh" class="checkpoint">
+  <button
+    slot="action"
+    uiButton
+    variant="ghost"
+    size="sm"
+    (click)="store.skip()"
+  >
+    Đóng
+  </button>
+  <div class="checkpoint__body">
+    <p class="checkpoint__score" role="status">
+      Đúng {{ store.score$() }}/{{ store.total$() }}
+    </p>
+    <p class="checkpoint__note">
+      @if (store.score$() === store.total$()) { Bạn nhớ tốt nội dung bài này. }
+      @else { Xem lại bài để nắm chắc hơn, rồi làm lại để thử trí nhớ. }
+    </p>
+    <div class="checkpoint__actions">
+      <button uiButton (click)="store.reviewLesson()">
+        <ui-icon name="rotate-ccw" size="sm" />Xem lại bài học
+      </button>
+      <button uiButton variant="primary" (click)="store.again()">
+        Làm lại
+      </button>
+    </div>
+  </div>
+</ui-section-card>
+} }

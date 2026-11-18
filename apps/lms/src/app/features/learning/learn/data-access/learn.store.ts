@@ -1,5 +1,6 @@
 import { computed, inject, Injectable, Injector, signal } from '@angular/core';
 import {
+  competencyReviewEndpoints,
   learnerEndpoints,
   type CourseCard,
   type LearningReminder,
@@ -182,6 +183,13 @@ export class LearnStore {
     (this.coursesData.value() ?? []).map((card) => card.coverAssetId),
   );
 
+  /** The weakest competency and the lessons its mistakes come from; empty when nothing is weak. */
+  private readonly reviewData = serverData(() =>
+    this.client.call(competencyReviewEndpoints.review, {
+      query: { limit: 1 },
+    }),
+  );
+
   private readonly dueData = serverData(() =>
     this.client.call(learnerEndpoints.myCourses, {
       query: { sort: 'dueAt,asc', size: 10 },
@@ -291,6 +299,9 @@ export class LearnStore {
     ),
   );
 
+  readonly review$ = computed(() => this.reviewData.value() ?? []);
+  readonly reviewError$ = this.reviewData.error;
+  readonly isReviewLoading$ = this.reviewData.isLoading;
   readonly dueError$ = this.dueData.error;
   readonly isDueLoading$ = this.dueData.isLoading;
 
@@ -381,6 +392,10 @@ export class LearnStore {
 
   retryCourses(): void {
     this.coursesData.reload();
+  }
+
+  retryReview(): void {
+    this.reviewData.reload();
   }
 
   retryDue(): void {

@@ -177,6 +177,45 @@
       }
     </ui-section-card>
 
+    @if (store.reviewError$(); as error) {
+    <ui-section-card
+      title="Gợi ý ôn tập"
+      headingId="learn-review"
+      class="learn__panel"
+    >
+      <ui-error-state
+        title="Không tải được gợi ý ôn tập"
+        [message]="error.message"
+        (retry)="store.retryReview()"
+      />
+    </ui-section-card>
+    } @else if (store.isReviewLoading$()) {
+    <ui-section-card
+      title="Gợi ý ôn tập"
+      headingId="learn-review"
+      class="learn__panel"
+    >
+      <div
+        uiSkeleton
+        variant="block"
+        class="learn__due-placeholder"
+        aria-busy="true"
+      ></div>
+    </ui-section-card>
+    } @else if (store.review$()[0]; as weakest) {
+    <ui-section-card
+      title="Gợi ý ôn tập"
+      headingId="learn-review"
+      class="learn__panel"
+    >
+      <p class="learn__muted">
+        {{ weakest.name }} · {{ weakest.percent | fmtPct }}. Mở bài để làm vài
+        câu hỏi nhanh.
+      </p>
+      <app-review-suggestions [items]="[weakest]" [named]="false" />
+    </ui-section-card>
+    }
+
     <ui-section-card
       title="Công cụ học nhanh"
       headingId="learn-tools"

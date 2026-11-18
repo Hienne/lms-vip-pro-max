@@ -230,7 +230,31 @@
       />
       } @else if (store.competency$(); as rows) {
       <app-competency-view size="large" [rows]="rows" />
-      } @else {
+      @if (store.reviewError$(); as reviewError) {
+      <ui-error-state
+        title="Không tải được gợi ý ôn tập"
+        [message]="reviewError.message"
+        (retry)="store.retryReview()"
+      />
+      } @else if (store.isReviewLoading$()) {
+      <div
+        uiSkeleton
+        variant="block"
+        class="learning-progress__competency-placeholder"
+        aria-busy="true"
+      ></div>
+      } @else if (store.review$().length) {
+      <section
+        class="learning-progress__review"
+        aria-labelledby="progress-review"
+      >
+        <h3 id="progress-review">Ôn lại</h3>
+        <p class="learning-progress__muted">
+          Các bài mà câu sai của bạn đến từ. Mở bài để làm vài câu hỏi nhanh.
+        </p>
+        <app-review-suggestions [items]="store.review$()" />
+      </section>
+      } } @else {
       <div
         uiSkeleton
         variant="block"

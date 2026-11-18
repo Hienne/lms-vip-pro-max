@@ -9,6 +9,7 @@ export * from './lib/shell/shell.fixtures';
 export * from './lib/admin-org/admin-org.fixtures';
 export * from './lib/assessment/assessment.mock';
 export * from './lib/assessment/learner-quiz.mock';
+export * from './lib/learning-loop/learning-loop.mock';
 export * from './lib/reports/reports.fixtures';
 export * from './lib/reports/learning-report.handlers';
 export * from './lib/learning/learning.fixtures';

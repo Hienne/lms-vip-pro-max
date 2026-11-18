@@ -237,6 +237,16 @@
     }
   }
 
+  &__review {
+    @include ui.stack(3);
+
+    h3 {
+      @include ui.text(lg);
+      margin: 0;
+      font-weight: ui.weight(semibold);
+    }
+  }
+
   &__fail {
     color: ui.color(danger);
     font-weight: ui.weight(medium);

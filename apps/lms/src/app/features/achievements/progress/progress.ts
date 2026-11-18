@@ -29,6 +29,7 @@ import {
 } from '@lms/ui';
 import { ActivityHeatmap } from '../../../shared/learning/activity-heatmap/activity-heatmap';
 import { CompetencyView } from '../../../shared/learning/competency/competency-view';
+import { ReviewSuggestions } from '../../../shared/learning/review-suggestions/review-suggestions';
 import {
   ProgressCounts,
   type ProgressCountFilter,
@@ -62,6 +63,7 @@ import {
     PageHeader,
     Progress,
     ProgressCounts,
+    ReviewSuggestions,
     RouterLink,
     Search,
     Select,

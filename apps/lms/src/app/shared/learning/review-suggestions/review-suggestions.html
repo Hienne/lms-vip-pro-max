@@ -1,0 +1,23 @@
+@for (item of items(); track item.competencyId) {
+<section class="review__group" [attr.aria-label]="'Ôn lại: ' + item.name">
+  @if (named()) {
+  <h3 class="review__title">{{ item.name }} · {{ item.percent | fmtPct }}</h3>
+  } @if (item.lessons.length) {
+  <ul uiList>
+    @for (lesson of item.lessons; track lesson.lessonId) {
+    <li>
+      <ui-list-row
+        [link]="['/lesson', lesson.courseId, lesson.lessonId]"
+        [queryParams]="query"
+        [title]="lesson.lessonTitle"
+        [subtitle]="lesson.courseTitle + ' · ' + lesson.missedCount + ' câu sai'"
+        chevron
+      />
+    </li>
+    }
+  </ul>
+  } @else {
+  <p class="review__done">Bạn đã ôn xong các bài của năng lực này.</p>
+  }
+</section>
+}

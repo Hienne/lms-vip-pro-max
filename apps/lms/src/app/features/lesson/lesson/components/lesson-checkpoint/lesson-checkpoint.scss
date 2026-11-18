@@ -1,0 +1,53 @@
+@use 'ui';
+
+:host {
+  display: block;
+}
+
+.checkpoint {
+  &__body {
+    @include ui.stack(3);
+  }
+
+  &__count,
+  &__hint,
+  &__note {
+    @include ui.text(sm);
+    margin: 0;
+    color: ui.color(text-secondary);
+  }
+
+  &__answers {
+    @include ui.stack(2);
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  &__question {
+    padding: 0;
+    font-weight: ui.weight(semibold);
+  }
+
+  &__verdict {
+    @include ui.row(2);
+    margin: 0;
+    font-weight: ui.weight(medium);
+  }
+
+  &__explanation {
+    margin: 0;
+  }
+
+  &__score {
+    margin: 0;
+    font-size: ui.text-size(xl);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__actions {
+    @include ui.row(2);
+    justify-content: flex-end;
+  }
+}
