@@ -295,6 +295,8 @@
         </div>
       </section>
 
+      <app-lesson-checkpoint class="lesson__checkpoint" />
+
       <div uiCard class="lesson__stepbar">
         <nav class="lesson__stepbar-nav" aria-label="Chuyển khối và bài học">
           @if (store.prevBlockId$(); as previous) {
@@ -437,6 +439,15 @@
         (follow)="store.followAnchor($event)"
         (retry)="store.retryNotes()"
       />
+    </div>
+    <div uiTabPanel="review" class="lesson__side-panel">
+      <p class="lesson__progress">
+        Ôn lại bài vừa học bằng vài câu hỏi nhanh. Không tính điểm và không ảnh
+        hưởng tiến độ.
+      </p>
+      <button uiButton (click)="store.openCheckpoint()">
+        <ui-icon name="circle-help" size="sm" />Làm câu hỏi nhanh
+      </button>
     </div>
   </ui-tabs>
 </ng-template>

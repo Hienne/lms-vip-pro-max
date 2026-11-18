@@ -27,6 +27,7 @@ import { QuizCard } from '../../../shared/quiz/quiz-card/quiz-card';
 import { AttachmentBlock } from './components/attachment-block/attachment-block';
 import { BlockList } from './components/block-list/block-list';
 import { ImageBlock } from './components/image-block/image-block';
+import { LessonCheckpoint } from './components/lesson-checkpoint/lesson-checkpoint';
 import { LessonFeedback } from './components/lesson-feedback/lesson-feedback';
 import { LessonNotes } from './components/lesson-notes/lesson-notes';
 import { LessonOutline } from './components/lesson-outline/lesson-outline';
@@ -59,6 +60,7 @@ import { ScormBlock } from './components/scorm-block/scorm-block';
     Icon,
     IconButton,
     ImageBlock,
+    LessonCheckpoint,
     LessonFeedback,
     LessonNotes,
     LessonOutline,
@@ -169,6 +171,7 @@ export class Lesson {
   protected readonly sideTabs = computed(() => [
     { id: 'outline', label: 'Mục lục' },
     { id: 'notes', label: 'Ghi chú', count: this.store.noteCount$() },
+    { id: 'review', label: 'Tự kiểm tra' },
   ]);
 
   protected readonly minutes = computed(() =>

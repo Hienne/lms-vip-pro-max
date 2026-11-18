@@ -104,6 +104,7 @@ import {
 } from '../assessment/authoring.mock';
 import { CourseJobMock } from '../assistant-course/course-job.mock';
 import { LearnerQuizMock } from '../assessment/learner-quiz.mock';
+import { LearningLoopMock } from '../learning-loop/learning-loop.mock';
 import { learningReportHandlers } from '../reports/learning-report.handlers';
 import {
   SEED_FUNCTIONS,
@@ -249,6 +250,7 @@ export class FakeBackend {
       this.learning.courseOwnership(courseId),
   );
   private readonly learnerQuiz = new LearnerQuizMock();
+  private readonly learningLoop = new LearningLoopMock();
   private readonly courseJobs = new CourseJobMock();
   private orgs: Mutable<SeedOrg>[] = SEED_ORGS.map((o) => ({ ...o }));
   private teams: Mutable<SeedTeam>[] = SEED_TEAMS.map((t) => ({ ...t }));
@@ -396,6 +398,7 @@ export class FakeBackend {
       this.authoring.answers(endpoint) ||
       this.assessment.answers(endpoint) ||
       this.learnerQuiz.answers(endpoint) ||
+      this.learningLoop.answers(endpoint) ||
       this.courseJobs.answers(endpoint) ||
       learningReportHandlers.has(endpoint)
     );
@@ -430,6 +433,8 @@ export class FakeBackend {
     if (assessmentReply) return assessmentReply;
     const quizReply = this.learnerQuiz.handle(endpoint, request);
     if (quizReply) return quizReply;
+    const loopReply = this.learningLoop.handle(endpoint, request);
+    if (loopReply) return loopReply;
     const learningReply = learningReportHandlers.get(endpoint)?.(request);
     if (learningReply) return learningReply;
     const handler = this.handlers.get(endpoint);
