@@ -17,5 +17,20 @@
       background: ui.color(primary-subtle);
       color: ui.color(primary);
     }
+
+    &--jump {
+      border: 0;
+      background: transparent;
+      font: inherit;
+      cursor: pointer;
+
+      &:hover {
+        color: ui.color(primary);
+      }
+
+      &:focus-visible {
+        @include ui.focus-ring;
+      }
+    }
   }
 }

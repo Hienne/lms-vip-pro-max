@@ -609,6 +609,7 @@ function courseDetail(seed: SeedCourse, ids: () => number): CourseDetail {
                     sourceBlockId: null,
                     videoChapters: [...(notes?.videoChapters ?? [])],
                     transcript: [...(notes?.transcript ?? [])],
+                    allowSeeking: false,
                     rowVersion: 0,
                     ...stamp,
                   },
