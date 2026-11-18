@@ -30,19 +30,6 @@
   }
 }
 
-.dashboard__header {
-  @include ui.row(3);
-  align-items: center;
-  justify-content: space-between;
-  padding-block: calc(var(--dashboard-extra-space) / 2);
-
-  h1 {
-    margin: 0;
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-}
-
 .dashboard__period {
   @include ui.row(2);
 
@@ -53,7 +40,7 @@
 
 .dashboard__dates {
   @include ui.num;
-  @include ui.text(xs, muted);
+  @include ui.text(sm, muted);
 }
 
 .dashboard__stats {
@@ -90,7 +77,7 @@
 }
 
 .dashboard__chart-note {
-  @include ui.text(xs, muted);
+  @include ui.text(sm, muted);
   margin: 0 0 ui.space(2);
 }
 
@@ -122,7 +109,7 @@
 }
 
 .dashboard__ranking-scope {
-  @include ui.text(xs, muted);
+  @include ui.text(sm, muted);
   margin: 0;
   padding: 2px ui.space(4);
 }
@@ -141,7 +128,7 @@
   }
 
   thead th {
-    @include ui.text(xs, muted);
+    @include ui.text(sm, muted);
     font-weight: ui.weight(semibold);
   }
 
@@ -154,11 +141,6 @@
   td:last-child {
     text-align: right;
   }
-
-  tbody tr:first-child .dashboard__rank {
-    background: ui.color(primary-subtle);
-    color: ui.color(primary);
-  }
 }
 
 .dashboard__rank {
@@ -167,8 +149,6 @@
   place-items: center;
   inline-size: 1.25rem;
   block-size: 1.25rem;
-  border-radius: 50%;
-  background: ui.color(surface-sunken);
   color: ui.color(text-muted);
   font-weight: ui.weight(semibold);
 }
