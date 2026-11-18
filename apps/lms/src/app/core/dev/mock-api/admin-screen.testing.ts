@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { createAppRoutes } from '../../../app.routes';
+import { CourseDraftingStore } from '../../course-drafting/course-drafting.store';
 import { parseAppConfig, provideAppConfig } from '../../config/app-config';
 import { testAppConfig } from '../../config/app-config.testing';
 import { MockBackend } from './mock-api.interceptor';
@@ -36,6 +37,8 @@ export function setUpAdminScreen(providers: Provider[] = []) {
         ),
         provideRouter(createAppRoutes({ devTools: true })),
         { provide: SessionStore, useClass: FakeSessionStore },
+        // The shell provides it in the app; screens render here without the shell.
+        CourseDraftingStore,
         ...providers,
       ],
     });

@@ -33,7 +33,10 @@ import {
 import { setUpAdminScreen } from '../../../core/dev/mock-api/admin-screen.testing';
 import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
 import { DEFAULT_COURSE_COVER } from '../../../shared/course/course-card';
-import { AgentChatStore } from '../../../core/assistant/agent-chat.store';
+import {
+  AgentChatStore,
+  DRAFTING_SOURCE_QUESTION,
+} from '../../../core/assistant/agent-chat.store';
 import { ChatWidget } from '../../../layout/chat-widget/chat-widget';
 import { Toaster } from '@lms/ui';
 import { KeptDrafts } from '../../../core/session/kept-drafts';
@@ -2042,7 +2045,7 @@ describe('CourseEditor', () => {
         expect(draftButton()).toBeUndefined();
       });
 
-      it('opens the chat on a new conversation with the file picker, and the file picked lands on step 1 of a session', async () => {
+      it('opens the file picker in its own click, then the chat on a new conversation, and the file picked lands on step 1 of a session', async () => {
         await screen.open('/admin/courses/new');
         const chat = TestBed.inject(AgentChatStore);
         chat.setTurns([
@@ -2063,27 +2066,34 @@ describe('CourseEditor', () => {
         chat.setConversationId(77);
         const widget = TestBed.createComponent(ChatWidget);
         await screen.settle();
-        const opened = vi.spyOn(HTMLInputElement.prototype, 'click');
+        const opened = vi
+          .spyOn(HTMLInputElement.prototype, 'click')
+          .mockImplementation(() => undefined);
+        const picker = screen.el.querySelector<HTMLInputElement>(
+          '.course-editor__head-state input[type="file"]',
+        )!;
 
-        await screen.click(draftButton());
-        await widget.whenStable();
-
-        const panel = widget.nativeElement as HTMLElement;
-        expect(panel.querySelector('[role="dialog"]')).not.toBeNull();
-        expect(chat.turns$()).toEqual([]);
-        expect(chat.conversationId$()).toBeNull();
-        const picker =
-          panel.querySelector<HTMLInputElement>('input[type="file"]')!;
-        expect(opened.mock.contexts).toContain(picker);
+        draftButton()?.click();
+        // The browser opens the picker only from the click itself, not after it.
+        expect(opened.mock.contexts).toEqual([picker]);
+        expect(chat.isOpen$()).toBe(false);
 
         const file = new File(['# Quy trình'], 'quy-trinh.md', {
           type: 'text/markdown',
         });
         Object.defineProperty(picker, 'files', {
-          value: { item: () => file, length: 1 },
+          value: { item: () => file, 0: file, length: 1 },
           configurable: true,
         });
         picker.dispatchEvent(new Event('change'));
+        await widget.whenStable();
+
+        const panel = widget.nativeElement as HTMLElement;
+        expect(panel.querySelector('[role="dialog"]')).not.toBeNull();
+        expect(chat.turns$().map((turn) => turn.question)).toEqual([
+          DRAFTING_SOURCE_QUESTION,
+        ]);
+        opened.mockRestore();
 
         await vi.waitFor(() =>
           expect(screen.url()).toMatch(/^\/admin\/courses\/new\?session=\d+$/),

@@ -51,23 +51,6 @@ const invalidState = (message = INVALID_STATE_MESSAGE): FakeReply => ({
 /** A session the assistant still works in: a failed one is retried or filled by hand. */
 const isOpen = (session: DraftingSession) =>
   session.status === 'active' || session.status === 'failed';
-const CONTENT_NOT_EMPTY_MESSAGE =
-  'Bài do trợ lý đề xuất được lưu với nội dung trống; hãy thêm nội dung sau khi chốt bước này.';
-const contentNotEmpty = (): FakeReply => ({
-  status: 200,
-  body: envelopeError(
-    BACKEND_RESPONSES.validationFailed.code,
-    BACKEND_RESPONSES.validationFailed.title,
-    CONTENT_NOT_EMPTY_MESSAGE,
-    [
-      {
-        field: 'draft.chapters',
-        code: 'CONTENT_NOT_EMPTY',
-        message: CONTENT_NOT_EMPTY_MESSAGE,
-      },
-    ],
-  ),
-});
 const fieldRequired = (field: string, message: string): FakeReply => ({
   status: 200,
   body: envelopeError(
@@ -86,6 +69,26 @@ const takenCode = (): FakeReply => {
     ]),
   };
 };
+
+/** Files a user may upload for the assistant and leave unused within a day, as the server allows. */
+export const DRAFTING_UPLOADS_PER_DAY = 10;
+
+/** The server's refusal of an upload past the daily cap: why, and how long to wait, on `limit`. */
+const uploadLimit = (): FakeReply => ({
+  status: 200,
+  body: envelopeError(
+    'ASSISTANT-JOB_RATE_LIMITED',
+    'Đã hết lượt',
+    'Bạn đã tạo đủ số khóa học bằng AI cho phép trong ngày.',
+    [
+      {
+        field: 'limit',
+        code: 'DAILY_UPLOAD_LIMIT',
+        message: `Bạn đã tải lên ${DRAFTING_UPLOADS_PER_DAY} tài liệu cho trợ lý trong ngày, thử lại sau 3 giờ.`,
+      },
+    ],
+  ),
+});
 
 /** The runner's text for a document it could not read, the failure a spec asks for. */
 export const DRAFTING_STEP_FAILURE =
@@ -157,6 +160,44 @@ export interface DraftingCourses {
     command: ConfirmRulesCommand,
     aiGenerated: boolean,
   ): FakeReply | undefined;
+  /** The draft of the course as saved now, for the step 4 publish check. */
+  detail?(courseId: number): CourseDetail | undefined;
+  /** The draft holds content the assistant proposed: publishing asks "Tôi đã rà soát nội dung". */
+  markAiGenerated?(courseId: number): void;
+}
+
+type SavedLesson = CourseDetail['chapters'][number]['lessons'][number];
+
+/** The editor's `lessonProblem` on a saved lesson: what stops it from being published. */
+const lessonIncomplete = ({ lesson, blocks }: SavedLesson): boolean => {
+  if (lesson.lessonType === 'scorm') return !lesson.scormPackageId;
+  if (lesson.lessonType === 'quiz') return !lesson.quizId;
+  return blocks.length === 0;
+};
+
+/**
+ * What still blocks publishing the saved draft, as step 4 lists it in the chat: the labels of the
+ * editor's failing required pre-publish checks (`draftChecks`), in its order, then how many
+ * content lessons are still empty. A spec on the editor proves the two lists agree.
+ */
+export function publishBlockersOf(detail: CourseDetail): string[] {
+  const { revision } = detail;
+  const lessons = detail.chapters.flatMap((chapter) => chapter.lessons);
+  const empty = lessons.filter(
+    (item) =>
+      item.lesson.lessonType !== 'quiz' &&
+      item.lesson.lessonType !== 'scorm' &&
+      item.blocks.length === 0,
+  ).length;
+  const blockers: string[] = [];
+  if (!revision.title?.trim() || !revision.programId)
+    blockers.push('Có tên khóa học và chương trình');
+  if (lessons.length === 0) blockers.push('Có ít nhất 1 bài học');
+  if (lessons.some(lessonIncomplete))
+    blockers.push('Mọi bài học có nội dung, đủ tệp hoặc đã chọn bài kiểm tra');
+  if (!revision.level) blockers.push('Đã chọn mức độ khóa học');
+  if (empty > 0) blockers.push(`${empty} bài chưa có nội dung`);
+  return blockers;
 }
 
 type ProposedLesson = OutlineProposal['chapters'][number]['lessons'][number];
@@ -235,6 +276,9 @@ export class DraftingSessionMock {
   /** Called each time a step becomes `proposed` or `failed`; the fake backend posts the step message. */
   onStepReady: DraftingStepReady | undefined;
 
+  /** The courses the steps save into, for the session reads that make a proposal (step 4's check). */
+  private courses: DraftingCourses | undefined;
+
   /** The next time `step` would be ready, it fails instead (once). */
   failNext(step: DraftingStepNumber): void {
     this.failing.add(step);
@@ -258,11 +302,17 @@ export class DraftingSessionMock {
     courses?: DraftingCourses,
   ): FakeReply | undefined {
     if (!this.answers(endpoint)) return undefined;
+    this.courses = courses;
     if (endpoint === draftingSessionEndpoints.start)
       return this.start(request, owner);
     if (endpoint === draftingSessionEndpoints.uploadSource) {
       const file = formValue(request.body, 'file');
       if (!(file instanceof Blob)) return refusal('validationFailed');
+      // Like the server: a cap on the files waiting unused for a session.
+      const unused = this.sources.filter(
+        (item) => item.owner === owner && !item.used,
+      );
+      if (unused.length >= DRAFTING_UPLOADS_PER_DAY) return uploadLimit();
       const source: MockSource = {
         documentId: this.nextDocument++,
         owner,
@@ -435,6 +485,8 @@ export class DraftingSessionMock {
         replyCode(created) === BACKEND_RESPONSES.learningDuplicate.code
       ) {
         this.proposeCode(entry, current, code);
+        // The chat says which code is proposed now.
+        this.ready(entry, 1);
         return takenCode();
       }
       if (created && !replyData(created)) return created;
@@ -472,30 +524,25 @@ export class DraftingSessionMock {
     if (current.step === 2) {
       const draft = (parsed.data as { draft: SaveDraftCommand }).draft;
       const proposal = current.proposal;
-      // The assistant never writes lesson content: a proposed lesson sent with content is refused.
+      // The page sends what it holds, content included: the assistant itself never writes any.
       const proposedTitles = new Set(
         (proposal?.chapters ?? []).flatMap((chapter) =>
           chapter.lessons.map((lesson) => lesson.title.trim()),
         ),
       );
-      if (
-        draft.chapters.some((chapter) =>
-          chapter.lessons.some(
-            (lesson) =>
-              proposedTitles.has(lesson.title.trim()) &&
-              lesson.blocks.length > 0,
-          ),
-        )
-      ) {
-        return contentNotEmpty();
-      }
+      // AI made only when a proposed lesson is among the saved ones.
+      const keepsProposal = draft.chapters.some((chapter) =>
+        chapter.lessons.some((lesson) =>
+          proposedTitles.has(lesson.title.trim()),
+        ),
+      );
       const savedReply =
         session.courseId !== null && session.revisionId !== null
           ? courses?.saveOutline(
               session.courseId,
               session.revisionId,
               draft,
-              proposedTitles.size > 0,
+              keepsProposal,
             )
           : undefined;
       if (savedReply && !replyData(savedReply)) return savedReply;
@@ -530,17 +577,20 @@ export class DraftingSessionMock {
     return ok(this.view(entry));
   }
 
-  /** Step 1 proposes a new code after a taken one, with a line for the chat, as the server does. */
+  /**
+   * Step 1 proposes a new code after a taken one, with a line for the chat, as the server does.
+   */
   private proposeCode(
     entry: MockSession,
     current: DraftingStep,
     taken: string,
   ): void {
     entry.code = this.freshCode();
-    if (current.step === 1 && current.proposal) {
+    // A step with no proposal (filled by hand, failed) gets one holding only the code.
+    if (current.step === 1) {
       this.replace(entry, {
         ...current,
-        proposal: { ...current.proposal, code: entry.code },
+        proposal: { ...(current.proposal ?? {}), code: entry.code },
         notes: [
           ...current.notes,
           `Mã ${taken} đã có; trợ lý đề xuất mã ${entry.code}.`,
@@ -554,10 +604,15 @@ export class DraftingSessionMock {
     step: DraftingStepNumber,
   ): FakeReply {
     const current = this.stepOf(entry, step);
+    // Only the session's current step: a proposal for another one would show nowhere.
+    if (step !== entry.session.currentStep)
+      return invalidState(
+        'Chỉ đề xuất lại được bước trợ lý đang soạn. Các bước đã chốt, bạn tự sửa rồi Lưu nháp.',
+      );
     if (
       !isOpen(entry.session) ||
       !current ||
-      !['proposed', 'confirmed', 'failed'].includes(current.state)
+      !['proposed', 'failed'].includes(current.state)
     )
       return invalidState('Bước này không đề xuất lại được lúc này.');
     entry.polls.set(step, 0);
@@ -624,6 +679,10 @@ export class DraftingSessionMock {
         continue;
       }
       this.replace(entry, this.proposed(entry, step.step));
+      // A proposal of the outline or questions in a course that exists makes it AI made.
+      const courseId = entry.session.courseId;
+      if (courseId !== null && (step.step === 2 || step.step === 3))
+        this.courses?.markAiGenerated?.(courseId);
       this.ready(entry, step.step);
     }
   }
@@ -635,6 +694,20 @@ export class DraftingSessionMock {
 
   private proposed(entry: MockSession, step: DraftingStepNumber): DraftingStep {
     const ready = draftingStepFixture(step, 'proposed');
+    if (ready.step === 4 && ready.proposal) {
+      const courseId = entry.session.courseId;
+      const saved =
+        courseId === null ? undefined : this.courses?.detail?.(courseId);
+      return saved
+        ? {
+            ...ready,
+            proposal: {
+              ...ready.proposal,
+              publishBlockers: publishBlockersOf(saved),
+            },
+          }
+        : ready;
+    }
     if (ready.step !== 1 || !ready.proposal) return ready;
     return {
       ...ready,

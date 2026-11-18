@@ -5,6 +5,7 @@ import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { createAppRoutes } from '../../app.routes';
 import { parseAppConfig, provideAppConfig } from '../config/app-config';
+import { CourseDraftingStore } from '../course-drafting/course-drafting.store';
 import { testAppConfig } from '../config/app-config.testing';
 import { SessionStore } from '../session/session.store';
 import {
@@ -43,6 +44,8 @@ describe('route table', () => {
         provideAppConfig(parseAppConfig(testAppConfig())),
         provideRouter(createAppRoutes({ devTools: true })),
         { provide: SessionStore, useClass: FakeSessionStore },
+        // The app shell provides it in the app; the harness renders the screens without the shell.
+        CourseDraftingStore,
       ],
     });
     session = fakeSession();

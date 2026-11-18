@@ -13,6 +13,7 @@ import { NgComponentOutlet } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { DrawerOutlet } from '@lms/ui';
 import { AgentChatStore } from '../../core/assistant/agent-chat.store';
+import { CourseDraftingStore } from '../../core/course-drafting/course-drafting.store';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { DEV_FEATURES } from '../../core/dev/dev-features';
 import { MyLevelStore } from '../../core/learning/my-level.store';
@@ -54,7 +55,8 @@ import type { UserMenuValue } from '../header/header';
     '[style.--owl-inset.px]': 'inset()',
     '[style.--shell-gutter]': 'gutter()',
   },
-  providers: [ShellStore, UsageGuideStore],
+  // The drafting session is followed by both the chat panel and the course editor below it.
+  providers: [ShellStore, UsageGuideStore, CourseDraftingStore],
   templateUrl: './app-shell.html',
   styleUrl: './app-shell.scss',
 })

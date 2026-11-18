@@ -26,7 +26,11 @@ export const draftingSessionEndpoints = {
     body: StartDraftingCommandSchema,
     response: DraftingSessionSchema,
   }),
-  /** Uploads the chat's attachment as a private source, not yet linked to a session. */
+  /**
+   * Uploads the chat's attachment as a private source, not yet linked to a session. Past the daily
+   * cap of unused uploads it is `ASSISTANT-JOB_RATE_LIMITED`, field `limit` code
+   * `DAILY_UPLOAD_LIMIT`, whose message says how long to wait.
+   */
   uploadSource: defineEndpoint({
     method: 'post',
     path: '/api/v1/assistant/drafting-sessions/sources',
@@ -51,7 +55,9 @@ export const draftingSessionEndpoints = {
   /**
    * Confirms the current step with the page's values (body by step: `{course}`, `{draft}`,
    * `{draft, competencyId, questions}`, `{}`) and starts the next one. A taken course code is
-   * `LEARNING-DUPLICATE`, and the session then proposes a new code.
+   * `LEARNING-DUPLICATE`, and the session then proposes a new code (a code-only step 1 proposal
+   * when the author filled the step) and posts a step 1 chat card. A step 1 course for another
+   * unit than the session's is field `course.ownerOrgId` code `OWNER_MISMATCH`.
    */
   confirm: defineEndpoint({
     method: 'post',
@@ -61,8 +67,9 @@ export const draftingSessionEndpoints = {
     response: DraftingSessionSchema,
   }),
   /**
-   * Proposes a `proposed`, `confirmed` or `failed` step again ("Đề xuất lại", "Thử lại"); other
-   * steps and the course stay, a failed session is active again. Counts against the daily
+   * Proposes the session's current step again ("Đề xuất lại", "Thử lại") once it is `proposed` or
+   * `failed`; any other step is `INVALID_STATE`. Other steps and the course stay, a failed session
+   * is active again. Counts against the daily
    * course-generation limit (`ASSISTANT-JOB_RATE_LIMITED`); a finished or manual session refuses.
    */
   proposeAgain: defineEndpoint({

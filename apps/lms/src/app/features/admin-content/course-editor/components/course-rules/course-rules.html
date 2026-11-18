@@ -213,7 +213,7 @@
         hint="Cộng vào điểm tích lũy và bảng xếp hạng."
         ><input uiInput type="number" [formField]="draft().rewardPoints" />
         @if (suggested().has('rewardPoints')) {
-        <span uiBadge><ui-icon name="sparkles" size="sm" />AI đề xuất</span>
+        <app-suggested-mark />
         }
       </ui-field>
     </div>

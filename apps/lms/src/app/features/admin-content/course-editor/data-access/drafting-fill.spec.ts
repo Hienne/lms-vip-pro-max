@@ -5,8 +5,13 @@ import type {
   RulesProposal,
 } from '@lms/contracts';
 import { emptyDraftValue, type CourseDraftValue } from '../course-draft';
+import { FillPlayer } from './drafting-fill-player';
 import {
+  DRAFTING_FIELD_DELAY_MS,
+  fieldPatch,
   fillSteps,
+  markedFields,
+  writtenOf,
   type AudiencePatch,
   type FillPatch,
   type RulesPatch,
@@ -41,6 +46,54 @@ const frames = (step: DraftingStep): CourseDraftValue[] => {
     .filter((patch): patch is FillPatch => 'apply' in patch)
     .map((patch) => (value = patch.apply(value)));
 };
+
+describe('markedFields', () => {
+  it('marks a field while it holds what the assistant wrote', () => {
+    const value = { ...emptyDraftValue(), title: 'Đối soát', summary: 'Sửa' };
+    const written = {
+      title: writtenOf(fieldPatch('title', 'Đối soát')),
+      summary: writtenOf(fieldPatch('summary', 'Gốc')),
+    };
+
+    expect([...markedFields(value, written)]).toEqual(['title']);
+  });
+});
+
+describe('FillPlayer', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('writes the first patch at once and the rest one delay apart, then says it is done', () => {
+    vi.useFakeTimers();
+    const player = new FillPlayer();
+    const written: string[] = [];
+    const done = vi.fn();
+    const patches = [fieldPatch('title', 'A'), fieldPatch('summary', 'B')];
+
+    player.play(patches, (patch) => written.push(patch.field), done);
+    expect(written).toEqual(['title']);
+    expect(done).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(DRAFTING_FIELD_DELAY_MS);
+    expect(written).toEqual(['title', 'summary']);
+    expect(done).toHaveBeenCalledTimes(1);
+  });
+
+  it('writes nothing more once cancelled', () => {
+    vi.useFakeTimers();
+    const player = new FillPlayer();
+    const written: string[] = [];
+    player.play(
+      [fieldPatch('title', 'A'), fieldPatch('summary', 'B')],
+      (patch) => written.push(patch.field),
+      () => undefined,
+    );
+
+    player.cancel();
+    vi.advanceTimersByTime(DRAFTING_FIELD_DELAY_MS * 3);
+
+    expect(written).toEqual(['title']);
+  });
+});
 
 describe('fillSteps', () => {
   it('writes step 1 one field at a time, in the order the page shows them', () => {
@@ -110,6 +163,20 @@ describe('fillSteps', () => {
       'Nắm các bước đối soát',
       'Xử lý chênh lệch',
     ]);
+  });
+
+  it('writes only the code of a code-only proposal (a new code after a taken one)', () => {
+    const codeOnly: DraftingStep = {
+      step: 1,
+      state: 'manual',
+      proposal: { code: 'KH-0042' },
+      notes: [],
+      error: null,
+      updateTime: '2026-11-17T09:00:00+07:00',
+    };
+    const patches = fillSteps(codeOnly);
+
+    expect(patches.map((patch) => patch.field)).toEqual(['code']);
   });
 
   it('writes nothing for a step without a proposal', () => {
@@ -191,6 +258,20 @@ describe('fillSteps', () => {
         last.chapters[0].lessons[0].key,
       );
       expect(all[0].chapters[0].key).toBe(last.chapters[0].key);
+    });
+
+    it("carries each lesson's line and source by the row key it writes", () => {
+      const patches = fillSteps(stepTwo).filter(
+        (patch): patch is FillPatch => 'apply' in patch,
+      );
+      const final = patches[patches.length - 1];
+      const first = final.apply(emptyDraftValue()).chapters[0].lessons[0];
+
+      expect(final.notes?.[first.key]).toEqual({
+        text: 'Vì sao đối soát. · Nguồn: Mục 1',
+        suggested: true,
+      });
+      expect(Object.keys(final.notes ?? {})).toHaveLength(3);
     });
 
     it('replaces chapters the form already had', () => {

@@ -13,7 +13,8 @@ import type {
 
 export const DRAFTING_FIXTURE_TIME = '2026-11-17T09:00:00+07:00';
 
-export const basicsProposalFixture: BasicsProposal = {
+/** A whole step 1 proposal: every field present (only a code-only one after a taken code lacks them). */
+export const basicsProposalFixture: Required<BasicsProposal> = {
   title: 'Quy trình đối soát cuối ngày',
   summary:
     'Khóa học hướng dẫn giao dịch viên các bước đối soát giao dịch cuối ngày và xử lý chênh lệch.',

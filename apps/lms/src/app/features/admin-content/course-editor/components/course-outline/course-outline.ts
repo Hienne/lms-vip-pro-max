@@ -35,6 +35,8 @@ import {
   lessonPlace,
 } from '../../data-access/course-ai-job.store';
 import type { LessonTarget } from '../../data-access/course-editor.store';
+import type { LessonNoteView } from '../../data-access/drafting-fill';
+import { SuggestedMark } from '../suggested-mark/suggested-mark';
 import {
   isBusy,
   lessonUploadOf,
@@ -71,6 +73,7 @@ const AI_STATES: Readonly<
   selector: 'app-course-outline',
   imports: [
     Badge,
+    SuggestedMark,
     Button,
     Card,
     CardBody,
@@ -93,10 +96,11 @@ const AI_STATES: Readonly<
 export class CourseOutline {
   readonly draft = input.required<FieldTree<CourseDraftValue>>();
   readonly editable = input(true);
-  /** The assistant's line under the lessons it proposed, by lesson title. */
-  readonly lessonNotes = input<
-    ReadonlyMap<string, { readonly text: string; readonly suggested: boolean }>
-  >(new Map());
+  /**
+   * The assistant's line under the lessons it proposed: by saved lesson id (`id:…`), or by row key
+   * (`key:…`) for a lesson not saved yet.
+   */
+  readonly lessonNotes = input<ReadonlyMap<string, LessonNoteView>>(new Map());
   /** The files chosen in this editor by block key: a lesson row shows the ones still on their way. */
   readonly uploads = input<Readonly<Record<string, UploadEntry>>>({});
   readonly editLesson = output<LessonTarget>();
@@ -127,8 +131,23 @@ export class CourseOutline {
       Object.entries(BLOCK_TYPES).map(([type, { label }]) => [type, label]),
     );
   protected readonly problemOf = lessonProblem;
-  protected readonly noteOf = (lesson: LessonValue) =>
-    this.lessonNotes().get(lesson.title.trim());
+  /** The assistant's line under each lesson row, by row key. */
+  protected readonly notes = computed(
+    (): ReadonlyMap<string, LessonNoteView> => {
+      const notes = this.lessonNotes();
+      const byRow = new Map<string, LessonNoteView>();
+      for (const chapter of this.draft()().value().chapters) {
+        for (const lesson of chapter.lessons) {
+          const note =
+            (lesson.id !== undefined
+              ? notes.get(`id:${lesson.id}`)
+              : undefined) ?? notes.get(`key:${lesson.key}`);
+          if (note) byRow.set(lesson.key, note);
+        }
+      }
+      return byRow;
+    },
+  );
   protected readonly uploadOf = (lesson: LessonValue) =>
     lessonUploadOf(
       lesson.blocks.map((b) => b.key),

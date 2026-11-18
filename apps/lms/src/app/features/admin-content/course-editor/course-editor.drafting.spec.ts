@@ -7,6 +7,7 @@ import {
   type ConfirmBasicsCommand,
   type ConfirmOutlineCommand,
   type ConfirmRulesCommand,
+  type CourseDetail,
   type DraftingSession,
   type DraftingStep,
 } from '@lms/contracts';
@@ -16,18 +17,24 @@ import {
   basicsProposalFixture,
   draftingSessionFixture,
   draftingStepFixture,
+  envelopeError,
   envelopeOk,
   outlineProposalFixture,
+  publishBlockersOf,
   rulesProposalFixture,
   type FakeReply,
 } from '@lms/mocks';
 import { of } from 'rxjs';
-import { DRAFTING_POLL_INTERVAL_MS } from '../../../core/course-drafting/course-drafting.store';
+import {
+  CourseDraftingStore,
+  DRAFTING_POLL_INTERVAL_MS,
+} from '../../../core/course-drafting/course-drafting.store';
 import { setUpAdminScreen } from '../../../core/dev/mock-api/admin-screen.testing';
 import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
 import { ReplyGate } from '../../../core/dev/mock-api/mock-backend.testing';
 import { LeavePrompt } from '../../../core/routing/unsaved-changes.guard';
 import type { CourseEditor } from './course-editor';
+import { draftChecks, toDraftValue } from './course-draft';
 import { FakeHasher } from './data-access/fake-hasher.testing';
 import { DRAFTING_FIELD_DELAY_MS } from './data-access/drafting-fill';
 import { Sha256Hasher } from './data-access/sha256-hasher';
@@ -273,6 +280,12 @@ describe('CourseEditor confirming a drafting step', () => {
 
   const TAKEN = 'AI-TAKEN001';
   const FRESH = 'AI-FRESH001';
+  /** A code the stub refuses as a course for another unit than the session's. */
+  const OTHER_UNIT = 'AI-OTHER001';
+  const OWNER_LINE =
+    'Khóa học được tạo cho đơn vị đã chọn khi bắt đầu soạn; không đổi đơn vị ở bước này.';
+  /** The author filled step 1 by hand: a taken code then brings a proposal of the code only. */
+  let handFilled = false;
 
   let session: DraftingSession;
 
@@ -299,6 +312,7 @@ describe('CourseEditor confirming a drafting step', () => {
   });
 
   beforeEach(() => {
+    handFilled = false;
     session = {
       ...draftingSessionFixture(1),
       steps: [draftingStepFixture(1, 'proposing')],
@@ -328,6 +342,22 @@ describe('CourseEditor confirming a drafting step', () => {
       if (endpoint === draftingSessionEndpoints.confirm) {
         const { course } = (request as { body: ConfirmBasicsCommand }).body;
         if (session.courseId !== null) return ok(session);
+        if (course.code === OTHER_UNIT)
+          return {
+            status: 200,
+            body: envelopeError(
+              'CORE-VALIDATION_FAILED',
+              'Dữ liệu không hợp lệ',
+              'Dữ liệu gửi lên không hợp lệ.',
+              [
+                {
+                  field: 'course.ownerOrgId',
+                  code: 'OWNER_MISMATCH',
+                  message: OWNER_LINE,
+                },
+              ],
+            ),
+          };
         if (course.code === TAKEN) {
           const step = session.steps[0];
           session = {
@@ -335,7 +365,9 @@ describe('CourseEditor confirming a drafting step', () => {
             steps: [
               {
                 ...step,
-                proposal: { ...basicsProposalFixture, code: FRESH },
+                ...(handFilled
+                  ? { state: 'manual', proposal: { code: FRESH } }
+                  : { proposal: { ...basicsProposalFixture, code: FRESH } }),
                 updateTime: '2026-11-17T09:00:00+07:00',
               } as DraftingStep,
             ],
@@ -376,12 +408,34 @@ describe('CourseEditor confirming a drafting step', () => {
       query: {},
     });
     if (saved.body.status !== 'SUCCESS') return saved;
+    // The server keeps each proposed lesson's line by the id it saved it under.
+    const detail = (saved.body as { data: CourseDetail }).data;
+    const proposed = outlineProposalFixture.chapters.flatMap(
+      (chapter) => chapter.lessons,
+    );
+    const lessonNotes = detail.chapters
+      .flatMap((chapter) => chapter.lessons)
+      .flatMap(({ lesson }, index) =>
+        proposed[index]
+          ? [
+              {
+                lessonId: lesson.id,
+                description: proposed[index].description,
+                sourceSection: proposed[index].sourceSection,
+              },
+            ]
+          : [],
+      );
     session = {
       ...session,
       currentStep: 3,
       steps: [
         session.steps[0],
-        { ...session.steps[1], state: 'confirmed' } as DraftingStep,
+        {
+          ...session.steps[1],
+          state: 'confirmed',
+          lessonNotes,
+        } as DraftingStep,
         draftingStepFixture(3, 'proposing'),
       ],
     };
@@ -610,6 +664,38 @@ describe('CourseEditor confirming a drafting step', () => {
     expect(screen.url()).toContain(`/admin/courses/${session.courseId}/edit`);
   });
 
+  it('offers only the new code when the author filled the step, and leaves every other field as typed', async () => {
+    await filled();
+    handFilled = true;
+    const code = screen.field('Mã khóa học') as HTMLInputElement;
+    code.value = TAKEN;
+    code.dispatchEvent(new Event('input', { bubbles: true }));
+    const title = screen.field('Tên khóa học') as HTMLInputElement;
+    title.value = 'Tên do tác giả gõ';
+    title.dispatchEvent(new Event('input', { bubbles: true }));
+    await advance(0);
+
+    await press(confirmButton());
+    await press(screen.button(`Dùng mã ${FRESH}`));
+
+    expect(screen.field('Mã khóa học').value).toBe(FRESH);
+    expect(screen.field('Tên khóa học').value).toBe('Tên do tác giả gõ');
+    expect(screen.text()).not.toContain('Mã khóa học đã tồn tại.');
+  });
+
+  it('says why a course for another unit is refused', async () => {
+    await filled();
+    const code = screen.field('Mã khóa học') as HTMLInputElement;
+    code.value = OTHER_UNIT;
+    code.dispatchEvent(new Event('input', { bubbles: true }));
+    await advance(0);
+
+    await press(confirmButton());
+
+    expect(session.courseId).toBeNull();
+    expect(screen.text()).toContain(OWNER_LINE);
+  });
+
   it("resumes the draft at the session's current step after a reload, and a confirmed step is saved without confirming again", async () => {
     await openDraftAtStepTwo();
 
@@ -814,6 +900,8 @@ describe('CourseEditor confirming a drafting step', () => {
         '.drafting-questions select',
       ) as HTMLSelectElement;
       select.value = '';
+      // The card's form field reads the select as the author picks.
+      select.dispatchEvent(new Event('input'));
       select.dispatchEvent(new Event('change'));
       await advance(0);
 
@@ -966,6 +1054,85 @@ describe('CourseEditor confirming a drafting step', () => {
       );
       expect(screen.callsTo(courseEndpoints.publish)).toBe(0);
       expect(confirmButton()?.disabled).toBe(false);
+    });
+
+    it('marks each assign row the assistant wrote "AI đề xuất" until the step is confirmed', async () => {
+      await atStepFourFilled();
+      const marks = () =>
+        screen.el.querySelectorAll('.assign-rows__row app-suggested-mark')
+          .length;
+
+      expect(marks()).toBe(audience.targets.length);
+      await press(confirmButton());
+      expect(marks()).toBe(0);
+    });
+
+    it('keeps the bar "Đã chốt" the one primary action and the footer publish secondary', async () => {
+      await atStepFourFilled();
+      const publish = screen.button('Xuất bản và giao khóa học');
+
+      expect(confirmButton()?.classList).toContain('btn--primary');
+      expect(publish?.classList).not.toContain('btn--primary');
+      expect(
+        screen.el.querySelectorAll('.drafting-bar .btn--primary'),
+      ).toHaveLength(1);
+
+      await press(confirmButton());
+      expect(screen.button('Xuất bản và giao khóa học')?.classList).toContain(
+        'btn--primary',
+      );
+    });
+
+    it('lists in the chat what the page pre-publish check fails on', async () => {
+      await atStepFourFilled();
+      const template = screen.calls.mock.calls
+        .map(([, request]) => request as { token?: string | null })
+        .find((request) => request?.token) as object;
+      const saved = (
+        original(courseEndpoints.getCourse, {
+          ...template,
+          body: null,
+          params: { courseId: String(courseId) },
+          query: {},
+        }).body as { data: CourseDetail }
+      ).data;
+
+      const page = draftChecks(toDraftValue(saved))
+        .filter((check) => !check.optional && !check.ok)
+        .map((check) => check.label);
+      expect(publishBlockersOf(saved)).toEqual([
+        ...page,
+        '1 bài chưa có nội dung',
+      ]);
+    });
+
+    it('"Đã chốt" on the chat card opens the step first when the page shows another, then confirms it', async () => {
+      await atStepFourFilled();
+      const drafting = TestBed.inject(CourseDraftingStore);
+      const card = {
+        sessionId: session.id,
+        step: 4 as const,
+        state: 'proposed' as const,
+        courseId,
+      };
+      await press(screen.button('Thông tin cơ bản'));
+      expect(legend()).toContain('Thông tin cơ bản');
+      // A step confirmed before: edited and saved with "Lưu nháp", not proposed again.
+      expect(screen.button('Đề xuất lại')).toBeUndefined();
+
+      drafting.confirmFromChat(card);
+      await advance(0);
+      await advance(0);
+
+      expect(legend()).toContain('Đối tượng');
+      expect(screen.callsTo(draftingSessionEndpoints.confirm)).toBe(0);
+
+      drafting.confirmFromChat(card);
+      await advance(0);
+      await advance(0);
+      expect(screen.lastCall(draftingSessionEndpoints.confirm)).toMatchObject({
+        params: { step: '4' },
+      });
     });
 
     it('"Đã chốt" ends the flow without assigning, sharing or publishing', async () => {

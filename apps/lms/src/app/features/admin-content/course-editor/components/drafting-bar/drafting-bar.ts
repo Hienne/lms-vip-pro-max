@@ -1,8 +1,6 @@
-import { Dialog } from '@angular/cdk/dialog';
 import { Component, inject, input, output } from '@angular/core';
 import type { DraftingStepNumber } from '@lms/contracts';
-import { Alert, AlertAction, Button, confirm, Icon } from '@lms/ui';
-import { firstValueFrom } from 'rxjs';
+import { Alert, AlertAction, Button, Icon } from '@lms/ui';
 import { CourseDraftingStore } from '../../../../../core/course-drafting/course-drafting.store';
 import { DraftingFillStore } from '../../data-access/drafting-fill.store';
 
@@ -22,24 +20,11 @@ import { DraftingFillStore } from '../../data-access/drafting-fill.store';
 export class DraftingBar {
   protected readonly fill = inject(DraftingFillStore);
   protected readonly drafting = inject(CourseDraftingStore);
-  private readonly dialog = inject(Dialog);
 
   /** Why the step cannot be confirmed yet; null when it can. */
   readonly problem = input<string | null>(null);
+  /** The code the server proposed after a taken one, while the code field holds another. */
+  readonly suggestedCode = input<string | null>(null);
   /** "Đã chốt" for this step: the page sends its values. */
   readonly confirmed = output<DraftingStepNumber>();
-
-  /** "Đề xuất lại": what the step holds on the page is replaced, so the author agrees first. */
-  protected async proposeAgain(step: DraftingStepNumber): Promise<void> {
-    const agreed = await firstValueFrom(
-      confirm(this.dialog, {
-        title: 'Đề xuất lại bước này?',
-        message:
-          'Trợ lý soạn lại bước này từ tài liệu. Các trường của bước, kể cả phần bạn đã sửa, sẽ được thay bằng đề xuất mới. Các bước khác giữ nguyên.',
-        confirmLabel: 'Đề xuất lại',
-        tone: 'danger',
-      }),
-    );
-    if (agreed) this.fill.proposeAgain(step);
-  }
 }

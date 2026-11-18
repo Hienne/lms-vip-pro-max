@@ -17,13 +17,11 @@ import {
   agentNavigateEvents,
   BACKEND_RESPONSES,
   backendRefusal,
-  draftingSessionFixture,
+  envelopeError,
   envelopeOk,
-  knowledgeDocumentFixtures,
   seedMe,
 } from '@lms/mocks';
 import { parseAppConfig, provideAppConfig } from '../config/app-config';
-import { CourseDraftingStore } from '../course-drafting/course-drafting.store';
 import { CourseJobTrackerStore } from '../course-jobs/course-job-tracker.store';
 import { testAppConfig } from '../config/app-config.testing';
 import { provideEnvelopeHttpClient } from '../http/http.testing';
@@ -39,6 +37,7 @@ import {
   AgentChatStore,
   CUT_OFF_MESSAGE,
   GENERIC_ERROR,
+  DRAFTING_SOURCE_QUESTION,
   OFFLINE_MESSAGE,
 } from './agent-chat.store';
 
@@ -904,6 +903,34 @@ describe('AgentChatStore', () => {
       expect(store.isAnswering$()).toBe(false);
     });
 
+    it('ends the turn with how long to wait when the daily upload cap is reached', async () => {
+      store.askWithFile('Tạo khóa học', new File(['x'], 'q.md'));
+      await settle();
+      backend.expectOne(SOURCES).flush(
+        envelopeError(
+          'ASSISTANT-JOB_RATE_LIMITED',
+          'Đã hết lượt',
+          'Bạn đã tạo đủ số khóa học bằng AI cho phép trong ngày.',
+          [
+            {
+              field: 'limit',
+              code: 'DAILY_UPLOAD_LIMIT',
+              message:
+                'Bạn đã tải lên 10 tài liệu cho trợ lý trong ngày, thử lại sau 3 giờ.',
+            },
+          ],
+        ),
+      );
+      await settle();
+
+      backend.expectNone(STREAM);
+      expect(lastReply()).toMatchObject({
+        status: 'error',
+        error:
+          'Bạn đã tải lên 10 tài liệu cho trợ lý trong ngày, thử lại sau 3 giờ.',
+      });
+    });
+
     it('uploads nothing while offline', async () => {
       TestBed.inject(NetworkStore).goOffline();
       store.askWithFile('Tạo khóa học', new File(['x'], 'q.md'));
@@ -915,57 +942,75 @@ describe('AgentChatStore', () => {
   });
 
   describe('"Soạn cùng trợ lý" from the new course page', () => {
-    it('opens the panel on a new conversation and asks for the file picker once', async () => {
+    const SOURCES = '/api/v1/assistant/drafting-sessions/sources';
+
+    it('opens the panel on a new conversation and sends the file picked on the page', async () => {
       await converse('Một', [conversation(42), done('Trả lời một')]);
       store.close();
+      const file = new File(['x'], 'q.md');
 
-      store.startDrafting();
-      TestBed.tick();
+      store.draftFrom(file);
+      await settle();
 
       expect(store.isOpen$()).toBe(true);
-      expect(store.turns$()).toEqual([]);
       expect(store.conversationId$()).toBeNull();
-      expect(store.isPickingSource$()).toBe(true);
-
-      store.sourcePickOffered();
-      expect(store.isPickingSource$()).toBe(false);
+      expect(store.turns$().map((t) => t.question)).toEqual([
+        DRAFTING_SOURCE_QUESTION,
+      ]);
+      const upload = backend.expectOne(SOURCES);
+      expect((upload.request.body as FormData).get('file')).toBe(file);
+      upload.flush(
+        envelopeOk({ documentId: 40, fileName: 'q.md', status: 'UPLOADED' }),
+      );
+      await settle();
+      expect(backend.expectOne(STREAM).request.body).toMatchObject({
+        message: DRAFTING_SOURCE_QUESTION,
+        skill: 'tao_khoa_hoc',
+        attachmentDocumentId: 40,
+      });
     });
 
     it('only opens the panel while a reply is on its way', async () => {
       store.ask('Một');
       await settle();
 
-      store.startDrafting();
+      store.draftFrom(new File(['x'], 'q.md'));
+      await settle();
 
       expect(store.isOpen$()).toBe(true);
       expect(store.turns$()).toHaveLength(1);
-      expect(store.isPickingSource$()).toBe(false);
+      backend.expectNone(SOURCES);
       finish(backend.expectOne(STREAM), [done('Trả lời một')]);
       await settle();
     });
+
+    it('"Dừng" while the file uploads asks nothing, even when the upload ends', async () => {
+      store.askWithFile('Tạo khóa học', new File(['x'], 'q.md'));
+      await settle();
+      const upload = backend.expectOne(SOURCES);
+
+      store.stop();
+      await settle();
+      if (!upload.cancelled)
+        upload.flush(
+          envelopeOk({ documentId: 40, fileName: 'q.md', status: 'UPLOADED' }),
+        );
+      await settle();
+
+      expect(lastReply()?.status).toBe('stopped');
+      expect(store.isAnswering$()).toBe(false);
+      backend.expectNone(STREAM);
+    });
   });
 
-  describe('drafting step messages', () => {
-    const SESSION = '/api/v1/assistant/drafting-sessions/1';
-
-    async function follow(conversationId: number | null) {
-      const drafting = TestBed.inject(CourseDraftingStore);
-      drafting.load(1);
-      await settle();
-      backend
-        .expectOne(SESSION)
-        .flush(envelopeOk({ ...draftingSessionFixture(1), conversationId }));
-      await settle();
-      return drafting;
-    }
-
-    it('reads the conversation that started the session again when its step is ready, with each card', async () => {
+  describe('a conversation read again for its drafting session', () => {
+    it('shows the step messages and cards the server has now', async () => {
       await converse('Tạo khóa học', [conversation(5), done('Mình đang đọc.')]);
-      await follow(5);
 
+      store.reloadConversation(5);
       const card = {
         sessionId: 1,
-        step: 1,
+        step: 1 as const,
         state: 'proposed' as const,
         courseId: null,
       };
@@ -988,38 +1033,27 @@ describe('AgentChatStore', () => {
       expect(lastReply()?.draftingCard).toEqual(card);
     });
 
-    it('reads nothing for a session another conversation started', async () => {
+    it('reads nothing for a conversation that is not open', async () => {
       await converse('Một', [conversation(5), done('x')]);
-      await follow(6);
 
-      backend.expectNone(detailUrl(5));
+      store.reloadConversation(6);
+
       backend.expectNone(detailUrl(6));
+      backend.expectNone(detailUrl(5));
     });
 
-    it('confirms through the drafting store, which picks the page or opens the editor', async () => {
-      const drafting = TestBed.inject(CourseDraftingStore);
-      const confirm = vi
-        .spyOn(drafting, 'confirmFromChat')
-        .mockImplementation(() => undefined);
-      const open = vi
-        .spyOn(drafting, 'openEditor')
-        .mockImplementation(() => undefined);
+    it('keeps what shows when the read fails, and reports the failure', async () => {
+      const errors = vi.spyOn(TestBed.inject(ErrorHandler), 'handleError');
+      await converse('Một', [conversation(5), done('Trả lời một')]);
 
-      store.confirmDraftingStep({
-        sessionId: 1,
-        step: 2,
-        state: 'proposed',
-        courseId: 40,
-      });
-      store.openDraftingStep({
-        sessionId: 1,
-        step: 3,
-        state: 'failed',
-        courseId: 40,
-      });
+      store.reloadConversation(5);
+      backend
+        .expectOne(detailUrl(5))
+        .flush('down', { status: 500, statusText: 'Server Error' });
+      await settle();
 
-      expect(confirm).toHaveBeenCalledExactlyOnceWith(1, 2, 40);
-      expect(open).toHaveBeenCalledExactlyOnceWith(1, 3, 40);
+      expect(lastReply()?.text).toBe('Trả lời một');
+      expect(errors).toHaveBeenCalledTimes(1);
     });
   });
 

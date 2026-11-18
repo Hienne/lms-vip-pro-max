@@ -7,7 +7,6 @@ import type {
   TrainingProgram,
 } from '@lms/contracts';
 import {
-  Badge,
   Button,
   DrawerOutlet,
   Dropzone,
@@ -38,6 +37,7 @@ import {
 } from '../../data-access/course-editor.store';
 import { isCancellable, itemState } from '../../data-access/upload-entry';
 import { AssetLibrary } from '../asset-library/asset-library';
+import { SuggestedMark } from '../suggested-mark/suggested-mark';
 import { AssetLibraryStore } from '../asset-library/data-access/asset-library.store';
 
 /**
@@ -51,7 +51,7 @@ import { AssetLibraryStore } from '../asset-library/data-access/asset-library.st
   selector: 'app-course-info',
   imports: [
     AssetLibrary,
-    Badge,
+    SuggestedMark,
     Button,
     CourseCard,
     DrawerOutlet,
@@ -84,6 +84,15 @@ export class CourseInfo {
   readonly suggested = input<ReadonlySet<FillField>>(new Set());
   /** What to say under a programme or module the assistant left empty. */
   readonly hints = input<DraftingHints>({});
+  /** The hints for the programme and module while each is still empty. */
+  protected readonly shownHints = computed((): DraftingHints => {
+    const hints = this.hints();
+    const draft = this.draft();
+    return {
+      programId: draft.programId().value() ? undefined : hints.programId,
+      moduleId: draft.moduleId().value() ? undefined : hints.moduleId,
+    };
+  });
   readonly programs = input.required<readonly TrainingProgram[]>();
   readonly modules = input.required<readonly BusinessModule[]>();
   /** The cover the draft will be saved with: the stored one, or the one chosen in this page. */

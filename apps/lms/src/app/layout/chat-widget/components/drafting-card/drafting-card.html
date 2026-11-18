@@ -8,6 +8,7 @@
     type="button"
     variant="primary"
     size="sm"
+    [attr.aria-label]="'Đã chốt bước ' + state.step"
     (click)="confirmed.emit(state)"
   >
     Đã chốt
@@ -18,6 +19,7 @@
     type="button"
     variant="secondary"
     size="sm"
+    [attr.aria-label]="'Mở trang soạn bước ' + state.step"
     (click)="opened.emit(state)"
   >
     Mở trang soạn

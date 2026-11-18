@@ -5,6 +5,7 @@ import {
   draftingSessionEndpoints,
   DraftingSessionSchema,
   type AnyEndpoint,
+  type CourseDetail,
   type DraftingSession,
 } from '@lms/contracts';
 import {
@@ -20,7 +21,12 @@ import {
   outlineProposalFixture,
   rulesProposalFixture,
 } from './drafting-session.fixtures';
-import { DraftingSessionMock } from './drafting-session.mock';
+import {
+  DRAFTING_UPLOADS_PER_DAY,
+  DraftingSessionMock,
+  publishBlockersOf,
+  type DraftingCourses,
+} from './drafting-session.mock';
 
 const request = (
   body: unknown = null,
@@ -233,7 +239,7 @@ describe('DraftingSessionMock', () => {
     expect(code(confirm(ready(session.id), 2))).toBe('CORE-VALIDATION_FAILED');
   });
 
-  it('refuses a step 2 confirm whose proposed lesson carries content', () => {
+  it('confirms a step 2 outline whose proposed lesson already has content: what is on the page', () => {
     let session = ready(start().id);
     session = parsed(
       draftingSessionEndpoints.confirm,
@@ -242,7 +248,7 @@ describe('DraftingSessionMock', () => {
     session = ready(session.id);
     const lesson = outlineProposalFixture.chapters[0].lessons[0];
 
-    const refused = call(
+    const confirmed = call(
       draftingSessionEndpoints.confirm,
       {
         draft: {
@@ -276,14 +282,13 @@ describe('DraftingSessionMock', () => {
       { sessionId: String(session.id), step: '2' },
     );
 
-    expect(code(refused)).toBe('CORE-VALIDATION_FAILED');
-    expect(refused?.body.errors?.[0]?.code).toBe('CONTENT_NOT_EMPTY');
-    expect(stepOf(get(session.id), 2)?.state).toBe('proposed');
+    expect(confirmed?.body.status).toBe('SUCCESS');
+    expect(stepOf(get(session.id), 2)?.state).toBe('confirmed');
   });
 
   it('refuses kept questions without a competency or a programme, and keeps the step', () => {
     let session = ready(start().id);
-    for (const step of [1, 2]) {
+    for (const step of [1, 2] as const) {
       parsed(draftingSessionEndpoints.confirm, confirm(session, step));
       session = ready(session.id);
     }
@@ -373,6 +378,189 @@ describe('DraftingSessionMock', () => {
     ).toMatchObject({ currentStep: 2 });
   });
 
+  it('tells the chat the code it proposes after a taken one', () => {
+    const told: { step: number; notes: readonly string[] }[] = [];
+    const session = ready(start().id);
+    mock.onStepReady = (_owner, _session, step) =>
+      told.push({ step: step.step, notes: step.notes });
+    const taken = (session.steps[0].proposal as { code: string }).code;
+    mock.takeCodeOnConfirm(taken);
+
+    confirm(session);
+
+    const fresh = (get(session.id).steps[0].proposal as { code: string }).code;
+    expect(told).toHaveLength(1);
+    expect(told[0].step).toBe(1);
+    expect(told[0].notes.at(-1)).toBe(
+      `Mã ${taken} đã có; trợ lý đề xuất mã ${fresh}.`,
+    );
+  });
+
+  it('proposes only the new code after a taken one on a step filled by hand, and tells the chat', () => {
+    const told: number[] = [];
+    mock.onStepReady = (_owner, _session, step) => told.push(step.step);
+    const session = start();
+    call(draftingSessionEndpoints.stop, null, {
+      sessionId: String(session.id),
+    });
+    const filled = get(session.id);
+    expect(stepOf(filled, 1)).toMatchObject({
+      state: 'manual',
+      proposal: null,
+    });
+    mock.takeCodeOnConfirm(basicsProposalFixture.code);
+
+    expect(code(confirm(filled))).toBe('LEARNING-DUPLICATE');
+
+    const next = get(session.id);
+    const proposal = stepOf(next, 1)?.proposal;
+    expect(Object.keys(proposal ?? {})).toEqual(['code']);
+    expect((proposal as { code: string }).code).not.toBe(
+      basicsProposalFixture.code,
+    );
+    expect(stepOf(next, 1)?.state).toBe('manual');
+    expect(told).toEqual([1]);
+    // Only a proposed or failed current step is proposed again.
+    expect(
+      call(draftingSessionEndpoints.proposeAgain, null, {
+        sessionId: String(session.id),
+        step: '1',
+      })?.body.errors?.[0]?.code,
+    ).toBe('INVALID_STATE');
+  });
+
+  it('proposes again only the current step, and refuses a confirmed one before it', () => {
+    let session = ready(start().id);
+    session = parsed(
+      draftingSessionEndpoints.confirm,
+      confirm(session),
+    ) as DraftingSession;
+    session = ready(session.id);
+    const again = (step: number) =>
+      call(draftingSessionEndpoints.proposeAgain, null, {
+        sessionId: String(session.id),
+        step: String(step),
+      });
+
+    const refused = again(1);
+    expect(code(refused)).toBe('CORE-VALIDATION_FAILED');
+    expect(refused?.body.errors?.[0]?.code).toBe('INVALID_STATE');
+    expect(stepOf(get(session.id), 1)?.state).toBe('confirmed');
+    expect(again(2)?.body.status).toBe('SUCCESS');
+    expect(stepOf(get(session.id), 2)?.state).toBe('proposing');
+  });
+
+  describe('with the courses it saves into', () => {
+    const marked: number[] = [];
+    const saved = (lessons: number): CourseDetail =>
+      ({
+        course: { id: 501, code: 'AI-1' },
+        revision: { title: 'Đối soát', programId: 1, level: 'basic' },
+        objectives: [],
+        chapters: [
+          {
+            chapter: { id: 1, title: 'Chương 1' },
+            lessons: Array.from({ length: lessons }, (_, index) => ({
+              lesson: {
+                id: 10 + index,
+                title: `Bài ${index}`,
+                lessonType: 'content',
+              },
+              blocks: [],
+            })),
+          },
+        ],
+      }) as unknown as CourseDetail;
+    const courses: DraftingCourses = {
+      create: () =>
+        ({
+          status: 200,
+          body: {
+            status: 'SUCCESS',
+            data: { course: { id: 501 }, revision: { id: 601 } },
+          },
+        }) as FakeReply,
+      saveOutline: () => undefined,
+      saveRules: () => undefined,
+      detail: () => saved(3),
+      markAiGenerated: (courseId) => marked.push(courseId),
+    };
+    const withCourses = (endpoint: AnyEndpoint, body: unknown, params = {}) =>
+      mock.handle(endpoint, request(body, params), 'a', courses);
+    const read = (id: number) =>
+      parsed(
+        draftingSessionEndpoints.get,
+        withCourses(draftingSessionEndpoints.get, null, {
+          sessionId: String(id),
+        }),
+      ) as DraftingSession;
+    const readyWith = (id: number) => {
+      let session = read(id);
+      for (
+        let i = 0;
+        i < 10 && stepOf(session, session.currentStep)?.state === 'proposing';
+        i++
+      )
+        session = read(id);
+      return session;
+    };
+    const confirmWith = (session: DraftingSession) =>
+      parsed(
+        draftingSessionEndpoints.confirm,
+        withCourses(
+          draftingSessionEndpoints.confirm,
+          confirmBody(session, session.currentStep),
+          {
+            sessionId: String(session.id),
+            step: String(session.currentStep),
+          },
+        ),
+      ) as DraftingSession;
+
+    beforeEach(() => (marked.length = 0));
+
+    it('marks the course AI made when the outline or questions proposal is stored', () => {
+      let session = readyWith(start().id);
+      session = confirmWith(session);
+      expect(marked).toEqual([]);
+
+      session = readyWith(session.id);
+      expect(stepOf(session, 2)?.state).toBe('proposed');
+      expect(marked).toEqual([501]);
+      session = readyWith(confirmWith(session).id);
+      expect(marked).toEqual([501, 501]);
+    });
+
+    it('lists what blocks publishing the saved draft, as the editor checks it', () => {
+      let session = readyWith(start().id);
+      for (let step = 1; step < 4; step++)
+        session = readyWith(confirmWith(session).id);
+      const audience = stepOf(session, 4);
+
+      expect(
+        audience?.step === 4 && audience.proposal?.publishBlockers,
+      ).toEqual([
+        'Mọi bài học có nội dung, đủ tệp hoặc đã chọn bài kiểm tra',
+        '3 bài chưa có nội dung',
+      ]);
+    });
+  });
+
+  it('lists the blockers of a draft the way the editor names them', () => {
+    const detail = {
+      course: { id: 1, code: 'X' },
+      revision: { title: '', programId: null, level: null },
+      objectives: [],
+      chapters: [],
+    } as unknown as CourseDetail;
+
+    expect(publishBlockersOf(detail)).toEqual([
+      'Có tên khóa học và chương trình',
+      'Có ít nhất 1 bài học',
+      'Đã chọn mức độ khóa học',
+    ]);
+  });
+
   it('stops a proposing step into manual, and switches a step to manual', () => {
     const session = start();
     const stopped = parsed(
@@ -454,6 +642,24 @@ describe('DraftingSessionMock', () => {
       ),
     ).toMatchObject({
       fileName: 'tai-lieu.docx',
+    });
+  });
+
+  it('refuses an upload past the daily cap of unused sources, saying how long to wait', () => {
+    const upload = () => {
+      const data = new FormData();
+      data.set('file', new File(['x'], 'tai-lieu.docx'));
+      return call(draftingSessionEndpoints.uploadSource, data);
+    };
+    for (let i = 0; i < DRAFTING_UPLOADS_PER_DAY; i++)
+      expect(upload()?.body.status).toBe('SUCCESS');
+
+    const refused = upload();
+
+    expect(code(refused)).toBe('ASSISTANT-JOB_RATE_LIMITED');
+    expect(refused?.body.errors?.[0]).toMatchObject({
+      field: 'limit',
+      code: 'DAILY_UPLOAD_LIMIT',
     });
   });
 });

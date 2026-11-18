@@ -14,6 +14,7 @@ import {
 import { form, FormRoot, submit } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 import { type CourseDetail, type DraftingStepNumber } from '@lms/contracts';
+import { UPLOAD_ACCEPT } from '../../../core/knowledge/upload-rules';
 import {
   Alert,
   AlertAction,
@@ -48,7 +49,6 @@ import {
   emptyDraftValue,
   draftChecks,
   mergeLive,
-  toCreateCourseCommand,
   toDraftValue,
   toSaveDraftCommand,
   withAsset,
@@ -57,7 +57,13 @@ import {
 } from './course-draft';
 import { courseCodeSchema, courseDraftSchema } from './course-draft.schema';
 import { CourseAiJobStore } from './data-access/course-ai-job.store';
-import { DraftingFillStore } from './data-access/drafting-fill.store';
+import { markedFields } from './data-access/drafting-fill';
+import {
+  DraftingFillStore,
+  type DraftingPageFacts,
+  type QueuedPatch,
+} from './data-access/drafting-fill.store';
+import { DraftingQuestionsStore } from './data-access/drafting-questions.store';
 import {
   COVER_KEY,
   CourseEditorStore,
@@ -71,6 +77,15 @@ export const RESTORE_LABEL = 'Khôi phục';
 /** The draft without its row keys, to tell whether the author changed anything. */
 const fingerprint = (value: CourseDraftValue) =>
   JSON.stringify([value.code, toSaveDraftCommand(value, 0)]);
+
+/** The last write of the assistant a form value already holds. */
+const lastSeq = (queue: readonly QueuedPatch[]) => queue.at(-1)?.seq ?? 0;
+
+/** What the form follows: the server's draft, and the assistant's writes into it. */
+interface ModelSource {
+  readonly detail: CourseDetail | undefined;
+  readonly queue: readonly QueuedPatch[];
+}
 
 /**
  * The course editor (the mockup's `courseWizard`): four steps over one draft, saved whole. The
@@ -104,7 +119,12 @@ const fingerprint = (value: CourseDraftValue) =>
     Spinner,
     Stepper,
   ],
-  providers: [CourseEditorStore, CourseAiJobStore, DraftingFillStore],
+  providers: [
+    CourseEditorStore,
+    CourseAiJobStore,
+    DraftingQuestionsStore,
+    DraftingFillStore,
+  ],
   templateUrl: './course-editor.html',
   styleUrl: './course-editor.scss',
 })
@@ -137,9 +157,18 @@ export class CourseEditor implements HasUnsavedChanges {
       this.chat.available$(),
   );
 
-  /** Opens the chat on a new conversation with the file picker; the file picked starts a session. */
-  protected draftWithAssistant(): void {
-    this.chat.startDrafting();
+  /** The kinds of document a session is drafted from, as the chat's paperclip offers them. */
+  protected readonly sourceAccept = UPLOAD_ACCEPT;
+
+  /**
+   * The document picked from "Soạn cùng trợ lý" (the picker opens in the button's own click): the
+   * chat opens on a new conversation and sends it, which starts the session.
+   */
+  protected sourcePicked(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (file) this.chat.draftFrom(file);
   }
 
   /**
@@ -147,23 +176,46 @@ export class CourseEditor implements HasUnsavedChanges {
    * draft is read again every few seconds, and an edit in progress must survive that, so the
    * lessons the author did not touch are taken from the server and the rest stays as typed.
    */
-  private readonly model = linkedSignal<
-    CourseDetail | undefined,
-    CourseDraftValue
-  >({
-    source: () => this.store.course$(),
-    computation: (detail, previous) => {
-      if (!detail) return emptyDraftValue();
-      const fresh = toDraftValue(detail);
-      const before = previous?.source;
-      const followsAi =
-        !!before &&
-        before.course.id === detail.course.id &&
-        untracked(() => this.ai.job$()) !== undefined;
-      return followsAi
-        ? mergeLive(toDraftValue(before), previous.value, fresh)
-        : fresh;
+  private readonly model = linkedSignal<ModelSource, CourseDraftValue>({
+    source: () => ({ detail: this.store.course$(), queue: this.fill.queue$() }),
+    computation: (source, previous) => {
+      const value =
+        previous && previous.source.detail === source.detail
+          ? previous.value
+          : this.fromServer(source.detail, previous);
+      // The drafting session's writes the form does not hold yet, in order.
+      const after = previous ? lastSeq(previous.source.queue) : 0;
+      return source.queue
+        .filter((entry) => entry.seq > after)
+        .reduce((draft, entry) => entry.patch.apply(draft), value);
     },
+  });
+
+  private fromServer(
+    detail: CourseDetail | undefined,
+    previous: { source: ModelSource; value: CourseDraftValue } | undefined,
+  ): CourseDraftValue {
+    if (!detail) return emptyDraftValue();
+    const fresh = toDraftValue(detail);
+    const before = previous?.source.detail;
+    const followsAi =
+      !!before &&
+      before.course.id === detail.course.id &&
+      untracked(() => this.ai.job$()) !== undefined;
+    return followsAi && previous
+      ? mergeLive(toDraftValue(before), previous.value, fresh)
+      : fresh;
+  }
+
+  /** The fields that still hold what the assistant wrote: each shows "AI đề xuất". */
+  protected readonly suggested = computed(() =>
+    markedFields(this.model(), this.fill.written$()),
+  );
+
+  /** The code the server proposed after a taken one, while the code field holds another. */
+  protected readonly suggestedCode = computed(() => {
+    const code = this.fill.proposedCode$();
+    return code !== null && code !== this.model().code.trim() ? code : null;
   });
   protected readonly courseForm = form(
     this.model,
@@ -305,7 +357,6 @@ export class CourseEditor implements HasUnsavedChanges {
 
   constructor() {
     this.keepDraftWhenTheSessionEnds();
-    this.fill.attach(this.model, (step) => this.confirmDraftingStep(step));
     this.store.registerBlockPositions(this.blockPositions);
     this.store.registerAssetAttacher((blockKey, asset) =>
       this.model.update((value) => ({
@@ -405,59 +456,40 @@ export class CourseEditor implements HasUnsavedChanges {
     ),
   );
 
-  /**
-   * Why "Đã chốt" cannot confirm the step shown yet: the assistant still writes it, a field of
-   * the step is invalid, a file still uploads, or there is no unit to own a new course.
-   */
-  protected readonly draftingProblem = computed((): string | null => {
-    if (this.fill.locked$())
-      return 'Trợ lý đang soạn bước này. Chờ trợ lý soạn xong hoặc bấm Dừng.';
-    if (this.stepInvalid())
-      return 'Còn trường chưa hợp lệ ở bước này. Sửa xong rồi bấm Đã chốt.';
-    if (this.store.pendingUploads$() > 0 || this.continueBlocked())
-      return 'Còn tệp đang tải lên. Chờ tải xong rồi bấm Đã chốt.';
-    if (this.store.isCreate$() && !this.store.ownerOrgId$())
-      return 'Chưa xác định được đơn vị sở hữu khóa học.';
-    if (this.store.step$() === 2) return this.fill.rulesProblem$();
-    return null;
+  /** What "Đã chốt" needs from the page: its draft, its validity and step 3's kept questions. */
+  private readonly draftingFacts = computed((): DraftingPageFacts => {
+    const questions = this.rules()?.draftingQuestions();
+    return {
+      value: this.draftValue(),
+      stepInvalid: this.stepInvalid(),
+      rulesProblem: questions?.problem() ?? null,
+      rules: questions?.command() ?? null,
+    };
   });
 
+  /** Why "Đã chốt" cannot confirm the step shown yet (the store says); null when it can. */
+  protected readonly draftingProblem = computed(() =>
+    this.fill.problemFor(this.draftingFacts()),
+  );
+
   /**
-   * "Đã chốt" on the bar or on the chat's card: the step is confirmed with what the page holds
-   * now. Step 1 sends the create command, so the server makes the draft course from it; step 2
-   * the whole draft, as "Lưu nháp" saves it (lessons without content do not stop it); step 3 the
-   * draft with the kept questions and their competency, which become a new final exam. Step 4
-   * sends nothing: it ends the flow, and the assign rows wait for the author's own "Xuất bản".
+   * "Đã chốt" on the bar or on the chat's card: the store confirms the step with the page's values,
+   * or opens the step named; an invalid field of the step shown then gets focus.
    */
   protected confirmDraftingStep(step: DraftingStepNumber): void {
-    if (this.store.step$() !== step - 1 || this.draftingProblem() !== null) {
-      if (this.stepInvalid()) this.showInvalidStep();
-      return;
-    }
-    const value = this.draftValue();
-    if (step === 1) {
-      const ownerOrgId = this.store.ownerOrgId$();
-      if (!ownerOrgId) return;
-      this.fill.confirm(step, {
-        course: toCreateCourseCommand(value, value.code, ownerOrgId),
-      });
-      return;
-    }
-    const revision = this.store.course$()?.revision;
-    if (step === 2 && revision) {
-      this.fill.confirm(step, {
-        draft: toSaveDraftCommand(value, revision.rowVersion),
-      });
-    }
-    const rules = this.fill.rulesCommand();
-    if (step === 3 && revision && rules) {
-      this.fill.confirm(step, {
-        draft: toSaveDraftCommand(value, revision.rowVersion),
-        ...rules,
-      });
-    }
-    if (step === 4) this.fill.confirm(step, {});
+    const outcome = this.fill.confirm(step, this.draftingFacts());
+    if (outcome !== 'sent' && this.stepInvalid()) this.showInvalidStep();
   }
+
+  /** The chat card's "Đã chốt" for this page's session: confirmed here, as from the bar. */
+  private readonly confirmFromChat = afterRenderEffect(() => {
+    const step = this.fill.confirmRequested$();
+    if (step === null) return;
+    untracked(() => {
+      this.fill.confirmRequestTaken();
+      this.confirmDraftingStep(step);
+    });
+  });
 
   /** "Tiếp theo": when the step stays because of an error, the first one gets focus. */
   protected continue(): void {

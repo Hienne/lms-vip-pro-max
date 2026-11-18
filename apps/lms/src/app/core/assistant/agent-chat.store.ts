@@ -2,6 +2,7 @@ import {
   computed,
   DestroyRef,
   effect,
+  ErrorHandler,
   inject,
   Injectable,
   linkedSignal,
@@ -19,14 +20,20 @@ import {
   type AgentSkill,
   type AgentStreamEvent,
   type ConversationContext,
-  type DraftingCard,
-  type DraftingStepNumber,
   type LessonContext,
   type PendingAction,
 } from '@lms/contracts';
-import { finalize, of, Subscription, switchMap } from 'rxjs';
+import {
+  catchError,
+  EMPTY,
+  finalize,
+  map,
+  of,
+  Subscription,
+  switchMap,
+} from 'rxjs';
 import { activeHref } from '../menu/menu-catalog';
-import { CourseDraftingStore } from '../course-drafting/course-drafting.store';
+import { serverMutation } from '../data-access/server-mutation';
 import { CourseJobTrackerStore } from '../course-jobs/course-job-tracker.store';
 import { toAppError } from '../errors/app-error';
 import { isStaleBuildError, PAGE_LOCATION } from '../errors/stale-build';
@@ -47,6 +54,17 @@ export const GENERIC_ERROR =
 export const EXPIRED_MESSAGE =
   'Yêu cầu này đã hết hạn hoặc đã được xử lý. Vui lòng yêu cầu lại trợ lý.';
 const CANCELLED_MESSAGE = 'Đã huỷ thay đổi.';
+
+/** What a file picked from "Soạn cùng trợ lý" is sent with: the user has said nothing yet. */
+export const DRAFTING_SOURCE_QUESTION = 'Soạn khóa học từ tài liệu này';
+
+/** A question with its attachment, while the attachment uploads as a drafting source. */
+interface SourceUpload {
+  readonly turnId: number;
+  readonly question: string;
+  readonly userId: string | undefined;
+  readonly file: File;
+}
 const NOT_FOUND_CODE = 'ASSISTANT-ACTION_NOT_FOUND';
 
 const WAITING: AgentReply = {
@@ -75,7 +93,7 @@ export class AgentChatStore {
   private readonly storage = inject(AgentChatStorage);
   private readonly conversations = inject(ConversationsStore);
   private readonly courseJobs = inject(CourseJobTrackerStore);
-  private readonly drafting = inject(CourseDraftingStore);
+  private readonly errorHandler = inject(ErrorHandler);
   private readonly router = inject(Router);
   private readonly location = inject(PAGE_LOCATION);
   private readonly destroyRef = inject(DestroyRef);
@@ -86,8 +104,6 @@ export class AgentChatStore {
   /** The saved conversation being read back, if any. */
   private loading: Subscription | null = null;
   private lastUserId: string | undefined;
-  /** The step message read back last, so each change of the followed session reads once. */
-  private draftingSeen: string | null = null;
 
   private readonly userId = computed(() => this.session.user$()?.userId);
 
@@ -128,8 +144,6 @@ export class AgentChatStore {
     opening: signal(false),
     /** Why the last attempt to open a saved conversation failed; null when it did not. */
     openError: signal<string | null>(null),
-    /** "Soạn cùng trợ lý" asked for the file picker; the panel opens it once it shows. */
-    pickingSource: signal(false),
   };
 
   readonly turns$ = this.state.turns.asReadonly();
@@ -151,7 +165,6 @@ export class AgentChatStore {
   readonly isHistoryOpen$ = this.state.history.asReadonly();
   readonly isOpening$ = this.state.opening.asReadonly();
   readonly openError$ = this.state.openError.asReadonly();
-  readonly isPickingSource$ = this.state.pickingSource.asReadonly();
   /** The saved conversation the panel is on; null while it holds a new one. */
   readonly conversationId$ = this.state.conversationId.asReadonly();
   /** The composer is off: a question could not be sent. */
@@ -181,19 +194,6 @@ export class AgentChatStore {
     }
   });
 
-  /**
-   * The steps of the session the editor follows, when the open conversation started it: a step
-   * that gets its proposal, fails or is confirmed has a new message or card state on the server.
-   */
-  private readonly draftingSteps = computed((): string | null => {
-    const session = this.drafting.session$();
-    const conversationId = this.state.conversationId();
-    if (!session || conversationId === null) return null;
-    if (session.conversationId !== conversationId) return null;
-    const steps = session.steps.map((step) => `${step.step}:${step.state}`);
-    return `${conversationId}|${session.id}|${steps.join(',')}`;
-  });
-
   /** What the tab keeps: where the panel is and which saved conversation is open. */
   private readonly persisted = computed(() => {
     const userId = this.userId();
@@ -216,14 +216,6 @@ export class AgentChatStore {
     effect(() => {
       const userId = this.userId();
       untracked(() => this.userChanged(userId));
-    });
-    // The server posts a step message when a step is ready: the open conversation shows it, and
-    // each card its step's state now, while the panel is closed too.
-    effect(() => {
-      const steps = this.draftingSteps();
-      const conversationId = this.state.conversationId();
-      if (this.isAnswering$()) return;
-      untracked(() => this.draftingChanged(steps, conversationId));
     });
     // A conversation deleted from the history may be the one open here.
     this.conversations.removed
@@ -313,26 +305,54 @@ export class AgentChatStore {
       this.fail(id, OFFLINE_MESSAGE);
       return;
     }
-    const userId = this.userId();
-    const upload = new Subscription();
-    this.streaming = upload;
-    upload.add(
-      this.client
-        .call(draftingSessionEndpoints.uploadSource, { body: { file } })
-        .subscribe({
-          next: this.sameUser(userId, (source) =>
-            this.stream(id, question, 'tao_khoa_hoc', source.documentId),
-          ),
-          error: this.sameUser(userId, (error: unknown) => {
-            const app = toAppError(error);
-            this.fail(
-              id,
-              app.kind === 'offline' ? OFFLINE_MESSAGE : app.message,
-            );
-          }),
-        }),
-    );
+    this.sourceUpload.run({
+      turnId: id,
+      question,
+      userId: this.userId(),
+      file,
+    });
   }
+
+  /**
+   * The attachment of a question, uploaded as a drafting source; the question is then sent naming
+   * it. A refused upload ends the turn with why, for the user who asked only.
+   */
+  private readonly sourceUpload = serverMutation(
+    (upload: SourceUpload) =>
+      this.client
+        .call(draftingSessionEndpoints.uploadSource, {
+          body: { file: upload.file },
+        })
+        .pipe(
+          map((source) => ({ upload, documentId: source.documentId })),
+          catchError((error: unknown) => {
+            if (this.userId() === upload.userId) {
+              const app = toAppError(error);
+              // The daily upload cap says how long to wait on its `limit` field.
+              const limit = app.fieldErrors?.find(
+                (field) => field.field === 'limit',
+              );
+              this.fail(
+                upload.turnId,
+                app.kind === 'offline'
+                  ? OFFLINE_MESSAGE
+                  : (limit?.message ?? app.message),
+              );
+            }
+            return EMPTY;
+          }),
+        ),
+    {
+      // A failure is the turn's own text (above), not an alert or a toast.
+      errors: 'alert',
+      onSuccess: ({ upload, documentId }) => {
+        // A turn stopped while its file uploaded asks nothing.
+        if (this.userId() !== upload.userId) return;
+        if (this.state.answeringId() !== upload.turnId) return;
+        this.stream(upload.turnId, upload.question, 'tao_khoa_hoc', documentId);
+      },
+    },
+  );
 
   /**
    * Opens the panel on the user's latest conversation about this lesson, read from the server, or on
@@ -471,40 +491,15 @@ export class AgentChatStore {
   }
 
   /**
-   * "Soạn cùng trợ lý" on the new course page: the panel opens on a new conversation and offers
-   * the file picker; the file picked there is sent as from the paperclip. While a reply is on its
-   * way the panel only opens, since that conversation cannot be left yet.
+   * "Soạn cùng trợ lý" on the new course page, with the file picked there: the panel opens on a new
+   * conversation and the file is sent as from the paperclip. While a reply is on its way the panel
+   * only opens, since that conversation cannot be left yet.
    */
-  startDrafting(): void {
+  draftFrom(file: File): void {
     this.open();
     if (this.isAnswering$()) return;
     this.clear();
-    this.state.pickingSource.set(true);
-  }
-
-  /** The panel has offered the file picker that {@link startDrafting} asked for. */
-  sourcePickOffered(): void {
-    this.state.pickingSource.set(false);
-  }
-
-  // ---- drafting step cards --------------------------------------------------------------------
-
-  /** "Đã chốt" on a step message: the editor showing the session confirms, else it opens there. */
-  confirmDraftingStep(card: DraftingCard): void {
-    this.drafting.confirmFromChat(
-      card.sessionId,
-      card.step as DraftingStepNumber,
-      card.courseId,
-    );
-  }
-
-  /** "Mở trang soạn" on a step message whose step failed. */
-  openDraftingStep(card: DraftingCard): void {
-    this.drafting.openEditor(
-      card.sessionId,
-      card.step as DraftingStepNumber,
-      card.courseId,
-    );
+    this.askWithFile(DRAFTING_SOURCE_QUESTION, file);
   }
 
   // ---- saved conversations ---------------------------------------------------------------------
@@ -553,17 +548,13 @@ export class AgentChatStore {
   }
 
   /**
-   * Reads the open conversation again when the session it started moved on; while an answer is on
-   * its way (its turn is newer than what the server has) it waits for the answer to end. A failed
-   * read keeps what shows.
+   * Reads the open conversation again: the drafting session it started moved on, so a step message
+   * or a card's state is new on the server. It waits for an answer on its way; a failed read keeps
+   * what shows and goes to the error handler.
    */
-  private draftingChanged(
-    steps: string | null,
-    conversationId: number | null,
-  ): void {
-    if (steps === null || steps === this.draftingSeen) return;
-    this.draftingSeen = steps;
-    if (conversationId === null) return;
+  reloadConversation(conversationId: number): void {
+    if (this.isAnswering$() || this.state.conversationId() !== conversationId)
+      return;
     this.loading?.unsubscribe();
     const userId = this.userId();
     this.loading = this.conversations.detail(conversationId).subscribe({
@@ -572,7 +563,7 @@ export class AgentChatStore {
         if (this.state.conversationId() !== detail.id) return;
         this.setTurns(detail.turns.map(turnFromStored));
       }),
-      error: () => undefined,
+      error: (error: unknown) => this.errorHandler.handleError(error),
     });
   }
 
@@ -825,6 +816,7 @@ export class AgentChatStore {
   private dropStream(): void {
     this.streaming?.unsubscribe();
     this.streaming = null;
+    this.sourceUpload.reset();
   }
 
   // ---- history and storage ---------------------------------------------------------------------

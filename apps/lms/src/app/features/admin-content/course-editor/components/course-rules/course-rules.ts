@@ -11,7 +11,6 @@ import { FormField, type FieldTree } from '@angular/forms/signals';
 import type { QuizSummary } from '@lms/contracts';
 import {
   Alert,
-  Badge,
   Button,
   Card,
   CardBody,
@@ -23,6 +22,7 @@ import {
 import type { CourseDraftValue } from '../../course-draft';
 import { CourseEditorStore } from '../../data-access/course-editor.store';
 import type { FillField } from '../../data-access/drafting-fill';
+import { SuggestedMark } from '../suggested-mark/suggested-mark';
 import { DraftingFillStore } from '../../data-access/drafting-fill.store';
 import { QuestionImport } from '../../../../../shared/quiz/question-import/question-import';
 import { QUESTION_IMPORT_HOST } from '../../../../../shared/quiz/question-import/data-access/question-import.host';
@@ -56,12 +56,12 @@ const QUIZ_STATUS_LABEL: Record<QuizSummary['status'], string> = {
   selector: 'app-course-rules',
   imports: [
     Alert,
-    Badge,
     Button,
     Card,
     CardBody,
     CourseExamForm,
     DraftingQuestions,
+    SuggestedMark,
     Field,
     FormField,
     Icon,
@@ -100,6 +100,8 @@ export class CourseRules {
   /** The drafting session's step 3, on the editor page that follows one. */
   protected readonly fill = inject(DraftingFillStore, { optional: true });
   private readonly examForm = viewChild(CourseExamForm);
+  /** Step 3's draft questions of a drafting session, while they are on the page. */
+  readonly draftingQuestions = viewChild(DraftingQuestions);
   protected readonly selectedExam = computed(() =>
     this.exam.formOpen$() && this.exam.creating$()
       ? this.createOption

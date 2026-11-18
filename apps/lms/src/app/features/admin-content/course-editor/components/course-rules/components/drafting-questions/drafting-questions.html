@@ -1,3 +1,4 @@
+@let rules = questionsForm().value();
 <ui-section-card title="Câu hỏi nháp cho bài kiểm tra cuối khóa">
   <div class="drafting-questions">
     <p class="drafting-questions__note">
@@ -7,57 +8,47 @@
     </p>
     <ui-field
       label="Năng lực của câu hỏi"
-      [required]="fill.rules$().questions.length > 0"
+      [required]="rules.questions.length > 0"
       hint="Câu hỏi trong ngân hàng được gắn với một năng lực để báo cáo."
     >
-      <select
-        uiSelect
-        [value]="fill.rules$().competencyId"
-        (change)="chooseCompetency($event)"
-      >
-        <option value="" [selected]="fill.rules$().competencyId === ''">
-          Chọn năng lực
-        </option>
-        @for (competency of fill.competencies$(); track competency.id) {
-        <option
-          [value]="competency.id"
-          [selected]="fill.rules$().competencyId === '' + competency.id"
-        >
-          {{ competency.name }}
-        </option>
+      <select uiSelect [formField]="questionsForm.competencyId">
+        <option value="">Chọn năng lực</option>
+        @for (competency of store.competencies$(); track competency.id) {
+        <option [value]="'' + competency.id">{{ competency.name }}</option>
         }
       </select>
-      @if (fill.competencyMarked$()) {
-      <span uiBadge><ui-icon name="sparkles" size="sm" />AI đề xuất</span>
+      @if (competencyMarked()) {
+      <app-suggested-mark />
       }
     </ui-field>
-    @if (fill.rules$().questions.length === 0) {
+    @if (rules.questions.length === 0) {
     <p class="drafting-questions__note">
       Không còn câu hỏi nháp nào. Khi chốt, khóa học chỉ lưu điều kiện hoàn
       thành và điểm thưởng.
     </p>
     }
     <ol class="drafting-questions__list">
-      @for (question of fill.rules$().questions; track question.key; let index =
-      $index) {
+      @for (question of questionsForm.questions; track question().value().key;
+      let index = $index) { @let value = question().value();
       <li
         class="drafting-questions__question"
         [attr.aria-label]="'Câu hỏi ' + (index + 1)"
       >
         <div class="drafting-questions__head">
           <span class="drafting-questions__meta"
-            >Câu {{ index + 1 }} · {{ difficulty[question.difficulty] }} ·
-            Nguồn: {{ question.sourceSection }}</span
+            >Câu {{ index + 1 }} · {{ difficulty[value.difficulty] }} · Nguồn:
+            {{ value.sourceSection }}</span
           >
-          @if (fill.questionMarks$().has(question.key)) {
-          <span uiBadge><ui-icon name="sparkles" size="sm" />AI đề xuất</span>
+          @if (questionMarks().has(value.key)) {
+          <app-suggested-mark />
           }
           <button
             uiButton
             size="sm"
             variant="ghost"
             type="button"
-            (click)="fill.removeQuestion(question.key)"
+            class="drafting-questions__remove"
+            (click)="remove(value.key)"
           >
             <ui-icon name="trash-2" size="sm" />Bỏ câu hỏi
           </button>
@@ -66,8 +57,7 @@
           <textarea
             uiTextarea
             rows="2"
-            [value]="question.content"
-            (input)="editContent(question, $event)"
+            [formField]="question.content"
           ></textarea>
         </ui-field>
         <div
@@ -78,24 +68,20 @@
           <p class="drafting-questions__meta">
             Phương án (đánh dấu các đáp án đúng)
           </p>
-          @for (option of question.options; track option.key; let at = $index) {
+          @for (option of question.options; track option().value().key; let at =
+          $index) {
           <div class="drafting-questions__option">
             <input
               type="checkbox"
               uiCheckbox
-              [checked]="option.correct"
+              [formField]="option.correct"
               [attr.aria-label]="'Phương án ' + (at + 1) + ' là đáp án đúng'"
-              (change)="
-                editOption(question, option, { correct: optionCorrect($event) })
-              "
             />
             <input
               uiInput
-              [value]="option.content"
+              class="drafting-questions__option-text"
+              [formField]="option.content"
               [attr.aria-label]="'Phương án ' + (at + 1)"
-              (input)="
-                editOption(question, option, { content: optionText($event) })
-              "
             />
           </div>
           }
@@ -104,8 +90,7 @@
           <textarea
             uiTextarea
             rows="2"
-            [value]="question.explanation"
-            (input)="editExplanation(question, $event)"
+            [formField]="question.explanation"
           ></textarea>
         </ui-field>
       </li>

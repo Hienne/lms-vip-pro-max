@@ -7,9 +7,7 @@
         placeholder="Ví dụ: Quy trình đối soát cuối ngày"
       />
       @if (suggested().has('title')) {
-      <span uiBadge class="course-info__suggested"
-        ><ui-icon name="sparkles" size="sm" />AI đề xuất</span
-      >
+      <app-suggested-mark class="course-info__suggested" />
       }
     </ui-field>
     <div class="course-info__pair">
@@ -20,7 +18,7 @@
         [hint]="
           draft().programId().disabled()
             ? programLockedHint
-            : (hints().programId ?? '')
+            : (shownHints().programId ?? '')
         "
       >
         <select
@@ -42,9 +40,7 @@
           }
         </select>
         @if (suggested().has('programId')) {
-        <span uiBadge class="course-info__suggested"
-          ><ui-icon name="sparkles" size="sm" />AI đề xuất</span
-        >
+        <app-suggested-mark class="course-info__suggested" />
         } @if (store.programsError$()) {
         <button
           uiButton
@@ -82,7 +78,7 @@
         [showErrors]="showErrors()"
         label="Phân hệ nghiệp vụ"
         [hint]="
-          hints().moduleId ??
+          shownHints().moduleId ??
           (draft().programId().value() ? '' : 'Chọn chương trình trước.')
         "
       >
@@ -100,9 +96,7 @@
           }
         </select>
         @if (suggested().has('moduleId')) {
-        <span uiBadge class="course-info__suggested"
-          ><ui-icon name="sparkles" size="sm" />AI đề xuất</span
-        >
+        <app-suggested-mark class="course-info__suggested" />
         } @if (store.modulesError$()) {
         <button uiButton type="button" size="sm" (click)="store.retryModules()">
           Tải lại phân hệ
@@ -118,9 +112,7 @@
       >
         <input uiInput [formField]="draft().code" />
         @if (suggested().has('code')) {
-        <span uiBadge class="course-info__suggested"
-          ><ui-icon name="sparkles" size="sm" />AI đề xuất</span
-        >
+        <app-suggested-mark class="course-info__suggested" />
         }
       </ui-field>
       } @else {
@@ -147,9 +139,7 @@
           }
         </select>
         @if (suggested().has('level')) {
-        <span uiBadge class="course-info__suggested"
-          ><ui-icon name="sparkles" size="sm" />AI đề xuất</span
-        >
+        <app-suggested-mark class="course-info__suggested" />
         }
       </ui-field>
     </div>
@@ -160,9 +150,7 @@
     <fieldset class="course-info__kind">
       <legend>Loại khóa học</legend>
       @if (suggested().has('defaultRequirement')) {
-      <span uiBadge class="course-info__suggested"
-        ><ui-icon name="sparkles" size="sm" />AI đề xuất</span
-      >
+      <app-suggested-mark class="course-info__suggested" />
       }
       <div class="course-info__pair">
         <ui-option-card
@@ -191,18 +179,14 @@
     <ui-field [showErrors]="showErrors()" label="Mô tả ngắn">
       <textarea uiTextarea rows="3" [formField]="draft().summary"></textarea>
       @if (suggested().has('summary')) {
-      <span uiBadge class="course-info__suggested"
-        ><ui-icon name="sparkles" size="sm" />AI đề xuất</span
-      >
+      <app-suggested-mark class="course-info__suggested" />
       }
     </ui-field>
 
     <fieldset class="course-info__objectives">
       <legend>Mục tiêu đầu ra</legend>
       @if (suggested().has('objectives')) {
-      <span uiBadge class="course-info__suggested"
-        ><ui-icon name="sparkles" size="sm" />AI đề xuất</span
-      >
+      <app-suggested-mark class="course-info__suggested" />
       } @for (objective of draft().objectives; track $index; let i = $index) {
       <div class="course-info__objective">
         <input

@@ -40,6 +40,7 @@ import {
   type RoleOption,
   type SaveRoleCommand,
   type ScopeType,
+  type CourseDetail,
   type DraftingStepNumber,
   type TeamInfo,
   type UserDetail,
@@ -72,7 +73,6 @@ import {
   AGENT_COURSE_ATTACH_FIRST,
   AGENT_COURSE_FOR_INSTRUCTORS,
   AGENT_COURSE_SOURCE_NOT_FOUND,
-  AGENT_COURSE_STARTED,
   agentCourseDraftingEvents,
   agentToolReplyEvents,
   AGENT_SCREEN_REFUSED,
@@ -485,6 +485,18 @@ export class FakeBackend {
               rules,
               aiGenerated,
             ),
+          detail: (courseId) => {
+            const reply = this.handle(courseEndpoints.getCourse, {
+              ...request,
+              body: null,
+              params: { courseId: String(courseId) },
+              query: {},
+            });
+            const body = reply?.body as { data?: CourseDetail } | undefined;
+            return body?.data;
+          },
+          markAiGenerated: (courseId) =>
+            this.learning.markAiGenerated(courseId),
         });
       } catch (error) {
         if (error instanceof Refused) return error.reply;
@@ -1316,38 +1328,15 @@ export class FakeBackend {
     const user = this.caller(request);
     const pending = this.pendingOf(request, user);
     this.pendingActions.delete(pending.action.id);
+    // The old "Tạo bằng AI" card cannot start a job any more: the retired refusal, as the server.
     if (pending.action.tool === 'start_course_job') {
-      const fileName =
-        pending.action.changes.find((c) => c.field === 'file')?.to ??
-        'tai-lieu.md';
-      const job = this.courseJobs.queue(
-        user.userId,
-        {
-          targetLearners:
-            pending.action.changes.find((c) => c.field === 'targetLearners')
-              ?.to ?? 'Học viên',
-          level: 'BEGINNER',
-          chapters: 3,
-          programmeId: 1,
-          competencyId: 1,
-        },
-        fileName,
-      );
       this.book.settle(
         user.userId,
         pending.action.id,
-        'confirmed',
-        AGENT_COURSE_STARTED,
+        'failed',
+        BACKEND_RESPONSES.assistantCourseJobsRetired.message,
       );
-      return ok({
-        actionId: pending.action.id,
-        tool: pending.action.tool,
-        message: AGENT_COURSE_STARTED,
-        data: {
-          jobId: job.jobId,
-          path: `/admin/courses/ai-drafts/${job.jobId}`,
-        },
-      });
+      return backendRefusal('assistantCourseJobsRetired');
     }
     const changes = pending.action.changes;
     if (

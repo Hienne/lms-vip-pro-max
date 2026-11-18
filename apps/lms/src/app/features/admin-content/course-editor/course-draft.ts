@@ -60,6 +60,8 @@ export interface BlockValue {
 
 export interface LessonValue {
   readonly key: string;
+  /** The saved lesson this row shows; none for a lesson not saved yet. */
+  readonly id?: number;
   readonly title: string;
   readonly lessonType: LessonType;
   /** The quiz a quiz lesson holds; `null` until one is chosen, and always `null` for a content lesson. */
@@ -221,6 +223,7 @@ function toBlockValue({ block, assets, steps }: BlockDetail): BlockValue {
 function toLessonValue({ lesson, blocks }: LessonDetail): LessonValue {
   return {
     key: newKey(),
+    id: lesson.id,
     title: lesson.title,
     lessonType: lesson.lessonType,
     scormPackageId: lesson.scormPackageId ?? null,

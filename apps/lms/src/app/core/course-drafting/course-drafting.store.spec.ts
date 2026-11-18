@@ -2,15 +2,16 @@ import {
   HttpTestingController,
   type TestRequest,
 } from '@angular/common/http/testing';
-import { ErrorHandler } from '@angular/core';
+import { ErrorHandler, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import {
   draftingSessionFixture,
   draftingStepFixture,
   envelopeOk,
 } from '@lms/mocks';
 import type { DraftingSession } from '@lms/contracts';
+import { AgentChatStore } from '../assistant/agent-chat.store';
 import { parseAppConfig, provideAppConfig } from '../config/app-config';
 import { testAppConfig } from '../config/app-config.testing';
 import { provideEnvelopeHttpClient } from '../http/http.testing';
@@ -31,15 +32,29 @@ const proposing = (): DraftingSession => ({
 
 describe('CourseDraftingStore', () => {
   let backend: HttpTestingController;
+  const chat = {
+    conversationId$: signal<number | null>(null),
+    isOpen$: signal(false),
+    isAnswering$: signal(false),
+    reloadConversation: vi.fn(),
+  };
 
   beforeEach(() => {
     vi.useFakeTimers();
+    chat.conversationId$.set(null);
+    chat.isOpen$.set(false);
+    chat.isAnswering$.set(false);
+    chat.reloadConversation.mockReset();
     TestBed.configureTestingModule({
       providers: [
         provideAppConfig(parseAppConfig(testAppConfig())),
         provideEnvelopeHttpClient(),
+        provideRouter([]),
         { provide: SessionStore, useClass: FakeSessionStore },
         { provide: ErrorHandler, useValue: { handleError: () => undefined } },
+        { provide: AgentChatStore, useValue: chat },
+        // Provided by the shell in the app.
+        CourseDraftingStore,
       ],
     });
     backend = TestBed.inject(HttpTestingController);
@@ -60,16 +75,26 @@ describe('CourseDraftingStore', () => {
   const reads = (): TestRequest[] =>
     backend.match((r) => r.url === SESSION && r.method === 'GET');
 
-  async function open(session: DraftingSession) {
+  /** An editor page shows session 1. */
+  const editorPage = signal<number | undefined>(1);
+
+  async function open(session: DraftingSession, shownInEditor = true) {
     const store = TestBed.inject(CourseDraftingStore);
-    store.load(1);
+    if (shownInEditor) store.showInEditor(editorPage);
+    else store.follow(1);
     await settle();
     reads()[0].flush(envelopeOk(session));
     await settle();
     return store;
   }
 
-  it('asks nothing until a session is loaded', async () => {
+  const poll = async () => {
+    vi.advanceTimersByTime(DRAFTING_POLL_INTERVAL_MS);
+    await settle();
+    return reads();
+  };
+
+  it('asks nothing until a session is followed', async () => {
     TestBed.inject(CourseDraftingStore);
     await settle();
     vi.advanceTimersByTime(DRAFTING_POLL_INTERVAL_MS * 3);
@@ -87,13 +112,11 @@ describe('CourseDraftingStore', () => {
     expect(store.isProposing$()).toBe(false);
   });
 
-  it('asks again every few seconds while a step is proposing, and stops once it is proposed', async () => {
+  it('asks again every few seconds while the editor shows a proposing step, and stops once it is proposed', async () => {
     const store = await open(proposing());
     expect(store.isProposing$()).toBe(true);
 
-    vi.advanceTimersByTime(DRAFTING_POLL_INTERVAL_MS);
-    await settle();
-    const again = reads();
+    const again = await poll();
     expect(again).toHaveLength(1);
     again[0].flush(envelopeOk(draftingSessionFixture(1)));
     await settle();
@@ -102,6 +125,28 @@ describe('CourseDraftingStore', () => {
     vi.advanceTimersByTime(DRAFTING_POLL_INTERVAL_MS * 3);
     await settle();
     expect(reads()).toHaveLength(0);
+  });
+
+  it('stops asking once the editor page is left and no chat card shows the session', async () => {
+    const store = await open(proposing());
+
+    store.leaveEditor(editorPage);
+    await settle();
+
+    expect(store.sessionId$()).toBe(1);
+    expect(await poll()).toHaveLength(0);
+  });
+
+  it('asks while the chat panel is open on the conversation that started the session', async () => {
+    chat.conversationId$.set(5);
+    const store = await open({ ...proposing(), conversationId: 5 }, false);
+    expect(await poll()).toHaveLength(0);
+
+    chat.isOpen$.set(true);
+    await settle();
+
+    expect(store.isProposing$()).toBe(true);
+    expect(await poll()).toHaveLength(1);
   });
 
   it('stops a proposing step and reads the session again', async () => {
@@ -136,91 +181,81 @@ describe('CourseDraftingStore', () => {
     backend.expectNone((r) => r.url === STOP);
   });
 
-  it('follows the session that drafted a course, and none when the course has none', async () => {
-    const store = TestBed.inject(CourseDraftingStore);
-    const forCourse = (courseId: number) =>
-      backend.expectOne(
-        (r) =>
-          r.url === `/api/v1/assistant/drafting-sessions/course/${courseId}` &&
-          r.method === 'GET',
-      );
-
-    store.loadForCourse(77);
-    await settle();
-    forCourse(77).flush(
-      envelopeOk({ ...draftingSessionFixture(2), courseId: 77 }),
-    );
-    await settle();
-    reads()[0].flush(
-      envelopeOk({ ...draftingSessionFixture(2), courseId: 77 }),
-    );
-    await settle();
-    expect(store.session$()?.courseId).toBe(77);
-    expect(store.step$()?.step).toBe(2);
-
-    store.loadForCourse(78);
-    await settle();
-    forCourse(78).flush(envelopeOk(null));
-    await settle();
-    expect(store.session$()).toBeUndefined();
-  });
-
-  it('confirms through the page that shows the session, and only that one', async () => {
-    const store = await open(draftingSessionFixture(1));
-    const confirm = vi.fn();
-
-    expect(store.confirm(1)).toBe(false);
-    const unregister = store.registerPageConfirm(2, confirm);
-    expect(store.confirm(1)).toBe(false);
-    unregister();
-    store.registerPageConfirm(1, confirm);
-
-    expect(store.confirm(1)).toBe(true);
-    expect(confirm).toHaveBeenCalledExactlyOnceWith(1);
-  });
-
   describe('"Đã chốt" on the chat card', () => {
-    it('runs the confirm of the page that shows that session', () => {
-      const store = TestBed.inject(CourseDraftingStore);
-      const navigate = vi
-        .spyOn(TestBed.inject(Router), 'navigateByUrl')
-        .mockResolvedValue(true);
-      const confirm = vi.fn();
-      store.registerPageConfirm(7, confirm);
+    const card = {
+      sessionId: 1,
+      step: 2 as const,
+      state: 'proposed' as const,
+      courseId: 40,
+    };
 
-      store.confirmFromChat(7, 2, 40);
+    it('asks the editor page that shows the session to confirm it', async () => {
+      const store = await open(draftingSessionFixture(1));
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl');
 
-      expect(confirm).toHaveBeenCalledExactlyOnceWith(2);
+      store.confirmFromChat(card);
+
+      expect(store.confirmRequest$()).toEqual({ sessionId: 1, step: 2 });
       expect(navigate).not.toHaveBeenCalled();
+      store.confirmRequestTaken();
+      expect(store.confirmRequest$()).toBeNull();
     });
 
-    it('opens the draft course at that step when no page shows the session', () => {
-      const store = TestBed.inject(CourseDraftingStore);
-      const navigate = vi
-        .spyOn(TestBed.inject(Router), 'navigateByUrl')
-        .mockResolvedValue(true);
-      const confirm = vi.fn();
-      store.registerPageConfirm(8, confirm);
-
-      store.confirmFromChat(7, 3, 40);
-
-      expect(confirm).not.toHaveBeenCalled();
-      expect(navigate).toHaveBeenCalledExactlyOnceWith(
-        '/admin/courses/40/edit?step=2',
-      );
-    });
-
-    it('opens the new course page of the session before step 1 made the course', () => {
+    it('opens the editor at that step when no page shows the session', async () => {
       const store = TestBed.inject(CourseDraftingStore);
       const navigate = vi
         .spyOn(TestBed.inject(Router), 'navigateByUrl')
         .mockResolvedValue(true);
 
-      store.confirmFromChat(7, 1, null);
+      store.confirmFromChat(card);
+      store.openEditor({ ...card, courseId: null, step: 1 });
 
-      expect(navigate).toHaveBeenCalledExactlyOnceWith(
-        '/admin/courses/new?session=7',
+      expect(store.confirmRequest$()).toBeNull();
+      expect(navigate.mock.calls.map(([url]) => url)).toEqual([
+        '/admin/courses/40/edit?step=1',
+        '/admin/courses/new?session=1',
+      ]);
+    });
+  });
+
+  describe('the conversation that started the session', () => {
+    it('is read again when a step of the session moves on, once per change', async () => {
+      chat.conversationId$.set(5);
+      const store = await open({ ...proposing(), conversationId: 5 });
+      expect(chat.reloadConversation).toHaveBeenCalledExactlyOnceWith(5);
+
+      const again = await poll();
+      again[0].flush(
+        envelopeOk({ ...draftingSessionFixture(1), conversationId: 5 }),
       );
+      await settle();
+      store.refresh();
+      await settle();
+      reads()[0].flush(
+        envelopeOk({ ...draftingSessionFixture(1), conversationId: 5 }),
+      );
+      await settle();
+
+      expect(chat.reloadConversation).toHaveBeenCalledTimes(2);
+    });
+
+    it('waits for the answer on its way', async () => {
+      chat.conversationId$.set(5);
+      chat.isAnswering$.set(true);
+      await open({ ...draftingSessionFixture(1), conversationId: 5 });
+      expect(chat.reloadConversation).not.toHaveBeenCalled();
+
+      chat.isAnswering$.set(false);
+      await settle();
+
+      expect(chat.reloadConversation).toHaveBeenCalledExactlyOnceWith(5);
+    });
+
+    it('is not read for a session another conversation started', async () => {
+      chat.conversationId$.set(5);
+      await open({ ...draftingSessionFixture(1), conversationId: 6 });
+
+      expect(chat.reloadConversation).not.toHaveBeenCalled();
     });
   });
 });

@@ -39,6 +39,9 @@
           <span class="assign-rows__type"
             >{{ typeLabel[view.row.pick.targetType] }}</span
           >
+          @if (fill?.suggestedRows$()?.has(view.row.id)) {
+          <app-suggested-mark />
+          }
         </div>
         <ui-field label="Bắt đầu">
           <input

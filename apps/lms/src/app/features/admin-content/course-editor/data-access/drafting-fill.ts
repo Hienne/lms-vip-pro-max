@@ -20,10 +20,25 @@ export const DRAFTING_FIELD_DELAY_MS = 120;
 /** A field of the form the assistant writes, the key its "AI đề xuất" marker goes by. */
 export type FillField = keyof CourseDraftValue;
 
-/** One write into the form: a whole field, or one more item of a list. */
-export interface FillPatch {
-  readonly field: FillField;
+/**
+ * What the outline shows under a lesson the assistant proposed: what it teaches and the part of
+ * the document it comes from, and whether it is still a proposal (step 2 not confirmed yet).
+ */
+export interface LessonNoteView {
+  readonly text: string;
+  readonly suggested: boolean;
+}
+
+/**
+ * One write into the form: a whole field (`value`), or one more item of a list. The page applies
+ * it to its own form model; the store keeps only what was written, for the "AI đề xuất" marker.
+ */
+export interface FillPatch<K extends FillField = FillField> {
+  readonly field: K;
+  readonly value: CourseDraftValue[K];
   readonly apply: (value: CourseDraftValue) => CourseDraftValue;
+  /** Step 2: the line under each lesson written so far, by the lesson's row key. */
+  readonly notes?: Readonly<Record<string, LessonNoteView>>;
 }
 
 /** A field of step 3 that lives beside the form until the step is confirmed. */
@@ -46,32 +61,55 @@ export interface AudiencePatch {
 
 export type DraftingPatch = FillPatch | RulesPatch | AudiencePatch;
 
-const set = <K extends FillField>(
+/** The write that puts `next` into `field`, replacing what it held. */
+export const fieldPatch = <K extends FillField>(
   field: K,
   next: CourseDraftValue[K],
 ): FillPatch => ({
   field,
+  value: next,
   apply: (value) => ({ ...value, [field]: next }),
 });
+const set = fieldPatch;
+
+/** What a patch wrote into its field, as the "AI đề xuất" marker compares it. */
+export const writtenOf = (patch: FillPatch): string =>
+  JSON.stringify(patch.value);
+
+/** The fields of `value` that still hold what the assistant wrote (`written`, as JSON by field). */
+export function markedFields(
+  value: CourseDraftValue,
+  written: Partial<Record<FillField, string>>,
+): ReadonlySet<FillField> {
+  return new Set(
+    (Object.entries(written) as [FillField, string][])
+      .filter(([field, json]) => JSON.stringify(value[field]) === json)
+      .map(([field]) => field),
+  );
+}
 
 /**
  * Step 1 in the order the page shows its fields. A value the server left empty (a programme or
- * module it could not pick, no level, no kind) is not written, so the form keeps it empty. The
- * objectives come one item at a time, replacing what the list held.
+ * module it could not pick, no level, no kind) is not written, so the form keeps it empty; nor is
+ * one the proposal does not hold (a code-only proposal after a taken code writes just the code).
+ * The objectives come one item at a time, replacing what the list held.
  */
 function basicsPatches(proposal: BasicsProposal): FillPatch[] {
-  const patches: FillPatch[] = [set('title', proposal.title)];
-  if (proposal.programId !== null)
+  const patches: FillPatch[] = [];
+  if (proposal.title !== undefined) patches.push(set('title', proposal.title));
+  if (proposal.programId != null)
     patches.push(set('programId', String(proposal.programId)));
-  if (proposal.moduleId !== null)
+  if (proposal.moduleId != null)
     patches.push(set('moduleId', String(proposal.moduleId)));
   patches.push(set('code', proposal.code));
-  if (proposal.level !== null) patches.push(set('level', proposal.level));
-  if (proposal.defaultRequirement !== null)
+  if (proposal.level != null) patches.push(set('level', proposal.level));
+  if (proposal.defaultRequirement != null)
     patches.push(set('defaultRequirement', proposal.defaultRequirement));
-  patches.push(set('summary', proposal.summary));
-  proposal.objectives.forEach((_, index) =>
-    patches.push(set('objectives', proposal.objectives.slice(0, index + 1))),
+  if (proposal.summary !== undefined)
+    patches.push(set('summary', proposal.summary));
+  const objectives = proposal.objectives ?? [];
+  objectives.forEach((_, index) =>
+    patches.push(set('objectives', objectives.slice(0, index + 1))),
   );
   return patches;
 }
@@ -82,24 +120,30 @@ function basicsPatches(proposal: BasicsProposal): FillPatch[] {
  * once, so a chapter or lesson keeps its key from one write to the next.
  */
 function outlinePatches(proposal: OutlineProposal): FillPatch[] {
+  const notes: Record<string, LessonNoteView> = {};
   const chapters: ChapterValue[] = proposal.chapters.map((chapter, ci) => ({
     ...newChapter(ci + 1),
     title: chapter.title,
-    lessons: chapter.lessons.map((lesson, li) => ({
-      ...newLesson(li + 1),
-      title: lesson.title,
-    })),
+    lessons: chapter.lessons.map((lesson, li) => {
+      const row = { ...newLesson(li + 1), title: lesson.title };
+      notes[row.key] = {
+        text: `${lesson.description} · Nguồn: ${lesson.sourceSection}`,
+        suggested: true,
+      };
+      return row;
+    }),
   }));
   const patches: FillPatch[] = [];
   chapters.forEach((chapter, ci) => {
     const before = chapters.slice(0, ci);
     for (let count = 0; count <= chapter.lessons.length; count++) {
-      patches.push(
-        set('chapters', [
+      patches.push({
+        ...set('chapters', [
           ...before,
           { ...chapter, lessons: chapter.lessons.slice(0, count) },
         ]),
-      );
+        notes,
+      });
     }
   });
   return patches;

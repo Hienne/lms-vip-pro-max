@@ -8,7 +8,11 @@
 .drafting-questions {
   @include ui.stack(4);
 
-  &__note,
+  &__note {
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+
   &__meta {
     @include ui.text(sm, muted);
     margin: 0;
@@ -21,7 +25,10 @@
     list-style: none;
   }
 
-  &__question,
+  &__question {
+    @include ui.stack(2);
+  }
+
   &__options {
     @include ui.stack(2);
   }
@@ -30,19 +37,19 @@
     @include ui.row(2);
     flex-wrap: wrap;
     align-items: center;
+  }
 
-    > button {
-      margin-inline-start: auto;
-    }
+  &__remove {
+    margin-inline-start: auto;
   }
 
   &__option {
     @include ui.row(2);
     align-items: center;
+  }
 
-    > input[uiInput] {
-      flex: 1;
-      min-width: 0;
-    }
+  &__option-text {
+    flex: 1;
+    min-width: 0;
   }
 }

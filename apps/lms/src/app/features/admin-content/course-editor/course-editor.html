@@ -24,12 +24,22 @@
 >
   <div slot="actions" class="course-editor__head-state">
     @if (canDraftWithAssistant()) {
+    <!-- The picker opens in the button's own click, so the browser allows it. -->
+    <input
+      #sourcePicker
+      type="file"
+      class="sr-only"
+      tabindex="-1"
+      aria-hidden="true"
+      [accept]="sourceAccept"
+      (change)="sourcePicked($event)"
+    />
     <button
       type="button"
       uiButton
       variant="secondary"
       size="sm"
-      (click)="draftWithAssistant()"
+      (click)="sourcePicker.click()"
     >
       Soạn cùng trợ lý
     </button>
@@ -110,6 +120,7 @@
 } @if (fill.attached$()) {
 <app-drafting-bar
   [problem]="draftingProblem()"
+  [suggestedCode]="suggestedCode()"
   (confirmed)="confirmDraftingStep($event)"
 />
 }
@@ -129,8 +140,8 @@
       [ownerName]="store.ownerName$()"
       [programs]="store.programs$()"
       [modules]="store.modules$()"
-      [suggested]="fill.marks$()"
-      [hints]="fill.hints$()"
+      [suggested]="suggested()"
+      [hints]="fill.emptyHints$()"
       [coverAssetId]="draftValue().coverAssetId"
       (programPicked)="store.pickProgram($event)"
       (coverRemoved)="removeCover()"
@@ -158,7 +169,7 @@
     <app-course-rules
       [hidden]="store.step$() !== 2"
       [draft]="courseForm"
-      [suggested]="fill.marks$()"
+      [suggested]="suggested()"
     />
   </fieldset>
 </form>
@@ -184,9 +195,10 @@
     <ui-icon name="archive" size="sm" />Lưu nháp
   </button>
   } @if (store.step$() < steps.length - 1) {
+  <!-- While the bar offers "Đã chốt", it is the one primary action. -->
   <button
     uiButton
-    variant="primary"
+    [variant]="fill.confirmStep$() === null ? 'primary' : 'secondary'"
     [disabled]="continueBlocked() || store.isSaving$() || (store.isCreate$() && !store.ownerOrgId$()) || fill.locked$()"
     (click)="continue()"
   >
@@ -195,7 +207,7 @@
   } @else if (store.isDraft$()) {
   <button
     uiButton
-    variant="primary"
+    [variant]="fill.confirmStep$() === null ? 'primary' : 'secondary'"
     [disabled]="store.isSaving$() || store.pendingUploads$() > 0 || (store.isCreate$() && !store.ownerOrgId$()) || fill.locked$()"
     (click)="publish()"
   >

@@ -39,7 +39,7 @@
     type="button"
     size="sm"
     [disabled]="fill.isChanging$()"
-    (click)="fill.proposeAgain(failed.step)"
+    (click)="fill.retry(failed.step)"
   >
     <ui-icon name="rotate-ccw" size="sm" />Thử lại
   </button>
@@ -57,7 +57,7 @@
 </ui-alert>
 } @else if (fill.confirmStep$(); as step) {
 <ui-alert tone="info" heading="Chốt bước này" class="drafting-bar">
-  @if (fill.suggestedCode$(); as code) {
+  @if (suggestedCode(); as code) {
   <span>Mã khóa học đã có. Trợ lý đề xuất mã {{ code }}.</span>
   <button
     uiButton
@@ -84,7 +84,7 @@
     variant="ghost"
     size="sm"
     [disabled]="fill.isChanging$() || fill.isConfirming$()"
-    (click)="proposeAgain(step)"
+    (click)="fill.proposeAgain(step)"
   >
     <ui-icon name="rotate-ccw" size="sm" />Đề xuất lại
   </button>
@@ -103,14 +103,14 @@
 </ui-alert>
 } @else if (fill.proposeAgainStep$(); as step) {
 <!-- A step confirmed before: saved with "Lưu nháp", and the assistant may still redo it. -->
-<div class="drafting-bar drafting-bar__again">
+<div class="drafting-bar drafting-bar--again">
   <button
     uiButton
     type="button"
     variant="ghost"
     size="sm"
     [disabled]="fill.isChanging$()"
-    (click)="proposeAgain(step)"
+    (click)="fill.proposeAgain(step)"
   >
     <ui-icon name="rotate-ccw" size="sm" />Đề xuất lại
   </button>

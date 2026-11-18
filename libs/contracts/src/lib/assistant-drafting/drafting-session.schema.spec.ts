@@ -115,6 +115,12 @@ describe('drafting proposals', () => {
     ).toBe(false);
   });
 
+  it('reads a basics proposal that holds only the new code after a taken one on a hand-filled step', () => {
+    const parsed = BasicsProposalSchema.parse({ code: 'KH-0042' });
+    expect(parsed).toEqual({ code: 'KH-0042' });
+    expect(BasicsProposalSchema.safeParse({}).success).toBe(false);
+  });
+
   it('reads an outline whose lessons carry a description and source section', () => {
     const parsed = OutlineProposalSchema.parse(outline);
     expect(parsed.chapters[0].lessons[0].sourceSection).toBe(

@@ -94,8 +94,3 @@
     @include ui.text(xs, muted);
   }
 }
-
-// "AI đề xuất" under a field the assistant wrote, as wide as its text.
-.course-info__suggested {
-  align-self: flex-start;
-}

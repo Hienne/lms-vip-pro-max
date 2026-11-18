@@ -31,8 +31,13 @@ export const DraftingSessionStatusSchema = z.enum([
 ]);
 export type DraftingSessionStatus = z.infer<typeof DraftingSessionStatusSchema>;
 
-export const DraftingStepNumberSchema = z.number().int().min(1).max(4);
-export type DraftingStepNumber = 1 | 2 | 3 | 4;
+export const DraftingStepNumberSchema = z.union([
+  z.literal(1),
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+]);
+export type DraftingStepNumber = z.infer<typeof DraftingStepNumberSchema>;
 
 /** The step 1 fields the assistant may leave for the author to check. */
 export const BasicsFieldSchema = z.enum([
@@ -49,17 +54,19 @@ export type BasicsField = z.infer<typeof BasicsFieldSchema>;
 /**
  * Step 1, the course info. Programme and module are ids the author may pick, or null when the
  * server dropped what the model returned; `code` is generated and checked free by the server.
+ * After a taken code on a step the author filled by hand (no proposal of its own), the proposal
+ * holds only the new `code`: every other field is then absent.
  */
 export const BasicsProposalSchema = z.object({
-  title: z.string(),
-  summary: z.string(),
-  objectives: z.array(z.string()),
-  level: CourseLevelSchema.nullable(),
-  defaultRequirement: RequirementSchema.nullable(),
-  programId: z.number().int().positive().nullable(),
-  moduleId: z.number().int().positive().nullable(),
+  title: z.string().optional(),
+  summary: z.string().optional(),
+  objectives: z.array(z.string()).optional(),
+  level: CourseLevelSchema.nullable().optional(),
+  defaultRequirement: RequirementSchema.nullable().optional(),
+  programId: z.number().int().positive().nullable().optional(),
+  moduleId: z.number().int().positive().nullable().optional(),
   code: z.string(),
-  unsure: z.array(BasicsFieldSchema),
+  unsure: z.array(BasicsFieldSchema).optional(),
 });
 export type BasicsProposal = z.infer<typeof BasicsProposalSchema>;
 

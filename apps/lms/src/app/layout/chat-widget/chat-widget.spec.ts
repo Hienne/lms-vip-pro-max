@@ -12,7 +12,7 @@ import {
   type BackgroundNotice,
 } from '../../core/background/background-jobs.store';
 import { ChatWidget } from './chat-widget';
-import { DRAFTING_SOURCE_QUESTION } from './components/agent-composer/agent-composer.form';
+import { CourseDraftingStore } from '../../core/course-drafting/course-drafting.store';
 
 const turn = (id: number, text: string): AgentTurn => ({
   id,
@@ -37,13 +37,11 @@ function fakeStore() {
   const docked = signal(false);
   const historyOpen = signal(false);
   const lesson = signal<ConversationContext | null>(null);
-  const pickingSource = signal(false);
   const items = signal<readonly ConversationSummary[]>([]);
   return {
     docked,
     historyOpen,
     lesson,
-    pickingSource,
     items,
     available,
     open,
@@ -65,8 +63,6 @@ function fakeStore() {
       openError$: signal<string | null>(null).asReadonly(),
       conversationId$: signal<number | null>(null).asReadonly(),
       lesson$: lesson.asReadonly(),
-      isPickingSource$: pickingSource.asReadonly(),
-      sourcePickOffered: vi.fn(() => pickingSource.set(false)),
       askWithFile: vi.fn(),
       showHistory: vi.fn(() => historyOpen.set(true)),
       hideHistory: vi.fn(() => historyOpen.set(false)),
@@ -121,6 +117,10 @@ describe('ChatWidget', () => {
       providers: [
         provideRouter([{ path: '**', component: Blank }]),
         { provide: AgentChatStore, useValue: fake.store },
+        {
+          provide: CourseDraftingStore,
+          useValue: { confirmFromChat: vi.fn(), openEditor: vi.fn() },
+        },
         { provide: CourseJobAccess, useValue: { canGenerate$: canGenerate } },
         { provide: ConversationsStore, useValue: fake.history },
         { provide: BackgroundJobsStore, useValue: background },
@@ -235,32 +235,6 @@ describe('ChatWidget', () => {
     open.set(true);
     await fixture.whenStable();
     expect(document.activeElement).toBe(el.querySelector('textarea'));
-  });
-
-  it('opens the file picker once when "Soạn cùng trợ lý" asks, and sends the file picked there', async () => {
-    const { fixture, el, store, pickingSource } = await render();
-    canGenerate.set(true);
-    await fixture.whenStable();
-    const input = el.querySelector<HTMLInputElement>('input[type="file"]')!;
-    const opened = vi.spyOn(input, 'click');
-
-    pickingSource.set(true);
-    await fixture.whenStable();
-    expect(opened).toHaveBeenCalledTimes(1);
-    expect(store.sourcePickOffered).toHaveBeenCalledTimes(1);
-
-    const file = new File(['x'], 'quy-trinh.md');
-    Object.defineProperty(input, 'files', {
-      value: { item: () => file, length: 1 },
-      configurable: true,
-    });
-    input.dispatchEvent(new Event('change'));
-    await fixture.whenStable();
-    expect(store.askWithFile).toHaveBeenCalledWith(
-      DRAFTING_SOURCE_QUESTION,
-      file,
-    );
-    expect(opened).toHaveBeenCalledTimes(1);
   });
 
   it('starts every opening at the newest message', async () => {

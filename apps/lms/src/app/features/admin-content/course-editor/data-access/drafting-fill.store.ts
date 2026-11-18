@@ -1,3 +1,4 @@
+import { Dialog } from '@angular/cdk/dialog';
 import {
   computed,
   DestroyRef,
@@ -6,38 +7,45 @@ import {
   Injectable,
   signal,
   untracked,
-  type WritableSignal,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, type ParamMap } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute } from '@angular/router';
 import {
-  assessmentV1Endpoints,
+  draftingSessionEndpoints,
   type ConfirmDraftingStepCommand,
   type DraftingSession,
   type DraftingStep,
   type DraftingStepNumber,
 } from '@lms/contracts';
-import { catchError, throwError } from 'rxjs';
+import { confirm as confirmDialog } from '@lms/ui';
+import { catchError, firstValueFrom, map, throwError } from 'rxjs';
 import { CourseDraftingStore } from '../../../../core/course-drafting/course-drafting.store';
-import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
-import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { toAppError } from '../../../../core/errors/app-error';
-import type { CourseDraftValue } from '../course-draft';
+import { EndpointClient } from '../../../../core/http/endpoint-client';
+import {
+  toCreateCourseCommand,
+  toSaveDraftCommand,
+  type CourseDraftValue,
+} from '../course-draft';
 import { CourseEditorStore, DUPLICATE_CODE } from './course-editor.store';
 import {
-  DRAFTING_FIELD_DELAY_MS,
+  fieldPatch,
   fillSteps,
+  writtenOf,
   type DraftingPatch,
   type FillField,
+  type FillPatch,
+  type LessonNoteView,
 } from './drafting-fill';
-import {
-  emptyRules,
-  rulesProblem,
-  toConfirmQuestions,
-  type DraftQuestionValue,
-  type DraftRulesValue,
-} from './drafting-rules';
+import { FillPlayer } from './drafting-fill-player';
+import { DraftingQuestionsStore } from './drafting-questions.store';
+import type { toConfirmQuestions } from './drafting-rules';
+
+export type { LessonNoteView } from './drafting-fill';
+
+/** The step 1 refusal of a course made for another unit than the session's. */
+const OWNER_MISMATCH = 'OWNER_MISMATCH';
 
 /** The fields the assistant may leave empty, with what the page says under them. */
 const EMPTY_HINTS = {
@@ -51,19 +59,16 @@ export type DraftingHints = Partial<Record<keyof typeof EMPTY_HINTS, string>>;
 /** The steps the page confirms with "Đã chốt". */
 const CONFIRMABLE_STEPS: readonly DraftingStepNumber[] = [1, 2, 3, 4];
 
-/**
- * What the outline shows under a lesson the assistant proposed: what it teaches and the part of
- * the document it comes from, and whether it is still a proposal (step 2 not confirmed yet).
- */
-export interface LessonNoteView {
-  readonly text: string;
-  readonly suggested: boolean;
-}
+/** The states a step is proposed again from ("Đề xuất lại"); a failed one is retried instead. */
+const PROPOSE_AGAIN_FROM: readonly DraftingStep['state'][] = [
+  'proposed',
+  'confirmed',
+];
 
-/** One "Đề xuất lại", "Thử lại" or "Tự điền": the step of the session. */
-interface StepInput {
-  readonly sessionId: number;
-  readonly step: DraftingStepNumber;
+/** One write the page applies to its form model, numbered so each is applied once. */
+export interface QueuedPatch {
+  readonly seq: number;
+  readonly patch: FillPatch;
 }
 
 /** A step the assistant could not propose, with why, as the page shows it. */
@@ -72,49 +77,64 @@ export interface FailedStepView {
   readonly error: string;
 }
 
-/** The states a step is proposed again from ("Đề xuất lại"); a failed one is retried instead. */
-const PROPOSE_AGAIN_FROM: readonly DraftingStep['state'][] = [
-  'proposed',
-  'confirmed',
-];
+/** What "Đã chốt" on step 3 sends beside the draft: the competency and the kept questions. */
+export interface RulesCommand {
+  readonly competencyId: number | null;
+  readonly questions: ReturnType<typeof toConfirmQuestions>;
+}
 
-/** One "Đã chốt": the step and the page's values for it. */
-interface ConfirmInput {
+/** What the page knows of its form when a step is confirmed. */
+export interface DraftingPageFacts {
+  /** The draft as it is saved now. */
+  readonly value: CourseDraftValue;
+  /** A field of the step shown is invalid. */
+  readonly stepInvalid: boolean;
+  /** Why step 3's kept questions cannot be sent yet; null when they can. */
+  readonly rulesProblem: string | null;
+  /** Step 3's competency and kept questions; null while they cannot be sent. */
+  readonly rules: RulesCommand | null;
+}
+
+/** What a "Đã chốt" did: sent, opened the step it names, or refused for the reason the bar shows. */
+export type ConfirmOutcome = 'sent' | 'opened' | 'refused';
+
+/** One "Đề xuất lại", "Thử lại" or "Tự điền": the step of the session. */
+interface StepInput {
   readonly sessionId: number;
   readonly step: DraftingStepNumber;
+}
+
+/** One "Đã chốt": the step and the page's values for it. */
+interface ConfirmInput extends StepInput {
   readonly body: ConfirmDraftingStepCommand;
 }
 
-const sameValue = (
-  value: CourseDraftValue,
-  field: FillField,
-  written: string,
-) => JSON.stringify(value[field]) === written;
+const positiveId = (value: string | null): number | undefined => {
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : undefined;
+};
 
 /**
- * The editor's side of a drafting session: it attaches the page to the session in the URL
- * (`/admin/courses/new?session={id}`), and when a step's proposal arrives it writes it into the
- * editor's form one field at a time, the step locked meanwhile. It remembers what it wrote, so a
- * field shows "AI đề xuất" until the author changes it. "Dừng" stops the writing (and the server,
- * while it still works). Provided by the editor page; the session itself is
- * {@link CourseDraftingStore}'s.
+ * The editor's side of a drafting session. A new course page follows the session in its URL
+ * (`/admin/courses/new?session={id}`), a course's edit page the session that drafted it, resuming
+ * at its current step. When a step's proposal arrives, its writes are queued one field at a time
+ * ({@link queue$}) for the page to apply to its own form, the step locked meanwhile; the store keeps
+ * what each field was given, so the page marks it "AI đề xuất" until the author changes it. It owns
+ * the step commands ("Đã chốt", "Đề xuất lại", "Thử lại", "Tự điền", "Dừng") and their requests.
+ * Provided by the editor page; the session itself is {@link CourseDraftingStore}'s.
  */
 @Injectable()
 export class DraftingFillStore {
   private readonly drafting = inject(CourseDraftingStore);
   private readonly editor = inject(CourseEditorStore);
-  private readonly route = inject(ActivatedRoute);
+  private readonly questions = inject(DraftingQuestionsStore);
   private readonly client = inject(EndpointClient);
+  private readonly dialog = inject(Dialog);
+  private readonly route = inject(ActivatedRoute);
 
   private readonly state = {
-    /** The session a new course page follows (`?session=`); none for a course typed by hand. */
-    sessionId: signal<number | undefined>(undefined),
-    /** The draft course an edit page shows: it follows the session that drafted it, if any. */
-    courseId: signal<number | undefined>(undefined),
-    /** The edit page has gone to the session's current step once. */
-    resumed: signal(false),
-    /** The editor's form model, handed over once by the page. */
-    target: signal<WritableSignal<CourseDraftValue> | null>(null),
+    /** The session that drafted the course an edit page shows, once looked up. */
+    courseSessionId: signal<number | undefined>(undefined),
     /** Fields are being written into the form. */
     playing: signal(false),
     /** The proposal last written (`step|updateTime`), so it is written once. */
@@ -125,31 +145,37 @@ export class DraftingFillStore {
     stopped: signal<readonly DraftingStepNumber[]>([]),
     /** Steps the author asked to propose again: their next proposal is written over the form. */
     reproposed: signal<readonly DraftingStepNumber[]>([]),
+    /** The writes of the step being written, for the page to apply in order. */
+    queue: signal<readonly QueuedPatch[]>([]),
     /** What was written into each field, as JSON, for the "AI đề xuất" marker. */
     written: signal<Partial<Record<FillField, string>>>({}),
-    /** How the page confirms a step with its values, handed over by the page. */
-    pageConfirm: signal<((step: DraftingStepNumber) => void) | null>(null),
-    /** Step 3's draft questions and their competency, kept here until the step is confirmed. */
-    rules: signal<DraftRulesValue>(emptyRules()),
-    /** What was written into the competency, as JSON, for its "AI đề xuất" marker. */
-    writtenCompetency: signal<string | null>(null),
-    /** Each question as the assistant wrote it, as JSON by key, for its "AI đề xuất" marker. */
-    writtenQuestions: signal<Readonly<Record<string, string>>>({}),
+    /** The line under each lesson the outline proposal wrote, by row key. */
+    notes: signal<Readonly<Record<string, LessonNoteView>>>({}),
+    /** Step 4's assign rows as the assistant wrote them, as JSON by row id. */
+    writtenRows: signal<Readonly<Record<number, string>>>({}),
   };
 
-  private timer: ReturnType<typeof setTimeout> | undefined;
+  private readonly player = new FillPlayer();
+  private seq = 0;
 
-  /** The session this page follows: the one in the URL, or the one that drafted its course. */
+  /** The session a new course page's URL names (`?session=`). */
+  private readonly urlSessionId = toSignal(
+    this.route.queryParamMap.pipe(
+      map((params) => positiveId(params.get('session'))),
+    ),
+  );
+
+  /** The session this page shows: the one in its URL, or the one that drafted its course. */
+  readonly sessionId$ = computed(() =>
+    this.editor.isCreate$()
+      ? this.urlSessionId()
+      : this.state.courseSessionId(),
+  );
+
+  /** The session, once read, when it is this page's. */
   private readonly session = computed((): DraftingSession | undefined => {
     const session = this.drafting.session$();
-    if (!session) return undefined;
-    const sessionId = this.state.sessionId();
-    if (sessionId !== undefined)
-      return session.id === sessionId ? session : undefined;
-    const courseId = this.state.courseId();
-    return courseId !== undefined && session.courseId === courseId
-      ? session
-      : undefined;
+    return session && session.id === this.sessionId$() ? session : undefined;
   });
 
   /** The session's current step, when the session is this page's. */
@@ -159,9 +185,8 @@ export class DraftingFillStore {
 
   /** The session's step the page shows, whether it is the current one or one before it. */
   private readonly shownStep = computed((): DraftingStep | undefined => {
-    const session = this.session();
     const index = this.editor.step$();
-    return session?.steps.find((step) => step.step === index + 1);
+    return this.session()?.steps.find((step) => step.step === index + 1);
   });
 
   /** The page shows the session's current step. */
@@ -170,19 +195,29 @@ export class DraftingFillStore {
     return step !== undefined && this.editor.step$() === step.step - 1;
   });
 
+  /** The session that drafted the edit page's course: the page then resumes at its current step. */
+  private readonly lookupMutation = serverMutation(
+    (courseId: number) =>
+      this.client.call(draftingSessionEndpoints.forCourse, {
+        params: { courseId },
+      }),
+    { errors: 'toast', onSuccess: (session) => this.resume(session) },
+  );
+
   private readonly confirmMutation = serverMutation(
     (input: ConfirmInput) =>
-      this.drafting.confirmWith(input.sessionId, input.step, input.body).pipe(
-        catchError((error: unknown) => {
-          if (toAppError(error).messageCode === DUPLICATE_CODE) {
-            // The server proposes another code: the field says "mã đã có" until it arrives.
-            const course = 'course' in input.body ? input.body.course : null;
-            if (course) this.editor.markCodeTaken(course.code);
-            this.drafting.refresh();
-          }
-          return throwError(() => error);
-        }),
-      ),
+      this.client
+        .call(draftingSessionEndpoints.confirm, {
+          params: { sessionId: input.sessionId, step: input.step },
+          body: input.body,
+        })
+        .pipe(
+          catchError((error: unknown) => {
+            if (toAppError(error).messageCode === DUPLICATE_CODE)
+              this.codeTaken(input.body);
+            return throwError(() => error);
+          }),
+        ),
     {
       errors: 'alert',
       success: () => 'Đã chốt bước',
@@ -192,15 +227,17 @@ export class DraftingFillStore {
 
   private readonly againMutation = serverMutation(
     (input: StepInput) =>
-      this.drafting.proposeAgain(input.sessionId, input.step),
-    {
-      errors: 'toast',
-      onSuccess: (session) => this.awaitAgain(session),
-    },
+      this.client.call(draftingSessionEndpoints.proposeAgain, {
+        params: { sessionId: input.sessionId, step: input.step },
+      }),
+    { errors: 'toast', onSuccess: (session) => this.awaitAgain(session) },
   );
 
   private readonly manualMutation = serverMutation(
-    (input: StepInput) => this.drafting.manual(input.sessionId, input.step),
+    (input: StepInput) =>
+      this.client.call(draftingSessionEndpoints.manual, {
+        params: { sessionId: input.sessionId, step: input.step },
+      }),
     {
       errors: 'toast',
       success: () => 'Bạn tự điền tiếp khóa học',
@@ -214,7 +251,7 @@ export class DraftingFillStore {
    */
   private readonly ready = computed((): DraftingStep | null => {
     const session = this.session();
-    if (!this.state.target() || !session) return null;
+    if (!session) return null;
     const awaited = (step: DraftingStep) =>
       step.step === session.currentStep ||
       this.state.reproposed().includes(step.step);
@@ -231,9 +268,7 @@ export class DraftingFillStore {
   });
 
   /** The page follows a session. */
-  readonly attached$ = computed(
-    () => this.state.sessionId() !== undefined || this.session() !== undefined,
-  );
+  readonly attached$ = computed(() => this.sessionId$() !== undefined);
 
   /** "Trợ lý đang soạn…": the server works on the step, or its fields are being written. */
   readonly working$ = computed(() => {
@@ -243,6 +278,9 @@ export class DraftingFillStore {
       step?.state === 'proposing' && !this.state.stopped().includes(step.step)
     );
   });
+
+  /** The step cannot be edited until the assistant finishes or is stopped. */
+  readonly locked$ = this.working$;
 
   /**
    * The step "Đã chốt" confirms: the session's current step while the page shows it and it is
@@ -263,14 +301,15 @@ export class DraftingFillStore {
   readonly isConfirming$ = this.confirmMutation.isPending;
 
   /**
-   * The step shown can be proposed again ("Đề xuất lại"): it holds a proposal or was confirmed,
-   * the session is not over and nothing is being written. Null otherwise.
+   * The step shown can be proposed again ("Đề xuất lại"): it is the session's current step, it
+   * holds a proposal or was confirmed, the session is not over and nothing is being written.
    */
   readonly proposeAgainStep$ = computed((): DraftingStepNumber | null => {
     const session = this.session();
     const step = this.shownStep();
     return session?.status === 'active' &&
       step &&
+      step.step === session.currentStep &&
       PROPOSE_AGAIN_FROM.includes(step.state) &&
       !this.working$()
       ? step.step
@@ -296,72 +335,72 @@ export class DraftingFillStore {
   );
 
   /**
-   * The code the server proposes after the one confirmed was taken, while the code field still
-   * holds another one.
+   * The code the server proposes after the one confirmed was taken; the page offers it while its
+   * code field holds another one.
    */
-  readonly suggestedCode$ = computed((): string | null => {
+  readonly proposedCode$ = computed((): string | null => {
     const step = this.step();
-    const value = this.state.target()?.();
-    if (step?.step !== 1 || !step.proposal || !value) return null;
-    if (this.editor.takenCode$() === null) return null;
-    return step.proposal.code !== value.code.trim() ? step.proposal.code : null;
+    if (step?.step !== 1 || !step.proposal) return null;
+    return this.editor.takenCode$() === null ? null : step.proposal.code;
   });
 
-  /** Why the last "Đã chốt" failed; a taken code is shown on the code field instead. */
+  /**
+   * Why the last "Đã chốt" failed; a taken code is shown on the code field instead. A refusal that
+   * names a field the page has no input for (the unit, `OWNER_MISMATCH`) says the server's line.
+   */
   readonly confirmError$ = computed(() => {
     const error = this.confirmMutation.error();
-    return error?.messageCode === DUPLICATE_CODE ? undefined : error;
-  });
-
-  /** The step cannot be edited until the assistant finishes or is stopped. */
-  readonly locked$ = this.working$;
-
-  /** The fields that still hold what the assistant wrote. */
-  readonly marks$ = computed((): ReadonlySet<FillField> => {
-    const value = this.state.target()?.();
-    if (!value) return new Set();
-    return new Set(
-      (Object.entries(this.state.written()) as [FillField, string][])
-        .filter(([field, written]) => sameValue(value, field, written))
-        .map(([field]) => field),
+    if (!error || error.messageCode === DUPLICATE_CODE) return undefined;
+    const owner = error.fieldErrors?.find(
+      (field) => field.code === OWNER_MISMATCH,
     );
+    return owner ? { ...error, message: owner.message } : error;
   });
 
-  /** What the page says under a programme or module the assistant left empty. */
-  readonly hints$ = computed((): DraftingHints => {
+  /** The writes for the page's form, in order; each is applied once, by its `seq`. */
+  readonly queue$ = this.state.queue.asReadonly();
+
+  /** What the assistant wrote into each field, as JSON: the field is marked while it holds that. */
+  readonly written$ = this.state.written.asReadonly();
+
+  /** What the page says under a programme or module the assistant could not pick, while it is empty. */
+  readonly emptyHints$ = computed((): DraftingHints => {
     const step = this.step();
-    const value = this.state.target()?.();
-    if (step?.step !== 1 || !step.proposal || !value) return {};
+    if (step?.step !== 1 || !step.proposal) return {};
     const proposal = step.proposal;
     const hints: DraftingHints = {};
     for (const field of ['programId', 'moduleId'] as const) {
-      const unsure =
-        proposal[field] === null || proposal.unsure.includes(field);
-      if (unsure && !value[field]) hints[field] = EMPTY_HINTS[field];
+      // A code-only proposal (after a taken code) says nothing about the programme or module.
+      if (!(field in proposal)) continue;
+      if (proposal[field] === null || proposal.unsure?.includes(field))
+        hints[field] = EMPTY_HINTS[field];
     }
     return hints;
   });
 
   /**
-   * The step 2 proposal's lessons by title: a lesson of the outline with that title shows the
-   * line. Lessons have no description of their own, so the line lives on the session only.
+   * The assistant's line under each lesson of its outline: by row key (`key:…`) while the outline
+   * is a proposal, then by saved lesson id (`id:…`), as the server keeps them once confirmed.
    */
   readonly lessonNotes$ = computed((): ReadonlyMap<string, LessonNoteView> => {
     const outline = this.session()?.steps.find((step) => step.step === 2);
-    if (outline?.step !== 2 || !outline.proposal) return new Map();
-    const suggested = outline.state !== 'confirmed';
-    const notes = new Map<string, LessonNoteView>();
-    for (const chapter of outline.proposal.chapters) {
-      for (const lesson of chapter.lessons) {
-        const title = lesson.title.trim();
-        if (!notes.has(title))
-          notes.set(title, {
-            text: `${lesson.description} · Nguồn: ${lesson.sourceSection}`,
-            suggested,
-          });
-      }
-    }
-    return notes;
+    if (outline?.step !== 2) return new Map();
+    if (outline.state === 'confirmed')
+      return new Map(
+        (outline.lessonNotes ?? []).map((note) => [
+          `id:${note.lessonId}`,
+          {
+            text: `${note.description} · Nguồn: ${note.sourceSection}`,
+            suggested: false,
+          },
+        ]),
+      );
+    return new Map(
+      Object.entries(this.state.notes()).map(([key, note]) => [
+        `key:${key}`,
+        note,
+      ]),
+    );
   });
 
   /**
@@ -373,44 +412,26 @@ export class DraftingFillStore {
     return step?.step === 3 && step.state !== 'confirmed';
   });
 
-  /** The draft questions and their competency as the author has them now. */
-  readonly rules$ = this.state.rules.asReadonly();
-
-  /** Why the kept questions cannot become the final exam yet; null when they can. */
-  readonly rulesProblem$ = computed(() =>
-    this.rulesShown$() ? rulesProblem(this.state.rules()) : null,
-  );
-
-  /** The competency still holds what the assistant picked. */
-  readonly competencyMarked$ = computed(
-    () =>
-      this.state.writtenCompetency() !== null &&
-      this.state.writtenCompetency() === this.state.rules().competencyId,
-  );
-
-  /** The keys of the questions the author has not changed since the assistant wrote them. */
-  readonly questionMarks$ = computed((): ReadonlySet<string> => {
-    const written = this.state.writtenQuestions();
+  /** The assign rows that still hold what the assistant wrote, until step 4 is confirmed. */
+  readonly suggestedRows$ = computed((): ReadonlySet<number> => {
+    const audience = this.session()?.steps.find((step) => step.step === 4);
+    if (!audience || audience.state === 'confirmed') return new Set();
+    const written = this.state.writtenRows();
     return new Set(
-      this.state
-        .rules()
-        .questions.filter(
-          (question) => written[question.key] === JSON.stringify(question),
-        )
-        .map((question) => question.key),
+      this.editor
+        .publishRows$()
+        .filter((row) => written[row.id] === JSON.stringify(row))
+        .map((row) => row.id),
     );
   });
 
-  private readonly competenciesData = serverData(
-    () =>
-      this.client.call(assessmentV1Endpoints.competencies, {
-        query: { status: 'ACTIVE' },
-      }),
-    { params: () => (this.rulesShown$() ? true : undefined) },
-  );
-
-  /** The competencies a question may be tagged with, the list the server picks from. */
-  readonly competencies$ = computed(() => this.competenciesData.value() ?? []);
+  /** The chat card's "Đã chốt" for a step of this page's session: the page confirms it. */
+  readonly confirmRequested$ = computed((): DraftingStepNumber | null => {
+    const request = this.drafting.confirmRequest$();
+    return request && request.sessionId === this.session()?.id
+      ? request.step
+      : null;
+  });
 
   /** A proposal arrived: writing it starts a timer, outside the signal graph. */
   private readonly playWhenReady = effect(() => {
@@ -418,40 +439,19 @@ export class DraftingFillStore {
     if (step) untracked(() => this.play(step));
   });
 
-  /** An edit page opened on a drafted course lands on the session's current step, once. */
-  private readonly resumeAtCurrentStep = effect(() => {
-    const session = this.session();
-    if (!session || this.state.courseId() === undefined || this.state.resumed())
-      return;
-    untracked(() => {
-      this.setResumed();
-      if (session.status !== 'finished')
-        this.editor.goToStep(session.currentStep - 1);
-    });
-  });
-
-  /** The page confirms with its own values when "Đã chốt" is pressed elsewhere (the chat). */
-  private readonly offerPageConfirm = effect((onCleanup) => {
-    const sessionId = this.session()?.id;
-    const confirm = this.state.pageConfirm();
-    if (sessionId === undefined || !confirm) return;
-    onCleanup(this.drafting.registerPageConfirm(sessionId, confirm));
-  });
-
-  private readonly destroyRef = inject(DestroyRef);
-
   constructor() {
-    this.destroyRef.onDestroy(() => this.cancel());
+    this.drafting.showInEditor(this.sessionId$);
+    this.findCourseSession();
+    inject(DestroyRef).onDestroy(() => {
+      this.player.cancel();
+      this.drafting.leaveEditor(this.sessionId$);
+    });
   }
 
   // ---- setters ----------------------------------------------------------------------------
 
-  private setSessionId(sessionId: number | undefined): void {
-    this.state.sessionId.set(sessionId);
-  }
-
-  private setTarget(target: WritableSignal<CourseDraftValue>): void {
-    this.state.target.set(target);
+  private setCourseSessionId(sessionId: number): void {
+    this.state.courseSessionId.set(sessionId);
   }
 
   private setPlaying(playing: boolean): void {
@@ -462,187 +462,120 @@ export class DraftingFillStore {
     this.state.played.set(key);
   }
 
-  private setPlayedStep(step: DraftingStepNumber): void {
-    this.state.playedSteps.update((steps) =>
-      steps.includes(step) ? steps : [...steps, step],
-    );
+  private setPlayedSteps(steps: readonly DraftingStepNumber[]): void {
+    this.state.playedSteps.set(steps);
   }
 
-  private setCourseId(courseId: number): void {
-    this.state.courseId.set(courseId);
+  private setStopped(steps: readonly DraftingStepNumber[]): void {
+    this.state.stopped.set(steps);
   }
 
-  private setResumed(): void {
-    this.state.resumed.set(true);
+  private setReproposed(steps: readonly DraftingStepNumber[]): void {
+    this.state.reproposed.set(steps);
   }
 
-  private setPageConfirm(
-    confirm: ((step: DraftingStepNumber) => void) | null,
-  ): void {
-    this.state.pageConfirm.set(confirm);
+  private setQueue(queue: readonly QueuedPatch[]): void {
+    this.state.queue.set(queue);
   }
 
-  private setStopped(step: DraftingStepNumber): void {
-    this.state.stopped.update((steps) =>
-      steps.includes(step) ? steps : [...steps, step],
-    );
+  private setWritten(written: Partial<Record<FillField, string>>): void {
+    this.state.written.set(written);
   }
 
-  /** The step's next proposal is written over what the form holds for it. */
-  private setReproposed(step: DraftingStepNumber): void {
-    this.state.stopped.update((steps) => steps.filter((item) => item !== step));
-    this.state.playedSteps.update((steps) =>
-      steps.filter((item) => item !== step),
-    );
-    this.state.reproposed.update((steps) =>
-      steps.includes(step) ? steps : [...steps, step],
-    );
+  private setNotes(notes: Readonly<Record<string, LessonNoteView>>): void {
+    this.state.notes.set(notes);
   }
 
-  private setWritten(field: FillField, written: string): void {
-    this.state.written.update((fields) => ({ ...fields, [field]: written }));
-  }
-
-  private setRules(rules: DraftRulesValue): void {
-    this.state.rules.set(rules);
-  }
-
-  private setWrittenCompetency(competencyId: string | null): void {
-    this.state.writtenCompetency.set(competencyId);
-  }
-
-  private setWrittenQuestions(questions: readonly DraftQuestionValue[]): void {
-    this.state.writtenQuestions.update((written) => ({
-      ...written,
-      ...Object.fromEntries(
-        questions.map((question) => [question.key, JSON.stringify(question)]),
-      ),
-    }));
+  private setWrittenRows(rows: Readonly<Record<number, string>>): void {
+    this.state.writtenRows.set(rows);
   }
 
   // ---- commands ---------------------------------------------------------------------------
 
   /**
-   * The page hands over its form model and how it confirms a step with its values. On a new
-   * course opened with `?session=`, the page follows that session, also when the session is
-   * added to the URL of the page already open (the chat started one from "Soạn cùng trợ lý"); on a
-   * course's edit page, the session that drafted the course, if any, from its current step.
+   * Why "Đã chốt" cannot confirm the step shown yet, given what the page knows of its form: the
+   * assistant still writes it, a field of the step is invalid, a file still uploads, there is no
+   * unit to own a new course, or step 3's kept questions are not complete. Null when it can.
    */
-  attach(
-    model: WritableSignal<CourseDraftValue>,
-    confirm?: (step: DraftingStepNumber) => void,
-  ): void {
-    this.setTarget(model);
-    this.setPageConfirm(confirm ?? null);
-    if (!this.editor.isCreate$()) {
-      const courseId = this.editor.courseId$();
-      if (courseId === undefined) return;
-      this.setCourseId(courseId);
-      this.drafting.loadForCourse(courseId);
-      return;
-    }
-    this.route.queryParamMap
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((params) => this.followSessionOf(params));
-  }
-
-  /** A new course page follows the session its URL names; once it follows one, it keeps it. */
-  private followSessionOf(params: ParamMap): void {
-    const sessionId = Number(params.get('session'));
-    if (!Number.isInteger(sessionId) || sessionId <= 0) return;
-    if (this.state.sessionId() !== undefined) return;
-    this.setSessionId(sessionId);
-    this.drafting.load(sessionId);
+  problemFor(
+    facts: Pick<DraftingPageFacts, 'stepInvalid' | 'rulesProblem'>,
+  ): string | null {
+    if (this.locked$())
+      return 'Trợ lý đang soạn bước này. Chờ trợ lý soạn xong hoặc bấm Dừng.';
+    if (facts.stepInvalid)
+      return 'Còn trường chưa hợp lệ ở bước này. Sửa xong rồi bấm Đã chốt.';
+    const coverUploading =
+      this.editor.isCreate$() &&
+      this.editor.step$() === 0 &&
+      this.editor.coverUploading$();
+    if (this.editor.pendingUploads$() > 0 || coverUploading)
+      return 'Còn tệp đang tải lên. Chờ tải xong rồi bấm Đã chốt.';
+    if (this.editor.isCreate$() && !this.editor.ownerOrgId$())
+      return 'Chưa xác định được đơn vị sở hữu khóa học.';
+    if (this.editor.step$() === 2) return facts.rulesProblem;
+    return null;
   }
 
   /**
-   * "Đã chốt" with the page's values for the step. Step 1 makes the draft course: the page then
-   * continues as its edit page, on the next step. A taken code goes back to the code field.
+   * "Đã chốt" on the bar or on the chat's card: the step is confirmed with what the page holds
+   * now. Step 1 sends the create command, so the server makes the draft course from it; step 2
+   * the whole draft, as "Lưu nháp" saves it (lessons without content do not stop it); step 3 the
+   * draft with the kept questions and their competency, which become a new final exam; step 4
+   * nothing: it ends the flow, and the assign rows wait for the author's own "Xuất bản". On
+   * another step the page first opens the one named, where the bar says what still stops it.
    */
-  confirm(step: DraftingStepNumber, body: ConfirmDraftingStepCommand): void {
+  confirm(step: DraftingStepNumber, facts: DraftingPageFacts): ConfirmOutcome {
     const sessionId = this.session()?.id;
-    if (sessionId === undefined || this.confirmStep$() !== step) return;
-    this.cancel();
+    if (sessionId === undefined) return 'refused';
+    if (this.editor.step$() !== step - 1) {
+      this.editor.goToStep(step - 1);
+      return 'opened';
+    }
+    if (this.confirmStep$() !== step || this.problemFor(facts) !== null)
+      return 'refused';
+    const body = this.confirmBody(step, facts);
+    if (!body) return 'refused';
+    this.player.cancel();
+    this.setPlaying(false);
     this.confirmMutation.run({ sessionId, step, body });
+    return 'sent';
   }
 
-  /** The competency the kept questions are tagged with; '' for none. */
-  setCompetency(competencyId: string): void {
-    this.setRules({ ...this.state.rules(), competencyId });
-  }
-
-  /** The author edits a draft question; it stops showing "AI đề xuất". */
-  updateQuestion(question: DraftQuestionValue): void {
-    this.setRules({
-      ...this.state.rules(),
-      questions: this.state
-        .rules()
-        .questions.map((item) => (item.key === question.key ? question : item)),
-    });
-  }
-
-  /** "Bỏ câu hỏi": the question is not created when the step is confirmed. */
-  removeQuestion(key: string): void {
-    this.setRules({
-      ...this.state.rules(),
-      questions: this.state
-        .rules()
-        .questions.filter((item) => item.key !== key),
-    });
-  }
-
-  /**
-   * What "Đã chốt" on step 3 sends beside the draft: the competency and the kept questions as
-   * edited; null while they cannot be sent ({@link rulesProblem$} says why).
-   */
-  rulesCommand(): {
-    competencyId: number | null;
-    questions: ReturnType<typeof toConfirmQuestions>;
-  } | null {
-    const rules = this.state.rules();
-    if (rulesProblem(rules) !== null) return null;
-    return {
-      competencyId: rules.competencyId ? Number(rules.competencyId) : null,
-      questions: toConfirmQuestions(rules),
-    };
+  /** The page took the chat card's "Đã chốt". */
+  confirmRequestTaken(): void {
+    this.drafting.confirmRequestTaken();
   }
 
   /** "Dùng mã …": the code field takes the code the server proposed. */
   useSuggestedCode(): void {
-    const code = this.suggestedCode$();
-    if (code === null) return;
-    this.write({ field: 'code', apply: (value) => ({ ...value, code }) });
-  }
-
-  private moveOn(session: DraftingSession): void {
-    const next = session.currentStep - 1;
-    // Confirmed questions are the course's exam now: the page keeps no draft of them.
-    if (
-      session.steps.some(
-        (step) => step.step === 3 && step.state === 'confirmed',
-      )
-    )
-      this.setRules(emptyRules());
-    if (this.editor.isCreate$() && session.courseId !== null)
-      this.editor.moveToCourse(session.courseId, next);
-    else {
-      // The confirm saved the draft: the page reads it again (its version, the AI flag).
-      this.editor.reloadCourse();
-      this.editor.goToStep(next);
-    }
-    this.drafting.refresh();
+    const code = this.proposedCode$();
+    if (code !== null) this.write(fieldPatch('code', code));
   }
 
   /**
-   * "Đề xuất lại" once the author agreed to lose what the step holds, or "Thử lại" on a failed
-   * step: the server proposes only this step again, and its proposal replaces only this step's
-   * fields.
+   * "Đề xuất lại": the author agrees first, since what the step holds on the page is replaced.
+   * The server proposes only this step again, and its proposal replaces only this step's fields.
    */
-  proposeAgain(step: DraftingStepNumber): void {
+  async proposeAgain(step: DraftingStepNumber): Promise<void> {
+    if (this.proposeAgainStep$() !== step) return;
+    const agreed = await firstValueFrom(
+      confirmDialog(this.dialog, {
+        title: 'Đề xuất lại bước này?',
+        message:
+          'Trợ lý soạn lại bước này từ tài liệu. Các trường của bước, kể cả phần bạn đã sửa, sẽ được thay bằng đề xuất mới. Các bước khác giữ nguyên.',
+        confirmLabel: 'Đề xuất lại',
+        tone: 'danger',
+      }),
+    );
     const sessionId = this.session()?.id;
-    if (sessionId === undefined) return;
-    if (this.proposeAgainStep$() !== step && this.failed$()?.step !== step)
-      return;
+    if (agreed && sessionId !== undefined)
+      this.againMutation.run({ sessionId, step });
+  }
+
+  /** "Thử lại" on a failed step: the server proposes only this step again. */
+  retry(step: DraftingStepNumber): void {
+    const sessionId = this.session()?.id;
+    if (sessionId === undefined || this.failed$()?.step !== step) return;
     this.againMutation.run({ sessionId, step });
   }
 
@@ -656,71 +589,155 @@ export class DraftingFillStore {
     this.manualMutation.run({ sessionId, step });
   }
 
-  private awaitAgain(session: DraftingSession): void {
-    for (const step of session.steps)
-      if (step.state === 'proposing') this.setReproposed(step.step);
-    this.drafting.refresh();
-  }
-
   /** "Dừng": nothing more is written, and the server stops if it still works on the step. */
   stop(): void {
     const step = this.shownStep() ?? this.step();
-    this.cancel();
+    this.player.cancel();
+    this.setPlaying(false);
     if (!step) return;
-    this.setStopped(step.step);
+    this.setStopped(withStep(this.state.stopped(), step.step));
     if (step.state === 'proposing') this.drafting.stop();
   }
 
+  /** An edit page looks up the session that drafted its course; the one just confirmed is known. */
+  private findCourseSession(): void {
+    if (untracked(this.editor.isCreate$)) return;
+    const courseId = untracked(this.editor.courseId$);
+    if (courseId === undefined) return;
+    const followed = untracked(this.drafting.session$);
+    if (followed?.courseId === courseId) {
+      this.setCourseSessionId(followed.id);
+      this.drafting.refresh();
+      return;
+    }
+    this.lookupMutation.run(courseId);
+  }
+
+  /** The edit page of a drafted course lands on the session's current step. */
+  private resume(session: DraftingSession | null): void {
+    if (!session) return;
+    this.setCourseSessionId(session.id);
+    if (session.status !== 'finished')
+      this.editor.goToStep(session.currentStep - 1);
+  }
+
+  private confirmBody(
+    step: DraftingStepNumber,
+    { value, rules }: DraftingPageFacts,
+  ): ConfirmDraftingStepCommand | null {
+    if (step === 1) {
+      const ownerOrgId = this.editor.ownerOrgId$();
+      return ownerOrgId
+        ? { course: toCreateCourseCommand(value, value.code, ownerOrgId) }
+        : null;
+    }
+    if (step === 4) return {};
+    const revision = this.editor.course$()?.revision;
+    if (!revision) return null;
+    const draft = toSaveDraftCommand(value, revision.rowVersion);
+    if (step === 2) return { draft };
+    return rules ? { draft, ...rules } : null;
+  }
+
+  /** The server proposes another code: the field says "mã đã có" until the author takes it. */
+  private codeTaken(body: ConfirmDraftingStepCommand): void {
+    const course = 'course' in body ? body.course : null;
+    if (course) this.editor.markCodeTaken(course.code);
+    this.drafting.refresh();
+  }
+
+  /** Step 1 makes the draft course: the page then continues as its edit page, on the next step. */
+  private moveOn(session: DraftingSession): void {
+    const next = session.currentStep - 1;
+    // Confirmed questions are the course's exam now: the page keeps no draft of them.
+    if (
+      session.steps.some(
+        (step) => step.step === 3 && step.state === 'confirmed',
+      )
+    )
+      this.questions.clear();
+    this.drafting.follow(session.id);
+    if (this.editor.isCreate$() && session.courseId !== null)
+      this.editor.moveToCourse(session.courseId, next);
+    else {
+      // The confirm saved the draft: the page reads it again (its version, the AI flag).
+      this.editor.reloadCourse();
+      this.editor.goToStep(next);
+    }
+    this.drafting.refresh();
+  }
+
+  /** The steps now proposed again get their next proposal written over what the form holds. */
+  private awaitAgain(session: DraftingSession): void {
+    for (const step of session.steps) {
+      if (step.state !== 'proposing') continue;
+      this.setStopped(
+        this.state.stopped().filter((item) => item !== step.step),
+      );
+      this.setPlayedSteps(
+        this.state.playedSteps().filter((item) => item !== step.step),
+      );
+      this.setReproposed(withStep(this.state.reproposed(), step.step));
+    }
+    this.drafting.refresh();
+  }
+
   private play(step: DraftingStep): void {
-    this.cancel();
+    this.player.cancel();
     this.setPlayed(`${step.step}|${step.updateTime}`);
     // A later proposal of a step already written (a new code after a taken one) is not written
     // over what the author has: the page offers the new code instead.
-    if (this.state.playedSteps().includes(step.step)) return;
-    this.setPlayedStep(step.step);
+    if (this.state.playedSteps().includes(step.step)) {
+      this.setPlaying(false);
+      return;
+    }
+    this.setPlayedSteps(withStep(this.state.playedSteps(), step.step));
     // A course that exists keeps its code: step 1 proposed again leaves it alone.
     const keepCode = !this.editor.isCreate$();
     const patches = fillSteps(step).filter(
       (patch) => !(keepCode && patch.field === 'code'),
     );
-    // The step unlocks as soon as its last field is written.
-    const next = (): void => {
-      const patch = patches.shift();
-      if (patch) this.write(patch);
-      if (patches.length)
-        this.timer = setTimeout(next, DRAFTING_FIELD_DELAY_MS);
-      else this.cancel();
-    };
+    this.setQueue([]);
     this.setPlaying(true);
-    next();
+    // The step unlocks as soon as its last field is written.
+    this.player.play(
+      patches,
+      (patch) => this.write(patch),
+      () => this.setPlaying(false),
+    );
   }
 
   private write(patch: DraftingPatch): void {
     if ('picks' in patch) {
       // Step 4 fills the assign rows only: they are saved when the author publishes.
       this.editor.setPublishPicks(patch.picks);
+      this.setWrittenRows(
+        Object.fromEntries(
+          this.editor
+            .publishRows$()
+            .map((row) => [row.id, JSON.stringify(row)]),
+        ),
+      );
       return;
     }
     if ('rules' in patch) {
-      const rules = patch.rules(this.state.rules());
-      this.setRules(rules);
-      if (patch.field === 'competencyId')
-        this.setWrittenCompetency(rules.competencyId);
-      else this.setWrittenQuestions(rules.questions);
+      this.questions.write(patch);
       return;
     }
-    const target = this.state.target();
-    if (!target) return;
-    target.update(patch.apply);
-    const value = target();
-    this.setWritten(patch.field, JSON.stringify(value[patch.field]));
+    this.setQueue([...this.state.queue(), { seq: ++this.seq, patch }]);
+    this.setWritten({
+      ...this.state.written(),
+      [patch.field]: writtenOf(patch),
+    });
+    if (patch.notes) this.setNotes(patch.notes);
     // A programme picked here is not a change event of its select: the page lists its modules.
-    if (patch.field === 'programId') this.editor.pickProgram(value.programId);
-  }
-
-  private cancel(): void {
-    clearTimeout(this.timer);
-    this.timer = undefined;
-    this.setPlaying(false);
+    if (patch.field === 'programId')
+      this.editor.pickProgram(String(patch.value));
   }
 }
+
+const withStep = (
+  steps: readonly DraftingStepNumber[],
+  step: DraftingStepNumber,
+): readonly DraftingStepNumber[] =>
+  steps.includes(step) ? steps : [...steps, step];

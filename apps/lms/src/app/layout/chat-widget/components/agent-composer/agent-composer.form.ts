@@ -16,6 +16,3 @@ export type AgentComposerValue = z.input<typeof AgentComposerSchema>;
 
 /** The counter shows from here, so the limit is no surprise. */
 export const COUNTER_FROM = 400;
-
-/** What a file picked from "Soạn cùng trợ lý" is sent with: the user has said nothing yet. */
-export const DRAFTING_SOURCE_QUESTION = 'Soạn khóa học từ tài liệu này';
