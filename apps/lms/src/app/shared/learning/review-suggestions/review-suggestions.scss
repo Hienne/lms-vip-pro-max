@@ -11,7 +11,7 @@
   }
 
   &__title {
-    @include ui.text(base);
+    @include ui.text(md);
     margin: 0;
     font-weight: ui.weight(semibold);
   }
