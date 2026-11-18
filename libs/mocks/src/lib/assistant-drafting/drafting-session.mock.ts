@@ -430,9 +430,60 @@ export class DraftingSessionMock {
         steps: [draftingStepFixture(1, 'proposing')],
         createTime: time,
         updateTime: time,
+        proposer: 'assistant',
+        sourceName: null,
       },
     };
     this.sessions.unshift(entry);
+    return this.view(entry);
+  }
+
+  /**
+   * `start_course_drafting` of a Trợ lý ngoài: a session with no source, named after the document
+   * on the author's machine, waiting on step 1 until {@link proposeExternal}. Reading it never
+   * brings a proposal closer: only the Trợ lý ngoài proposes.
+   */
+  startExternal(owner: string, sourceName: string): DraftingSession {
+    const time = now();
+    const entry: MockSession = {
+      owner,
+      fields: {},
+      polls: new Map(),
+      code: basicsProposalFixture.code,
+      session: {
+        id: this.nextId++,
+        status: 'active',
+        currentStep: 1,
+        courseId: null,
+        revisionId: null,
+        conversationId: null,
+        source: null,
+        error: null,
+        steps: [draftingStepFixture(1, 'proposing')],
+        createTime: time,
+        updateTime: time,
+        proposer: 'external',
+        sourceName,
+      },
+    };
+    this.sessions.unshift(entry);
+    return this.view(entry);
+  }
+
+  /** `propose_step` of a Trợ lý ngoài: the step it waits on gets the fixture proposal. */
+  proposeExternal(
+    owner: string,
+    sessionId: number,
+  ): DraftingSession | undefined {
+    const entry = this.sessions.find(
+      (item) => item.owner === owner && item.session.id === sessionId,
+    );
+    const waiting = entry?.session.steps.find(
+      (step) => step.state === 'proposing',
+    );
+    if (!entry || entry.session.proposer !== 'external' || !waiting)
+      return undefined;
+    this.replace(entry, this.proposed(entry, waiting.step));
     return this.view(entry);
   }
 
@@ -660,6 +711,8 @@ export class DraftingSessionMock {
 
   /** Each look at the session brings every proposing step closer to its proposal. */
   private advance(entry: MockSession): void {
+    // A Trợ lý ngoài proposes on its own time ({@link proposeExternal}).
+    if (entry.session.proposer === 'external') return;
     for (const step of entry.session.steps) {
       if (step.state !== 'proposing') continue;
       const polls = entry.polls.get(step.step) ?? 0;

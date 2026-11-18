@@ -662,6 +662,45 @@ describe('DraftingSessionMock', () => {
       code: 'DAILY_UPLOAD_LIMIT',
     });
   });
+
+  describe('a session a Trợ lý ngoài drives', () => {
+    it('starts with no source, waits on step 1 however often it is read, and fills when proposed', () => {
+      const started = mock.startExternal('a', 'quy-trinh-doi-soat.pdf');
+      expect(started).toMatchObject({
+        proposer: 'external',
+        sourceName: 'quy-trinh-doi-soat.pdf',
+        source: null,
+      });
+      for (let i = 0; i < 5; i++) get(started.id);
+      expect(stepOf(get(started.id), 1)?.state).toBe('proposing');
+
+      mock.proposeExternal('a', started.id);
+      const filled = get(started.id);
+      expect(stepOf(filled, 1)).toMatchObject({ state: 'proposed' });
+      expect(stepOf(filled, 1)?.proposal).not.toBeNull();
+    });
+
+    it('waits again after "Đề xuất lại" until the next proposal', () => {
+      const { id } = mock.startExternal('a', 'tai-lieu.pdf');
+      mock.proposeExternal('a', id);
+      call(draftingSessionEndpoints.proposeAgain, null, {
+        sessionId: String(id),
+        step: '1',
+      });
+      for (let i = 0; i < 5; i++) get(id);
+      expect(stepOf(get(id), 1)).toMatchObject({
+        state: 'proposing',
+        proposal: null,
+      });
+    });
+
+    it('keeps the in-house sessions as they were', () => {
+      expect(start()).toMatchObject({
+        proposer: 'assistant',
+        sourceName: null,
+      });
+    });
+  });
 });
 
 describe('drafting fixtures', () => {

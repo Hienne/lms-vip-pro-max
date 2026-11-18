@@ -1320,6 +1320,73 @@ describe('CourseEditor proposing a step again, stopping and failed steps', () =>
     expect(screen.button('Đã chốt')).toBeDefined();
   });
 
+  describe('a session a Trợ lý ngoài drives', () => {
+    const external = (from: DraftingSession): DraftingSession => ({
+      ...from,
+      source: null,
+      proposer: 'external',
+      sourceName: 'quy-trinh-doi-soat.pdf',
+    });
+
+    /** The Trợ lý ngoài sends step 1's proposal; the page writes every field of it. */
+    const externalProposed = async (time = '') => {
+      session = external({
+        ...draftingSessionFixture(1),
+        steps: [
+          {
+            ...draftingStepFixture(1, 'proposed'),
+            updateTime: time || draftingStepFixture(1).updateTime,
+          } as DraftingStep,
+        ],
+      });
+      await advance(DRAFTING_POLL_INTERVAL_MS);
+      await advance(DRAFTING_FIELD_DELAY_MS * PATCHES);
+    };
+
+    beforeEach(() => (session = external(proposing())));
+
+    it('waits for the Trợ lý ngoài on step 1, then fills its proposal marked as its own', async () => {
+      await open();
+
+      expect(screen.text()).toContain('Đang chờ Trợ lý ngoài đề xuất');
+      expect(screen.text()).not.toContain('Trợ lý đang soạn…');
+      expect(fieldset().disabled).toBe(true);
+      expect(screen.button('Dừng')).toBeDefined();
+
+      // Reading the session again brings nothing until the Trợ lý ngoài proposes.
+      await advance(DRAFTING_POLL_INTERVAL_MS * 3);
+      expect(screen.field('Tên khóa học').value).toBe('');
+
+      await externalProposed();
+      expect(screen.field('Tên khóa học').value).toBe(
+        basicsProposalFixture.title,
+      );
+      expect(fieldset().disabled).toBe(false);
+      expect(screen.text()).not.toContain('Đang chờ Trợ lý ngoài đề xuất');
+      expect(screen.text()).toContain('Đề xuất từ Trợ lý ngoài');
+      expect(screen.text()).not.toContain('AI đề xuất');
+      expect(screen.button('Đã chốt')).toBeDefined();
+    });
+
+    it('"Đề xuất lại" says to ask the Trợ lý ngoài again and goes back to waiting', async () => {
+      await open();
+      await externalProposed();
+
+      await tap(screen.button('Đề xuất lại'));
+      expect(screen.text(screen.alertDialog()!)).toContain(
+        'Hãy nhắn Trợ lý ngoài',
+      );
+      await tap(screen.button('Đề xuất lại', screen.alertDialog()!));
+
+      expect(screen.callsTo(draftingSessionEndpoints.proposeAgain)).toBe(1);
+      expect(screen.text()).toContain('Đang chờ Trợ lý ngoài đề xuất');
+      expect(fieldset().disabled).toBe(true);
+
+      await externalProposed('2026-11-18T09:00:00+07:00');
+      expect(fieldset().disabled).toBe(false);
+    });
+  });
+
   it('a failed step shows its error with "Thử lại", which proposes only that step again', async () => {
     session = failed();
     await open();
