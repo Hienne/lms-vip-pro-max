@@ -27,6 +27,17 @@
       color: ui.color(primary);
     }
   }
+  &__status-actions {
+    flex-wrap: wrap;
+  }
+  &__voice {
+    touch-action: none;
+    user-select: none;
+    &[aria-pressed='true'] {
+      border-color: ui.color(primary);
+      color: ui.color(primary);
+    }
+  }
   &__world {
     position: relative;
     display: grid;

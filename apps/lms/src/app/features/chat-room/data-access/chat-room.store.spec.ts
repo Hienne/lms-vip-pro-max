@@ -17,6 +17,7 @@ import { FakeSessionStore } from '../../../core/session/session.testing';
 import { ChatRoomStore } from './chat-room.store';
 import { RoomGamesStore } from './room-games.store';
 import { RoomMediaStore } from './room-media.store';
+import { RoomVoiceStore } from './room-voice.store';
 
 describe('ChatRoomStore', () => {
   let store: ChatRoomStore;
@@ -40,6 +41,7 @@ describe('ChatRoomStore', () => {
         ChatRoomStore,
         RoomGamesStore,
         RoomMediaStore,
+        RoomVoiceStore,
       ],
     });
     vi.spyOn(TestBed.inject(EndpointClient), 'connect').mockImplementation(
@@ -108,6 +110,7 @@ describe('ChatRoomStore', () => {
       reactions: true,
       boardGames: true,
       presentation: true,
+      voice: true,
     });
     expect(store.online$()).toBe(true);
     observer.message({
