@@ -52,7 +52,7 @@ export class ExternalAssistantStore {
 
   /** Asked once per signed-in user who has the assistant at all; the server decides the rest. */
   private readonly statusData = serverData(
-    (_userId: string) => this.client.call(externalConnectionEndpoints.status),
+    () => this.client.call(externalConnectionEndpoints.status),
     {
       params: () =>
         this.session.menus$().includes('AI_ASSISTANT')
@@ -62,7 +62,7 @@ export class ExternalAssistantStore {
   );
 
   private readonly listData = serverData(
-    (_: true) => this.client.call(externalConnectionEndpoints.list),
+    () => this.client.call(externalConnectionEndpoints.list),
     {
       params: () => (this.state.open() && this.available$() ? true : undefined),
       reloadOn: this.changes,

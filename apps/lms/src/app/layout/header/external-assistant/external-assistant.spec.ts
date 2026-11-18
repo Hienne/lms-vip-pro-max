@@ -131,8 +131,9 @@ describe('ExternalAssistant', () => {
     const name = document.querySelector<HTMLInputElement>(
       '.cdk-overlay-container input[uiInput]',
     );
-    name!.value = 'Máy làm việc';
-    name!.dispatchEvent(new Event('input'));
+    if (!name) throw new Error('No name field');
+    name.value = 'Máy làm việc';
+    name.dispatchEvent(new Event('input'));
     await settle();
     byText('button', 'Tạo kết nối')?.click();
     await settle();
