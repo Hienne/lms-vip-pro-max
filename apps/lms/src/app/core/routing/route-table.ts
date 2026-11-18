@@ -16,6 +16,7 @@ export type Layout = 'app' | 'workspace' | 'focus' | 'bare';
 export interface RouteMeta {
   /** The backend function that grants the screen; absent means any signed-in user. */
   readonly menu?: FunctionCode;
+  readonly staffOnly?: boolean;
   readonly requires?: readonly AnyEndpoint[];
   /** The one screen a user with a temporary password may open (see `passwordChangeGuard`). */
   readonly passwordChange?: boolean;

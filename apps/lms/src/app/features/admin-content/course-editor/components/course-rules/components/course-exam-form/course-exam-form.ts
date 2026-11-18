@@ -43,7 +43,7 @@ const localDate = (value: string | null | undefined) => {
     .slice(0, 16);
 };
 
-/** Full final-exam configuration, kept inside the course form without a nested native form. */
+/** Exam settings and pool picker, with no nested native form. */
 @Component({
   selector: 'app-course-exam-form',
   imports: [Alert, Button, Checkbox, Field, FormField, Input, Select, Textarea],
@@ -177,14 +177,7 @@ export class CourseExamForm {
     },
     {
       submission: {
-        action: async () =>
-          this.saved.emit({
-            ...this.model(),
-            questionIds: this.selectedIds(),
-            questionCount: this.fixed()
-              ? this.selectedIds().length
-              : this.model().questionCount,
-          }),
+        action: async () => this.saved.emit(this.readValue()),
       },
     },
   );
@@ -217,6 +210,22 @@ export class CourseExamForm {
   save(event?: Event): Promise<boolean> {
     event?.preventDefault();
     return this.busy() ? Promise.resolve(false) : submit(this.examForm);
+  }
+  async validateAndRead(): Promise<ExamFormValue | undefined> {
+    const valid = await submit(this.examForm, {
+      action: async () => undefined,
+    });
+    return valid ? this.readValue() : undefined;
+  }
+
+  private readValue(): ExamFormValue {
+    return {
+      ...this.model(),
+      questionIds: this.selectedIds(),
+      questionCount: this.fixed()
+        ? this.selectedIds().length
+        : this.model().questionCount,
+    };
   }
   protected enter(event: Event): void {
     if (

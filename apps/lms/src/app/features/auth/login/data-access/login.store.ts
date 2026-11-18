@@ -9,7 +9,10 @@ import type { LoginV1Command } from '@lms/contracts';
 import { Toaster } from '@lms/ui';
 import { filter, map } from 'rxjs';
 import { SessionStore } from '../../../../core/session/session.store';
-import { readReturnTo } from '../../../../core/routing/return-to';
+import {
+  readReturnTo,
+  SIGN_IN_NAVIGATION,
+} from '../../../../core/routing/return-to';
 
 /**
  * The login page: the state of the sign-in the session store runs, and where to go once it
@@ -42,7 +45,9 @@ export class LoginStore {
       )
       .subscribe((user) => {
         this.toaster.success('Đăng nhập thành công');
-        void this.router.navigateByUrl(this.next$() ?? user.homePath);
+        void this.router.navigateByUrl(this.next$() ?? user.homePath, {
+          info: SIGN_IN_NAVIGATION,
+        });
       });
   }
 

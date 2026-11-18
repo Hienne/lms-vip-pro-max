@@ -1,7 +1,7 @@
 <div class="learn__top">
   <app-learn-hero
-    [today]="store.today$()"
-    [headline]="store.headline$()"
+    [learnerName]="store.learnerName$()"
+    [welcomeBack]="store.showSignInWelcome"
     [resume]="store.resume$()"
     [resumeLoading]="store.isResumeLoading$()"
     [resumeFailed]="!!store.resumeError$()"
@@ -9,7 +9,26 @@
     [pointsFailed]="!!store.pointsError$()"
     (retryResume)="store.retryResume()"
     (retryPoints)="store.retryPoints()"
-  />
+  >
+    <section class="learn__kpis" aria-label="Số liệu học tập">
+      @if (store.summaryError$(); as error) {
+      <ui-error-state
+        title="Không tải được số liệu học tập"
+        [message]="error.message"
+        (retry)="store.retrySummary()"
+      />
+      } @else if (store.summary$(); as summary) {
+      <app-learn-kpis
+        [summary]="summary"
+        [dashboard]="store.dashboardCounts$()"
+        [dashboardFailed]="!!store.dashboardError$()"
+        (retryDashboard)="store.retryDashboard()"
+      />
+      } @else {
+      <div uiSkeleton variant="block" class="learn__counts-placeholder"></div>
+      }
+    </section>
+  </app-learn-hero>
 </div>
 
 <div class="learn__layout">
@@ -77,24 +96,6 @@
         }
       </ui-tabs>
     </ui-section-card>
-    <section class="learn__kpis" aria-label="Số liệu học tập">
-      @if (store.summaryError$(); as error) {
-      <ui-error-state
-        title="Không tải được số liệu học tập"
-        [message]="error.message"
-        (retry)="store.retrySummary()"
-      />
-      } @else if (store.summary$(); as summary) {
-      <app-learn-kpis
-        [summary]="summary"
-        [dashboard]="store.dashboardCounts$()"
-        [dashboardFailed]="!!store.dashboardError$()"
-        (retryDashboard)="store.retryDashboard()"
-      />
-      } @else {
-      <div uiSkeleton variant="block" class="learn__counts-placeholder"></div>
-      }
-    </section>
   </div>
 
   <aside class="learn__side">

@@ -7,7 +7,7 @@ import { serverData } from '../../core/data-access/server-data';
 export class ManagementDashboardStore {
   private readonly client = inject(EndpointClient);
   private readonly summary = serverData(() =>
-    this.client.call(learningReportEndpoints.summary, { query: {} }),
+    this.client.call(learningReportEndpoints.dashboard),
   );
   readonly summary$ = this.summary.value;
   readonly loading$ = this.summary.isLoading;

@@ -40,6 +40,16 @@ export const LearningReportSummarySchema = z.object({
 });
 export type LearningReportSummary = z.infer<typeof LearningReportSummarySchema>;
 
+export const ManagementDashboardSchema = LearningReportSummarySchema.extend({
+  daily: z.array(
+    z.object({
+      date: z.iso.date(),
+      started: z.number().int().nonnegative(),
+      completed: z.number().int().nonnegative(),
+    }),
+  ),
+});
+
 export const LearningReportGroupBySchema = z.enum([
   'course',
   'org',

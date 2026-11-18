@@ -35,18 +35,14 @@
     </select>
   </ui-field>
 
-  @if (lessonForm.lessonType().value() === 'quiz') { @if (store.isCreate$()) {
-  <ui-alert tone="info" [announce]="false">
-    Lưu nháp trước để chọn bài kiểm tra
-  </ui-alert>
-  } @else {
+  @if (lessonForm.lessonType().value() === 'quiz') {
   <ui-field
     label="Bài kiểm tra"
-    hint="Bài hoàn thành khi học viên đạt bài kiểm tra này. Bài kiểm tra phải đã xuất bản để xuất bản khóa học."
+    hint="Học viên hoàn thành bài học khi đạt bài kiểm tra. Đề nháp sẽ được xuất bản cùng khóa học."
   >
     <select uiSelect [formField]="lessonForm.quizId">
       <option value="" [selected]="lessonForm.quizId().value() === ''">
-        — Chưa chọn —
+        Chọn bài kiểm tra
       </option>
       @for (option of quizOptions(); track option.value) {
       <option
@@ -55,25 +51,35 @@
       >
         {{ option.label }}
       </option>
+      } @if (store.canCreateQuiz$() && programId()) {
+      <option value="new" [selected]="isNewQuiz()">Tạo mới bài kiểm tra</option>
       }
     </select>
   </ui-field>
   @if (store.quizzesError$(); as error) {
   <ui-alert tone="danger">
     Không tải được danh sách bài kiểm tra: {{ error.message }}
-  </ui-alert>
-  } @else if (!quizOptions().length) {
-  <ui-alert tone="info" [announce]="false">
-    Khóa học chưa có bài kiểm tra. Soạn bài kiểm tra ở bước Bài kiểm tra & điều
-    kiện, rồi quay lại chọn cho bài học. @if (store.canCreateQuiz$()) {
-    <button uiButton size="sm" type="button" (click)="prepareExam()">
-      <ui-icon name="plus" size="sm" />Soạn bài kiểm tra cùng khóa học
-    </button>
     <button uiButton size="sm" type="button" (click)="store.reloadQuizzes()">
       Tải lại danh sách
     </button>
-    }
   </ui-alert>
+  } @else if (store.quizzesLoading$()) {
+  <p role="status">Đang tải bài kiểm tra trong khóa học…</p>
+  } @else if (!quizOptions().length && !isNewQuiz()) {
+  <p>Khóa học chưa có bài kiểm tra.</p>
+  } @if (isNewQuiz()) {
+  <p>Bấm Lưu để ghi bản nháp bài kiểm tra và gắn vào bài học này.</p>
+  <app-course-exam-form
+    [value]="examDefaults()"
+    [questions]="store.lessonExamQuestions$()"
+    [questionsLoading]="store.lessonExamLoading$()"
+    [questionsError]="store.lessonExamLoadError$()"
+    [busy]="store.lessonExamSaving$()"
+    [error]="store.lessonExamSaveError$()"
+    (retryQuestions)="store.retryLessonExamPool()"
+  />
+  @if (store.pendingUploads$()) {
+  <p role="status">Chờ tệp của khóa học tải xong để lưu bài kiểm tra.</p>
   } } } @else if (lessonForm.lessonType().value() === 'scorm') {
   <p>
     Tải tệp ZIP SCORM 1.2 trực tiếp vào bài học, hoặc chọn một bài giảng đã có

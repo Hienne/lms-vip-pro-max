@@ -206,6 +206,9 @@ describe('Login', () => {
     await vi.waitFor(() =>
       expect(document.body.textContent).toContain('Đăng nhập thành công'),
     );
+    expect(harness.routeNativeElement?.textContent).toContain(
+      'Chào mừng bạn đã trở lại',
+    );
   });
 
   it('marks the button busy while the request runs', async () => {

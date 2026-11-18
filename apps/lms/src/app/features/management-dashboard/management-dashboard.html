@@ -1,40 +1,81 @@
 <ui-page-header
   [title]="title"
-  description="Tiến độ đào tạo trong phạm vi được cấp. Số liệu theo lần học hiện tại của từng khóa."
+  description="Theo dõi hoạt động và tiến độ của các khóa học bạn quản lý."
 />
 @if (store.loading$()) {
 <p role="status"><span uiSpinner></span> Đang tải tổng quan…</p>
 } @else if (store.error$(); as error) {
 <ui-error-state [message]="error.message" (retry)="store.retry()" />
 } @else if (store.summary$(); as summary) {
-<section uiCard aria-labelledby="training-summary">
-  <h2 id="training-summary">Tình hình học tập</h2>
-  <dl>
-    <dt>Lượt học hiện tại</dt>
-    <dd>{{ summary.counts.enrollments | fmtNum }}</dd>
-    <dt>Học viên</dt>
-    <dd>{{ summary.counts.learners | fmtNum }}</dd>
-    <dt>Hoàn thành</dt>
-    <dd>{{ summary.counts.completed | fmtNum }}</dd>
-    <dt>Đang học</dt>
-    <dd>{{ summary.counts.inProgress | fmtNum }}</dd>
-    <dt>Chưa bắt đầu</dt>
-    <dd>{{ summary.counts.notStarted | fmtNum }}</dd>
-    <dt>Quá hạn</dt>
-    <dd>{{ summary.counts.overdue | fmtNum }}</dd>
-    <dt>Tỷ lệ hoàn thành</dt>
-    <dd>{{ summary.counts.completionRate | fmtPct }}</dd>
-  </dl>
-  @if (!summary.counts.enrollments) {
-  <p>Chưa có lượt học trong phạm vi được cấp.</p>
-  }
-  <a routerLink="/reports/progress">Xem tiến độ theo khóa học và học viên</a>
-</section>
+<ui-stat-strip aria-label="Số liệu đào tạo">
+  <ui-stat label="Học viên" [value]="summary.counts.learners | fmtNum" />
+  <ui-stat
+    label="Lượt ghi danh"
+    [value]="summary.counts.enrollments | fmtNum"
+    [note]="(summary.counts.courses | fmtNum) + ' khóa có ghi danh'"
+  />
+  <ui-stat
+    label="Tỷ lệ hoàn thành"
+    [value]="summary.counts.completionRate | fmtPct"
+    [note]="(summary.counts.completed | fmtNum) + ' lượt hoàn thành'"
+  />
+  <ui-stat
+    label="Lượt quá hạn"
+    [value]="summary.counts.overdue | fmtNum"
+    [tone]="summary.counts.overdue ? 'danger' : 'default'"
+  />
+</ui-stat-strip>
+
+@if (summary.counts.enrollments) {
+<div class="dashboard__overview">
+  <ui-section-card title="Trạng thái học tập">
+    <ui-donut-chart
+      [data]="status()"
+      [centerValue]="summary.counts.enrollments | fmtNum"
+      centerLabel="lượt ghi danh"
+    />
+  </ui-section-card>
+  <ui-section-card title="Hoạt động 14 ngày gần đây">
+    <div class="dashboard__trend">
+      <h3>Lượt bắt đầu khóa theo ngày</h3>
+      <div
+        class="dashboard__chart"
+        tabindex="0"
+        role="region"
+        aria-label="Biểu đồ lượt bắt đầu"
+      >
+        <ui-bar-chart [data]="starts()" label="Lượt bắt đầu khóa theo ngày" />
+      </div>
+    </div>
+    <div class="dashboard__trend">
+      <h3>Lượt hoàn thành khóa theo ngày</h3>
+      <div
+        class="dashboard__chart"
+        tabindex="0"
+        role="region"
+        aria-label="Biểu đồ lượt hoàn thành"
+      >
+        <ui-bar-chart
+          [data]="completions()"
+          label="Lượt hoàn thành khóa theo ngày"
+        />
+      </div>
+    </div>
+  </ui-section-card>
+</div>
+} @else {
+<ui-empty
+  variant="inline"
+  title="Chưa có lượt ghi danh cho các khóa bạn quản lý."
+/>
+} } @if (links().length) {
+<ui-section-card title="Công việc đào tạo">
+  <nav class="dashboard__links" aria-label="Công việc đào tạo">
+    @for (link of links(); track link.path) {
+    <a uiButton variant="secondary" [routerLink]="link.path"
+      >{{ link.label }}</a
+    >
+    }
+  </nav>
+</ui-section-card>
 }
-<nav aria-label="Công việc đào tạo">
-  <a routerLink="/admin/courses">Quản lý khóa học</a> ·
-  <a routerLink="/admin/questions">Ngân hàng câu hỏi</a> ·
-  <a routerLink="/admin/quizzes">Quản lý bài kiểm tra</a>
-  @if (!instructor) { · <a routerLink="/admin/users">Quản lý người dùng</a> ·
-  <a routerLink="/admin/assignments">Giao khóa học</a> }
-</nav>

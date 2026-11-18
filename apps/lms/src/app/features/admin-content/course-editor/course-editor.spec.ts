@@ -1151,7 +1151,7 @@ describe('CourseEditor', () => {
       return drawer;
     }
 
-    it('lists the quizzes of the course in a select, saying which cannot be published', async () => {
+    it('lists the quizzes of the course and offers inline creation last', async () => {
       listQuizzes();
       const drawer = await addQuizLesson();
 
@@ -1164,9 +1164,10 @@ describe('CourseEditor', () => {
       expect(
         Array.from(select.options).map((o) => o.textContent?.trim()),
       ).toEqual([
-        '— Chưa chọn —',
-        'Luyện tập: Tổng quan hệ thống Core Banking · Luyện tập · Nháp, chưa thể xuất bản',
+        'Chọn bài kiểm tra',
+        'Luyện tập: Tổng quan hệ thống Core Banking · Luyện tập · Nháp',
         'Thi cuối khóa: Tổng quan hệ thống Core Banking · Thi cuối khóa',
+        'Tạo mới bài kiểm tra',
       ]);
       expect(screen.text(drawer)).not.toContain('chưa có bài kiểm tra');
     });
@@ -2048,6 +2049,76 @@ describe('CourseEditor', () => {
       editor.dispatchEvent(new Event('input', { bubbles: true }));
       await screen.click(screen.button('Lưu', drawer));
     }
+
+    it('saves an inline quiz lesson as a draft and publishes its linked quiz with the course', async () => {
+      await screen.open('/admin/courses/new');
+      await fillBasics('WIZ-LESSON-QUIZ');
+      await screen.choose(
+        screen.field('Chương trình') as HTMLSelectElement,
+        '2',
+      );
+      await screen.click(screen.button('Tiếp theo'));
+      await screen.click(screen.button('Thêm chương'));
+      await screen.click(screen.button('Thêm bài học'));
+      const drawer = screen.drawer()!;
+      await screen.choose(
+        screen.field('Loại bài', drawer) as HTMLSelectElement,
+        'quiz',
+      );
+      await screen.choose(
+        screen.field('Bài kiểm tra', drawer) as HTMLSelectElement,
+        'new',
+      );
+      expect(
+        (screen.field('Tên bài kiểm tra', drawer) as HTMLInputElement).value,
+      ).toBe('Bài kiểm tra chương 1 bài 1');
+      await screen.click(screen.button('Lưu', drawer));
+      expect(screen.callsTo(assessmentV1Endpoints.saveCourseExam)).toBe(0);
+      expect(screen.drawer()).toBeTruthy();
+      const question = drawer.querySelector<HTMLInputElement>(
+        '.course-exam-form__question input',
+      )!;
+      await screen.click(question);
+      const original = (endpoint: AnyEndpoint, request: FakeRequest) =>
+        MockBackend.prototype.handle.call(
+          TestBed.inject(MockBackend),
+          endpoint,
+          request,
+        ) as FakeReply;
+      screen.calls.mockImplementation((endpoint, request) =>
+        endpoint === assessmentV1Endpoints.saveCourseExam
+          ? backendRefusal('internalError')
+          : original(endpoint, request),
+      );
+      await screen.click(screen.button('Lưu', drawer));
+      expect(screen.drawer()).toBeTruthy();
+      expect(question.checked).toBe(true);
+      screen.calls.mockImplementation(original);
+      await screen.click(screen.button('Lưu', drawer));
+      await vi.waitFor(() => expect(screen.drawer()).toBeFalsy());
+      expect(
+        screen.lastCall(assessmentV1Endpoints.saveCourseExam)?.body,
+      ).toMatchObject({
+        lessonTarget: { chapter: 0, lesson: 0 },
+        quiz: { title: 'Bài kiểm tra chương 1 bài 1', quizType: 'PRACTICE' },
+        pool: { items: [{ sortNo: 0 }] },
+      });
+      expect(screen.text()).not.toContain('Chưa chọn bài kiểm tra');
+      await screen.click(editLessonButton('Bài 1'));
+      const savedQuiz = screen.field(
+        'Bài kiểm tra',
+        screen.drawer()!,
+      ) as HTMLSelectElement;
+      expect(savedQuiz.value).toMatch(/^\d+$/);
+      expect(savedQuiz.selectedOptions[0].textContent).toContain(
+        'Bài kiểm tra chương 1 bài 1',
+      );
+      await screen.click(screen.button('Hủy', screen.drawer()!));
+      await step('Đối tượng & xuất bản');
+      await screen.click(screen.button('Xuất bản khóa học'));
+      await screen.click(screen.button('Xuất bản', screen.alertDialog()!));
+      await vi.waitFor(() => expect(screen.url()).toBe('/admin/courses'));
+    });
 
     it('opens an empty wizard without reading any course, quiz or kept upload', async () => {
       const kept = vi.spyOn(TestBed.inject(KeptUploads), 'read');

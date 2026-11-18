@@ -130,16 +130,22 @@ describe('Learn', () => {
       expect(failed?.textContent).toContain('Bài kiểm tra cuối khóa chưa đạt');
     });
 
-    it('opens with the page title, the first thing to attend to and the resume card', () => {
+    it('opens with the learner greeting, KPIs, and then the resume card', () => {
       const hero = el.querySelector('app-learn-hero')!;
       expect(el.querySelectorAll('h1')).toHaveLength(1);
-      expect(hero.querySelector('h1')?.textContent?.trim()).toBe('Học tập');
-      expect(text()).not.toMatch(/Chào|hôm nay học gì/);
-      const desc = hero.querySelector('ui-page-header .page-header__desc');
-      expect(desc?.textContent).toMatch(/\d{2}\/\d{2}\/\d{4}/);
-      expect(desc?.textContent).toMatch(/quá hạn|Khóa gần hạn nhất|theo kịp/);
+      const heading = hero.querySelector('h1')!;
+      const kpis = hero.querySelector('app-learn-kpis')!;
+      const continueCard = hero.querySelector('.learn-hero__continue')!;
+      expect(heading.textContent?.trim()).toBe(
+        'Xin chào, ' + seedProfile('000004').fullName,
+      );
+      expect(text()).not.toContain('Chào mừng bạn đã trở lại');
       expect(
-        hero.compareDocumentPosition(el.querySelector('app-learn-kpis')!) &
+        heading.compareDocumentPosition(kpis) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(
+        kpis.compareDocumentPosition(continueCard) &
           Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
       const resume = hero.querySelector<HTMLAnchorElement>(

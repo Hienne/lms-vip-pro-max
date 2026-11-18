@@ -44,7 +44,10 @@ import { CourseInfo } from './components/course-info/course-info';
 import { CourseOutline } from './components/course-outline/course-outline';
 import { CourseReview } from './components/course-review/course-review';
 import { CourseRules } from './components/course-rules/course-rules';
-import { LessonForm } from './components/lesson-form/lesson-form';
+import {
+  LessonForm,
+  type LessonSubmission,
+} from './components/lesson-form/lesson-form';
 import {
   emptyDraftValue,
   draftChecks,
@@ -521,10 +524,11 @@ export class CourseEditor implements HasUnsavedChanges {
     this.store.askToCloseLesson(() => this.lessonForm()?.save());
   }
 
-  protected applyLesson(lesson: LessonValue): void {
+  protected applyLesson({ lesson, newExam }: LessonSubmission): void {
     const target = this.store.editingLesson$();
     if (!target) return;
-    this.model.update((value) => ({
+    const value = this.draftValue();
+    const updated = {
       ...value,
       chapters: value.chapters.map((chapter, ci) =>
         ci === target.chapter
@@ -536,7 +540,14 @@ export class CourseEditor implements HasUnsavedChanges {
             }
           : chapter,
       ),
-    }));
+    };
+    if (newExam) {
+      this.store.saveLessonExam(updated, target, newExam, (saved) =>
+        this.model.set(toDraftValue(saved)),
+      );
+      return;
+    }
+    this.model.set(updated);
     this.store.closeLesson();
     // A lesson edited while the AI writes is saved at once, so the job finds it already the author's.
     if (this.ai.running$()) this.store.save(this.command());
