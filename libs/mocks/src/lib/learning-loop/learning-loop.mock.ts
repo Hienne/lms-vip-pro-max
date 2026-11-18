@@ -2,6 +2,8 @@ import {
   checkpointEndpoints,
   CHECKPOINT_STALE_CODE,
   CheckpointAnswerBodySchema,
+  competencyReviewEndpoints,
+  type CompetencyReview,
   LESSON_TEXT_UNAVAILABLE_CODE,
   selfExplainEndpoints,
   SelfExplainBodySchema,
@@ -116,6 +118,7 @@ export class LearningLoopMock {
   answers(endpoint: AnyEndpoint): boolean {
     return (
       endpoint === selfExplainEndpoints.selfExplain ||
+      endpoint === competencyReviewEndpoints.review ||
       Object.values(checkpointEndpoints).some((e) => e === endpoint)
     );
   }
@@ -123,11 +126,65 @@ export class LearningLoopMock {
   handle(endpoint: AnyEndpoint, request: FakeRequest): FakeReply | undefined {
     if (!this.answers(endpoint)) return undefined;
     const lessonId = Number(request.params['lessonId'] ?? 1);
+    if (endpoint === competencyReviewEndpoints.review)
+      return ok(this.review(request.query));
     if (endpoint === selfExplainEndpoints.selfExplain)
       return this.selfExplain(lessonId, request.body);
     if (endpoint === checkpointEndpoints.checkpoint)
       return ok({ lessonId, questions: this.pick(lessonId) });
     return this.answer(lessonId, request.body);
+  }
+
+  /**
+   * The weak competencies of the mock's `myCompetency` (CTRL 0%, OPS 33.33%), weakest first, with
+   * lessons of the first seeded course. A lesson the learner has since answered right twice in a
+   * row at the quick questions drops out, as on the server.
+   */
+  private review(query: Record<string, string>): CompetencyReview[] {
+    const at = new Date().toISOString();
+    const lesson = (
+      lessonId: number,
+      lessonTitle: string,
+      missedCount: number,
+    ) => ({
+      courseId: 1,
+      courseTitle: 'Tổng quan hệ thống Core Banking',
+      lessonId,
+      lessonTitle,
+      missedCount,
+      lastMissedAt: at,
+    });
+    const mastered = (lessonId: number): boolean => {
+      const last = this.checkpointAnswers
+        .filter((a) => a.lessonId === lessonId)
+        .slice(-2);
+      return last.length === 2 && last.every((a) => a.correct);
+    };
+    const all: CompetencyReview[] = [
+      {
+        competencyId: 2,
+        name: 'Kiểm soát và tuân thủ',
+        percent: 0,
+        lessons: [
+          lesson(3, 'Luồng giao dịch từ kênh đến sổ cái', 3),
+          lesson(1, 'Kiến trúc tổng thể hệ thống Core Banking', 1),
+        ],
+      },
+      {
+        competencyId: 3,
+        name: 'Vận hành và quy trình',
+        percent: 33.33,
+        lessons: [lesson(2, 'Mô hình dữ liệu khách hàng (CIF)', 2)],
+      },
+    ];
+    const only = query['competencyId'];
+    return all
+      .filter((row) => only === undefined || row.competencyId === Number(only))
+      .map((row) => ({
+        ...row,
+        lessons: row.lessons.filter((l) => !mastered(l.lessonId)),
+      }))
+      .slice(0, Number(query['limit'] ?? 3));
   }
 
   /** Streams the canned three sections; the refusals come before any event, as the server's do. */

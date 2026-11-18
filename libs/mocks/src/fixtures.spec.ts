@@ -4,6 +4,7 @@ import {
   agentEndpoints,
   checkpointEndpoints,
   selfExplainEndpoints,
+  competencyReviewEndpoints,
   AgentStreamEventSchema,
   authV1Endpoints,
   certificateEndpoints,
@@ -43,6 +44,7 @@ const everyEndpoint: readonly AnyEndpoint[] = [
   ...Object.values(agentEndpoints),
   ...Object.values(checkpointEndpoints),
   ...Object.values(selfExplainEndpoints),
+  ...Object.values(competencyReviewEndpoints),
   ...Object.values(quizExplainEndpoints),
   ...Object.values(authV1Endpoints),
   ...Object.values(communityEndpoints),
@@ -92,6 +94,7 @@ describe('FakeBackend and the endpoint registries', () => {
         ...Object.values(assessmentEndpoints),
         ...Object.values(checkpointEndpoints),
         ...Object.values(selfExplainEndpoints),
+        ...Object.values(competencyReviewEndpoints),
         ...Object.values(reportEndpoints),
         shellEndpoints.navCounts,
       ]
