@@ -128,6 +128,102 @@ function untimedLines(rows: readonly string[]): TranscriptParse {
   return { lines, timed: false, mergedCount: 0 };
 }
 
+const MS = 1000;
+
+/**
+ * Each line over `max` characters cut into pieces by sentence, then by word. A piece after the
+ * first starts 0.001 s after the one before it, so times stay strictly increasing. Those times
+ * must stay below the next line's start and, when the video length is known, within it. When a
+ * gap is too small for them, no piece is nudged onto a neighbour: the file does not fit (`null`).
+ */
+function splitLongLines(
+  lines: readonly TranscriptLine[],
+  max: number,
+  durationSeconds: number | undefined,
+): TranscriptLine[] | null {
+  const out: TranscriptLine[] = [];
+  for (const [index, line] of lines.entries()) {
+    if (line.text.length <= max) {
+      out.push(line);
+      continue;
+    }
+    const firstMs = Math.round((line.startSeconds as number) * MS);
+    const pieces = packSentences(line.text, max);
+    const lastMs = firstMs + pieces.length - 1;
+    const next = lines[index + 1]?.startSeconds;
+    if (
+      (next != null && lastMs >= Math.round(next * MS)) ||
+      (durationSeconds !== undefined &&
+        lastMs > Math.round(durationSeconds * MS))
+    ) {
+      return null;
+    }
+    for (const [k, text] of pieces.entries()) {
+      out.push({ startSeconds: (firstMs + k) / MS, text });
+    }
+  }
+  return out;
+}
+
+/**
+ * Adjacent lines merged pairwise (the earlier time, the texts joined, at most `maxText`
+ * characters) in passes until at most `maxLines` remain; the last pass stops as soon as the count
+ * is reached. `null` when a pass can merge nothing and there are still too many lines.
+ */
+function mergePairs(
+  lines: readonly TranscriptLine[],
+  maxLines: number,
+  maxText: number,
+): TranscriptLine[] | null {
+  let current = [...lines];
+  while (current.length > maxLines) {
+    let excess = current.length - maxLines;
+    const next: TranscriptLine[] = [];
+    for (let i = 0; i < current.length; i += 1) {
+      const a = current[i];
+      const b = current[i + 1];
+      if (excess > 0 && b && a.text.length + 1 + b.text.length <= maxText) {
+        next.push({
+          startSeconds: a.startSeconds,
+          text: `${a.text} ${b.text}`,
+        });
+        excess -= 1;
+        i += 1;
+      } else {
+        next.push(a);
+      }
+    }
+    if (next.length === current.length) return null;
+    current = next;
+  }
+  return current;
+}
+
+/** Timed lines fitted to the limits: long lines split, then adjacent lines merged. */
+function fitTimedLines(
+  lines: readonly TranscriptLine[],
+  durationSeconds: number | undefined,
+): TranscriptParse {
+  const split = splitLongLines(
+    lines,
+    COURSE_LIMITS.transcriptText,
+    durationSeconds,
+  );
+  const merged =
+    split &&
+    mergePairs(
+      split,
+      COURSE_LIMITS.transcriptLines,
+      COURSE_LIMITS.transcriptText,
+    );
+  if (!split || !merged) return { error: { code: 'too-long' } };
+  return {
+    lines: merged,
+    timed: true,
+    mergedCount: split.length - merged.length,
+  };
+}
+
 /**
  * Turns the text of a Transcript file into lines. A timed file keeps each line's start time; a
  * line without a stamp joins the timed line before it. A file with no timestamp is untimed: its
@@ -174,13 +270,7 @@ export function parseTranscriptText(
     .filter((entry) => entry.text)
     .map(({ start, text: words }) => ({ startSeconds: start, text: words }));
   if (!lines.length) return { error: { code: 'empty' } };
-  if (
-    lines.length > COURSE_LIMITS.transcriptLines ||
-    lines.some((line) => line.text.length > COURSE_LIMITS.transcriptText)
-  ) {
-    return { error: { code: 'too-long' } };
-  }
-  return { lines, timed: true, mergedCount: 0 };
+  return fitTimedLines(lines, durationSeconds);
 }
 
 // `Promise.withResolvers` is not in the project's TypeScript `lib`, so the executor form stays.

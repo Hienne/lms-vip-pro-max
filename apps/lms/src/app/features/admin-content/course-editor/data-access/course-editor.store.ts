@@ -176,6 +176,8 @@ export interface TranscriptEntry {
   readonly lines: readonly TranscriptLine[];
   readonly name: string | null;
   readonly timed: boolean;
+  /** How many lines the parser merged to fit the limit: shown on the row, never saved. */
+  readonly mergedCount: number;
 }
 
 /**
@@ -1357,13 +1359,19 @@ export class CourseEditorStore {
       lines: parsed.lines,
       name: file.name,
       timed: parsed.timed,
+      mergedCount: parsed.mergedCount,
     });
   }
 
   /** Clears a Video Block's Transcript; the draft discard of the drawer covers a mistake. */
   removeTranscript(blockKey: string): void {
     this.setTranscriptRefusal(blockKey, undefined);
-    this.setTranscript(blockKey, { lines: [], name: null, timed: false });
+    this.setTranscript(blockKey, {
+      lines: [],
+      name: null,
+      timed: false,
+      mergedCount: 0,
+    });
   }
 
   /** What the block's Transcript holds now: this session's change, else what the draft has. */

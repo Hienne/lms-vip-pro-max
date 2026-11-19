@@ -18,6 +18,12 @@ const linesOf = (result: TranscriptParse) => {
   return result.lines;
 };
 
+/** `hh:mm:ss` of a number of seconds, for building long files. */
+const clockOf = (seconds: number): string =>
+  [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60]
+    .map((part) => String(part).padStart(2, '0'))
+    .join(':');
+
 const TEAMS = [
   '[00:00:05] Giảng viên: Xin chào các bạn, hôm nay chúng ta học về hạch toán.',
   '[00:01:02] Giảng viên: Trước hết là khái niệm tài khoản.',
@@ -140,6 +146,96 @@ describe('parseTranscriptText', () => {
     ]);
   });
 
+  describe('a long timed Transcript', () => {
+    const sentence = (letter: string) => `${letter.repeat(599)}.`;
+
+    it('splits a line over 1,000 characters at sentences, each piece 0.001 s after the last', () => {
+      const text = `00:00:05 ${['a', 'b', 'c'].map(sentence).join(' ')}\n00:00:07 Sau đó.`;
+
+      const result = parseTranscriptText(text);
+
+      expect(result).toEqual({
+        lines: [
+          { startSeconds: 5, text: sentence('a') },
+          { startSeconds: 5.001, text: sentence('b') },
+          { startSeconds: 5.002, text: sentence('c') },
+          { startSeconds: 7, text: 'Sau đó.' },
+        ],
+        timed: true,
+        mergedCount: 0,
+      });
+    });
+
+    it('falls back to word boundaries when a sentence is over 1,000 characters', () => {
+      const words = Array.from({ length: 300 }, () => 'chữ12').join(' ');
+
+      const lines = linesOf(parseTranscriptText(`00:00:05 ${words}`));
+
+      expect(lines.map((line) => line.startSeconds)).toEqual([5, 5.001]);
+      expect(lines.every((line) => line.text.length <= 1000)).toBe(true);
+      expect(lines.map((line) => line.text).join(' ')).toBe(words);
+    });
+
+    it('refuses a split whose times would reach the next line', () => {
+      const huge = Array.from({ length: 1100 }, () => 'd'.repeat(999)).join(
+        ' ',
+      );
+
+      const error = errorOf(
+        parseTranscriptText(`00:00:05 ${huge}\n00:00:06 Dòng sau.`),
+      );
+
+      expect(error).toEqual({ code: 'too-long' });
+    });
+
+    it('refuses a split whose times would pass the end of the video', () => {
+      const text = `00:00:05 ${sentence('a')} ${sentence('b')}`;
+
+      expect(errorOf(parseTranscriptText(text, 5))).toEqual({
+        code: 'too-long',
+      });
+      expect(linesOf(parseTranscriptText(text, 6))).toHaveLength(2);
+    });
+
+    it('merges a 5,000-line file down to 2,000 lines without losing a word', () => {
+      const original = Array.from({ length: 5000 }, (_, i) => `Dòng số ${i}`);
+      const text = original
+        .map((words, i) => `${clockOf(i)} ${words}`)
+        .join('\n');
+
+      const result = parseTranscriptText(text);
+
+      const lines = linesOf(result);
+      expect(lines).toHaveLength(2000);
+      expect(result).toMatchObject({ timed: true, mergedCount: 3000 });
+      expect(lines[0].startSeconds).toBe(0);
+      const times = lines.map((line) => line.startSeconds as number);
+      expect(times.every((time, i) => i === 0 || time > times[i - 1])).toBe(
+        true,
+      );
+      expect(lines.every((line) => line.text.length <= 1000)).toBe(true);
+      expect(lines.map((line) => line.text).join(' ')).toBe(original.join(' '));
+    });
+
+    it('keeps the earlier time of each merged pair', () => {
+      const text = Array.from(
+        { length: 2001 },
+        (_, i) => `${clockOf(i)} ${'e'.repeat(499)}`,
+      ).join('\n');
+
+      const result = parseTranscriptText(text);
+
+      const lines = linesOf(result);
+      expect(lines).toHaveLength(2000);
+      expect(result).toMatchObject({ mergedCount: 1 });
+      expect(lines[0]).toEqual({
+        startSeconds: 0,
+        text: `${'e'.repeat(499)} ${'e'.repeat(499)}`,
+      });
+      expect(lines[1].startSeconds).toBe(2);
+    });
+  });
+
   describe('refusals', () => {
     it('fails on a time that goes back, with its line number and time', () => {
       const text = [
@@ -197,21 +293,18 @@ describe('parseTranscriptText', () => {
       });
     });
 
-    it('refuses more than 2,000 lines, and a line over 1,000 characters', () => {
-      const many = Array.from(
+    it('refuses a file that cannot fit even after merging', () => {
+      const wide = Array.from(
         { length: 2001 },
-        (_, i) =>
-          `${String(Math.floor(i / 60)).padStart(2, '0')}:${String(i % 60).padStart(2, '0')} Dòng ${i}`,
+        (_, i) => `${clockOf(i)} ${'c'.repeat(600)}`,
       ).join('\n');
-      const long = `00:05 ${'a'.repeat(1001)}`;
 
-      for (const text of [many, long]) {
-        const error = errorOf(parseTranscriptText(text));
-        expect(error).toEqual({ code: 'too-long' });
-        expect(transcriptErrorMessage(error)).toBe(
-          'Transcript quá dài: tối đa 2.000 dòng × 1.000 ký tự.',
-        );
-      }
+      const error = errorOf(parseTranscriptText(wide));
+
+      expect(error).toEqual({ code: 'too-long' });
+      expect(transcriptErrorMessage(error)).toBe(
+        'Transcript quá dài: tối đa 2.000 dòng × 1.000 ký tự.',
+      );
     });
 
     it('accepts exactly 2,000 lines of 1,000 characters', () => {

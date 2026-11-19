@@ -3273,6 +3273,20 @@ describe('CourseEditor', () => {
       expect(rows()).toBe(before);
     });
 
+    it('says how many lines it merged to fit a long file', async () => {
+      await newVideoBlock();
+      const lines = Array.from(
+        { length: 2005 },
+        (_, i) =>
+          `00:${String(Math.floor(i / 60)).padStart(2, '0')}:${String(i % 60).padStart(2, '0')} Dòng ${i}`,
+      );
+
+      await pickTranscript(txt(lines.join('\n')));
+
+      expect(drawerText()).toContain('2000 dòng');
+      expect(drawerText()).toContain('Đã gộp 5 dòng');
+    });
+
     it('reads a timed file into lines and says what it found, without asking', async () => {
       await newVideoBlock();
 
@@ -3332,7 +3346,14 @@ describe('CourseEditor', () => {
       ],
       [
         'is too long',
-        () => txt(`00:05 ${'a'.repeat(1001)}`),
+        () =>
+          txt(
+            Array.from(
+              { length: 2001 },
+              (_, i) =>
+                `00:${String(Math.floor(i / 60)).padStart(2, '0')}:${String(i % 60).padStart(2, '0')} ${'a'.repeat(600)}`,
+            ).join('\n'),
+          ),
         'Transcript quá dài: tối đa 2.000 dòng × 1.000 ký tự.',
       ],
     ])(

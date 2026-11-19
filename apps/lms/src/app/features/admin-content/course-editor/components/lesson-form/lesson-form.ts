@@ -282,7 +282,11 @@ export class LessonForm {
               count,
               name: change?.name ?? `Đã có transcript · ${count} dòng`,
               status: change?.name
-                ? `${count} dòng · ${change.timed ? 'có' : 'không có'} mốc thời gian`
+                ? `${count} dòng · ${change.timed ? 'có' : 'không có'} mốc thời gian${
+                    change.mergedCount
+                      ? ` · Đã gộp ${change.mergedCount} dòng`
+                      : ''
+                  }`
                 : undefined,
             },
           ];
