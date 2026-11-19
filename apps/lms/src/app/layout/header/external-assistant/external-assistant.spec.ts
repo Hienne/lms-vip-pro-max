@@ -24,6 +24,7 @@ import { ExternalAssistant } from './external-assistant';
 
 const BASE = '/api/v1/assistant/external-connections';
 const STATUS = `${BASE}/status`;
+const MCP_URL = 'https://lms.example/api/v1/mcp';
 
 const connection = (id: number, name = `Máy ${id}`): ExternalConnection => ({
   id,
@@ -70,7 +71,9 @@ describe('ExternalAssistant', () => {
   }
 
   async function answerStatus(enabled: boolean, allowed: boolean) {
-    backend.expectOne(STATUS).flush(envelopeOk({ enabled, allowed }));
+    backend
+      .expectOne(STATUS)
+      .flush(envelopeOk({ enabled, allowed, mcpUrl: MCP_URL }));
     await settle();
   }
 

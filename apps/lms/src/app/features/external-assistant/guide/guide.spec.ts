@@ -18,6 +18,7 @@ import {
 import { Guide } from './guide';
 
 const STATUS = '/api/v1/assistant/external-connections/status';
+const MCP_URL = 'https://lms.example/api/v1/mcp';
 
 describe('Guide (/tro-ly-ngoai)', () => {
   let backend: HttpTestingController;
@@ -48,7 +49,9 @@ describe('Guide (/tro-ly-ngoai)', () => {
     });
     fixture = TestBed.createComponent(Guide);
     await settle();
-    backend.expectOne(STATUS).flush(envelopeOk({ enabled, allowed }));
+    backend
+      .expectOne(STATUS)
+      .flush(envelopeOk({ enabled, allowed, mcpUrl: MCP_URL }));
     await settle();
   }
 
@@ -57,11 +60,11 @@ describe('Guide (/tro-ly-ngoai)', () => {
 
   afterEach(() => backend.verify());
 
-  it('shows the MCP URL on this origin, the Claude App steps first, and no token anywhere', async () => {
+  it('shows the MCP URL the server names, the Claude App steps first, and no token anywhere', async () => {
     await render(true, true);
 
     const url = el().querySelector<HTMLInputElement>('[data-testid="mcp-url"]');
-    expect(url?.value).toBe(`${location.origin}/api/v1/mcp`);
+    expect(url?.value).toBe(MCP_URL);
     const app = el().querySelector('[data-testid="steps-claude-app"]');
     expect(app?.textContent).toContain('Add custom connector');
     expect(app?.textContent).toContain('Cho phép');
@@ -81,7 +84,7 @@ describe('Guide (/tro-ly-ngoai)', () => {
       '[data-testid="claude-code-command"]',
     );
     expect(command?.value).toBe(
-      `claude mcp add --transport http chan-academy ${location.origin}/api/v1/mcp`,
+      `claude mcp add --transport http chan-academy ${MCP_URL}`,
     );
     expect(
       el().querySelector('[data-testid="steps-claude-code"]')?.textContent,

@@ -1,6 +1,5 @@
-import { DOCUMENT } from '@angular/common';
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { EXTERNAL_MCP_PATH, externalConnectionEndpoints } from '@lms/contracts';
+import { externalConnectionEndpoints } from '@lms/contracts';
 import { Toaster } from '@lms/ui';
 import { copyText } from '../../../../core/browser/secure-context';
 import { serverData } from '../../../../core/data-access/server-data';
@@ -20,7 +19,6 @@ export type GuideTab = 'claude-app' | 'claude-code';
 export class GuideStore {
   private readonly client = inject(EndpointClient);
   private readonly toaster = inject(Toaster);
-  private readonly origin = inject(DOCUMENT).location.origin;
 
   // 1. State
   private readonly state = {
@@ -42,8 +40,8 @@ export class GuideStore {
     return !!status?.enabled && status.allowed;
   });
 
-  /** The MCP URL on this app's own origin; its reverse proxy sends `/api` to the backend. */
-  readonly mcpUrl$ = computed(() => `${this.origin}${EXTERNAL_MCP_PATH}`);
+  /** The MCP URL the server names: the one resource its OAuth grants, whatever origin this page is on. */
+  readonly mcpUrl$ = computed(() => this.statusData.value()?.mcpUrl ?? '');
   readonly claudeCodeCommand$ = computed(
     () =>
       `claude mcp add --transport http ${MCP_SERVER_NAME} ${this.mcpUrl$()}`,

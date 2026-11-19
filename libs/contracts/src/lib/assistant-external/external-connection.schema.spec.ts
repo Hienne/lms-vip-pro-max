@@ -25,8 +25,23 @@ const connection = {
 describe('external connection contracts', () => {
   it('parses the status, a connection and a created connection as the server sends them', () => {
     expect(
-      ExternalAssistantStatusSchema.parse({ enabled: true, allowed: false }),
-    ).toEqual({ enabled: true, allowed: false });
+      ExternalAssistantStatusSchema.parse({
+        enabled: true,
+        allowed: false,
+        mcpUrl: 'https://lms.example/api/v1/mcp',
+      }),
+    ).toEqual({
+      enabled: true,
+      allowed: false,
+      mcpUrl: 'https://lms.example/api/v1/mcp',
+    });
+    expect(() =>
+      ExternalAssistantStatusSchema.parse({
+        enabled: true,
+        allowed: true,
+        mcpUrl: 'javascript:alert(1)',
+      }),
+    ).toThrow();
     expect(ExternalConnectionSchema.parse(connection)).toEqual(connection);
     expect(
       ExternalConnectionSchema.parse({

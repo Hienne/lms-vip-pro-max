@@ -11,6 +11,7 @@ import {
 import { z } from 'zod';
 import { FakeBackend, type FakeRequest } from '../backend/fake-backend';
 import { SEED_PASSWORD } from '../backend/seed';
+import { MOCK_MCP_URL } from './external-connection.mock';
 
 const request = (
   token: string | null,
@@ -71,6 +72,7 @@ describe('ExternalConnectionMock in the fake backend', () => {
     expect(ExternalAssistantStatusSchema.parse(status?.body.data)).toEqual({
       enabled: true,
       allowed: false,
+      mcpUrl: MOCK_MCP_URL,
     });
     expect(
       backend.handle(externalConnectionEndpoints.list, request(token))?.status,
@@ -83,7 +85,7 @@ describe('ExternalConnectionMock in the fake backend', () => {
     expect(
       backend.handle(externalConnectionEndpoints.status, request(token))?.body
         .data,
-    ).toEqual({ enabled: false, allowed: false });
+    ).toEqual({ enabled: false, allowed: false, mcpUrl: MOCK_MCP_URL });
     expect(
       backend.handle(externalConnectionEndpoints.list, request(token))?.status,
     ).toBe(404);

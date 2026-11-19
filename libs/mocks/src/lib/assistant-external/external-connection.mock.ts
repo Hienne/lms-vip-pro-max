@@ -1,5 +1,6 @@
 import {
   CreateExternalConnectionCommandSchema,
+  EXTERNAL_MCP_PATH,
   externalConnectionEndpoints,
   oauthConsentEndpoints,
   type AnyEndpoint,
@@ -8,6 +9,9 @@ import {
 import { backendRefusal, BACKEND_RESPONSES } from '../backend-responses';
 import type { FakeReply, FakeRequest } from '../backend/fake-backend';
 import { envelopeError, envelopeOk } from '../envelope';
+
+/** The `mcpUrl` the mock status answers: the dev server's origin, as the backend's app-base-url is. */
+export const MOCK_MCP_URL = `http://localhost:4200${EXTERNAL_MCP_PATH}`;
 
 // The backend's Kết nối trợ lý ngoài (corebanking-academy `assistant/external`) as the in-app mock:
 // connections live in memory, the token is returned once and never again, and `enabled` is the
@@ -75,7 +79,11 @@ export class ExternalConnectionMock {
   ): FakeReply | undefined {
     if (!this.answers(endpoint)) return undefined;
     if (endpoint === externalConnectionEndpoints.status) {
-      return ok({ enabled: this.enabled, allowed: this.enabled && allowed });
+      return ok({
+        enabled: this.enabled,
+        allowed: this.enabled && allowed,
+        mcpUrl: MOCK_MCP_URL,
+      });
     }
     if (!this.enabled) return backendRefusal('endpointNotFound');
     if (!allowed) return backendRefusal('accessDenied');

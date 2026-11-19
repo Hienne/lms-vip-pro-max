@@ -118,7 +118,22 @@ export class ConsentStore {
 
   /** Hands the browser back to the client: a web callback, or Claude Code listening on this machine. */
   private leave(result: OAuthConsentResult): void {
+    if (!isClientCallback(result.redirectUrl)) return;
     this.setLeaving(true);
     this.location.assign(result.redirectUrl);
   }
+}
+
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+/**
+ * The only places the server sends the browser back to: an https callback, or http on this machine
+ * (Claude Code). Anything else is refused here too, so a bad answer never becomes a navigation.
+ */
+function isClientCallback(url: string): boolean {
+  const target = new URL(url);
+  return (
+    target.protocol === 'https:' ||
+    (target.protocol === 'http:' && LOOPBACK_HOSTS.has(target.hostname))
+  );
 }

@@ -49,7 +49,11 @@ describe('Consent (/tro-ly-ngoai/cho-phep)', () => {
 
   async function render(
     request: string | null,
-    status = { enabled: true, allowed: true },
+    status = {
+      enabled: true,
+      allowed: true,
+      mcpUrl: 'https://lms.example/api/v1/mcp',
+    },
   ): Promise<void> {
     assign = vi.fn();
     TestBed.configureTestingModule({
@@ -156,6 +160,19 @@ describe('Consent (/tro-ly-ngoai/cho-phep)', () => {
     );
   });
 
+  it('never follows an http callback that is not on this machine', async () => {
+    await showRequest();
+    button('Cho phép')?.click();
+    await settle();
+
+    backend
+      .expectOne(`${REQUEST}/approve`)
+      .flush(envelopeOk({ redirectUrl: 'http://evil.example/cb?code=c' }));
+    await settle();
+
+    expect(assign).not.toHaveBeenCalled();
+  });
+
   it('says to revoke some at the limit, and shows the refusal the server gives', async () => {
     await showRequest(true);
     expect(el().querySelector('[data-testid="limit"]')?.textContent).toContain(
@@ -204,7 +221,11 @@ describe('Consent (/tro-ly-ngoai/cho-phep)', () => {
   });
 
   it('tells a caller who may not connect, and never reads the request', async () => {
-    await render('r1', { enabled: true, allowed: false });
+    await render('r1', {
+      enabled: true,
+      allowed: false,
+      mcpUrl: 'https://lms.example/api/v1/mcp',
+    });
     backend.expectNone(REQUEST);
     expect(text()).toContain('Bạn chưa dùng được trợ lý ngoài');
   });

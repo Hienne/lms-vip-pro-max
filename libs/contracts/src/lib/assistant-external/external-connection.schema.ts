@@ -4,10 +4,15 @@ import { z } from 'zod';
 // creates on the web and gives to an outside assistant (Claude Code), which then drafts courses
 // through the narrow MCP endpoint `/api/v1/mcp` as that author. The token works on that endpoint only.
 
-/** Whether the feature is on, and whether the caller may make connections (their roles, now). */
+/**
+ * Whether the feature is on, whether the caller may make connections (their roles, now), and the
+ * MCP URL to paste into Claude: the server's own `{app-base-url}/api/v1/mcp`, the only resource
+ * its OAuth grants.
+ */
 export const ExternalAssistantStatusSchema = z.object({
   enabled: z.boolean(),
   allowed: z.boolean(),
+  mcpUrl: z.url({ protocol: /^https?$/ }),
 });
 export type ExternalAssistantStatus = z.infer<
   typeof ExternalAssistantStatusSchema
@@ -80,6 +85,6 @@ export type OAuthConsentRequest = z.infer<typeof OAuthConsentRequestSchema>;
 
 /** Where the browser goes after Cho phép or Từ chối: the client's redirect URI with a code or an error. */
 export const OAuthConsentResultSchema = z.object({
-  redirectUrl: z.url(),
+  redirectUrl: z.url({ protocol: /^https?$/ }),
 });
 export type OAuthConsentResult = z.infer<typeof OAuthConsentResultSchema>;
