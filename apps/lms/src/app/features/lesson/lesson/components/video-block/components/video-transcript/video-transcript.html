@@ -15,15 +15,16 @@
     />
     @if (shown().length) {
     <ol class="transcript__lines">
-      @for (item of shown(); track item.line.startSeconds) {
+      @for (item of shown(); track item.index) {
       <li>
         <div
           class="transcript__line"
           [attr.aria-current]="item.playing ? 'true' : null"
         >
+          @if (item.line.startSeconds !== null) {
           <span class="transcript__time"
             >{{ clock(item.line.startSeconds) }}</span
-          >{{ ' ' }}<span class="transcript__text">{{ item.line.text }}</span>
+          >{{ ' ' }}}<span class="transcript__text">{{ item.line.text }}</span>
         </div>
       </li>
       }

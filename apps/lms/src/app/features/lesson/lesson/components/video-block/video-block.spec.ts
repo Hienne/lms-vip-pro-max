@@ -377,5 +377,70 @@ describe('VideoBlock', () => {
       probe.fire('timeupdate');
       expect(scroll).not.toHaveBeenCalled();
     });
+
+    describe('without times', () => {
+      const untimed = [
+        { startSeconds: null, text: 'Xin chào, đây là bản gỡ băng.' },
+        { startSeconds: null, text: 'Hệ thống Core Banking xử lý sổ cái.' },
+        { startSeconds: null, text: 'Tổng kết bài học.' },
+      ];
+
+      it('lists every line as plain text, with no time label', () => {
+        const probe = render();
+        probe.set('transcript', untimed);
+        expect(buttons(probe).map((b) => b.textContent?.trim())).toEqual([
+          'Xin chào, đây là bản gỡ băng.',
+          'Hệ thống Core Banking xử lý sổ cái.',
+          'Tổng kết bài học.',
+        ]);
+        expect(probe.el.querySelector('.transcript__time')).toBeNull();
+        expect(
+          probe.el.querySelector('.transcript__summary')?.textContent?.trim(),
+        ).toBe('Lời thoại (3 đoạn)');
+      });
+
+      it('filters on search like a timed one', () => {
+        const probe = render();
+        probe.set('transcript', untimed);
+        search(probe, 'TONG KET');
+        expect(buttons(probe).map((b) => b.textContent?.trim())).toEqual([
+          'Tổng kết bài học.',
+        ]);
+        search(probe, 'không có từ này');
+        expect(probe.el.textContent).toContain('Không có đoạn nào khớp.');
+        search(probe, '');
+        expect(buttons(probe)).toHaveLength(3);
+      });
+
+      it('never marks a line as the one being played', () => {
+        const probe = render();
+        probe.set('transcript', untimed);
+        for (const second of [0, 5, 10, 600]) {
+          probe.time(second);
+          probe.fire('timeupdate');
+          expect(
+            buttons(probe).filter(
+              (b) => b.getAttribute('aria-current') === 'true',
+            ),
+          ).toHaveLength(0);
+        }
+      });
+
+      it('offers nothing to click to seek', () => {
+        const probe = render();
+        probe.set('transcript', untimed);
+        const seek = vi.fn();
+        probe.el
+          .querySelector<HTMLVideoElement>('video')
+          ?.addEventListener('seeking', seek);
+        buttons(probe).forEach((b) => b.click());
+        expect(seek).not.toHaveBeenCalled();
+        expect(
+          probe.el.querySelectorAll(
+            'details.transcript button, details.transcript a',
+          ),
+        ).toHaveLength(0);
+      });
+    });
   });
 });

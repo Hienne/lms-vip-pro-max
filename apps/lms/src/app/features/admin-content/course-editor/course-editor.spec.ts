@@ -3286,6 +3286,26 @@ describe('CourseEditor', () => {
       expect(rowButton('Xoá')).toBeTruthy();
     });
 
+    it('reads a file with no timestamp into untimed lines, says "không có mốc thời gian" and saves null times', async () => {
+      await architectureLesson();
+      await screen.click(screen.button('Xoá', screen.drawer()!));
+
+      await pickTranscript(
+        txt('Giảng viên: Xin chào. Hôm nay học hạch toán.\r\n\r\nPhần hai.'),
+      );
+
+      expect(drawerText()).toContain('bai-1.txt');
+      expect(drawerText()).toContain('2 dòng · không có mốc thời gian');
+      expect(drawerText()).not.toContain('chưa có mốc thời gian');
+      expect((await savedVideo())?.transcript).toEqual([
+        {
+          startSeconds: null,
+          text: 'Giảng viên: Xin chào. Hôm nay học hạch toán.',
+        },
+        { startSeconds: null, text: 'Phần hai.' },
+      ]);
+    });
+
     it('shows a Transcript that was already saved as "Đã có transcript · N dòng"', async () => {
       await architectureLesson();
 
@@ -3305,11 +3325,6 @@ describe('CourseEditor', () => {
         'Tệp phải được lưu với mã hóa UTF-8.',
       ],
       ['is empty', () => txt(' \r\n '), 'Tệp transcript không có nội dung.'],
-      [
-        'has no timestamp',
-        () => txt('Chỉ là một đoạn văn.'),
-        'chưa có mốc thời gian',
-      ],
       [
         'goes back in time',
         () => txt('00:05:00 Một\n00:02:03 Hai'),

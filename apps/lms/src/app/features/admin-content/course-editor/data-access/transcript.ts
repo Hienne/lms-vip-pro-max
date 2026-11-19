@@ -15,7 +15,6 @@ export type TranscriptError =
   | { readonly code: 'unreadable' }
   | { readonly code: 'encoding' }
   | { readonly code: 'empty' }
-  | { readonly code: 'untimed' }
   | { readonly code: 'too-long' }
   | { readonly code: 'order'; readonly line: number; readonly time: number }
   | { readonly code: 'duration'; readonly line: number; readonly time: number };
@@ -53,10 +52,87 @@ function readStamp(row: string): { seconds: number; text: string } | null {
 const joinText = (...parts: string[]): string =>
   parts.filter(Boolean).join(' ');
 
+const SENTENCE_END = /(?<=[.!?…])\s+/;
+
+/**
+ * `text` cut into pieces of at most `max` characters at word boundaries. A word longer than `max`
+ * is cut where the limit falls (not inside a surrogate pair), so no file is refused for it.
+ */
+function splitWords(text: string, max: number): string[] {
+  const pieces: string[] = [];
+  let piece = '';
+  for (let word of text.split(' ')) {
+    while (word.length > max) {
+      if (piece) pieces.push(piece);
+      piece = '';
+      const high = word.charCodeAt(max - 1);
+      const cut = high >= 0xd800 && high <= 0xdbff ? max - 1 : max;
+      pieces.push(word.slice(0, cut));
+      word = word.slice(cut);
+    }
+    if (!word) continue;
+    if (!piece) piece = word;
+    else if (piece.length + 1 + word.length <= max) piece += ` ${word}`;
+    else {
+      pieces.push(piece);
+      piece = word;
+    }
+  }
+  if (piece) pieces.push(piece);
+  return pieces;
+}
+
+/** The sentences of one paragraph packed into lines of at most `max` characters. */
+function packSentences(paragraph: string, max: number): string[] {
+  const lines: string[] = [];
+  let line = '';
+  for (const sentence of paragraph.split(SENTENCE_END)) {
+    if (sentence.length > max) {
+      if (line) lines.push(line);
+      const pieces = splitWords(sentence, max);
+      line = pieces.pop() ?? '';
+      lines.push(...pieces);
+    } else if (!line) {
+      line = sentence;
+    } else if (line.length + 1 + sentence.length <= max) {
+      line += ` ${sentence}`;
+    } else {
+      lines.push(line);
+      line = sentence;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+/**
+ * A file with no timestamp: its paragraphs (blocks of rows between blank rows), each packed into
+ * lines by sentence. Every line has no time.
+ */
+function untimedLines(rows: readonly string[]): TranscriptParse {
+  const paragraphs: string[][] = [[]];
+  for (const raw of rows) {
+    const row = raw.replace(/\s+/g, ' ').trim();
+    if (row) paragraphs[paragraphs.length - 1].push(row);
+    else if (paragraphs[paragraphs.length - 1].length) paragraphs.push([]);
+  }
+  const lines = paragraphs
+    .filter((paragraph) => paragraph.length)
+    .flatMap((paragraph) =>
+      packSentences(paragraph.join(' '), COURSE_LIMITS.transcriptText),
+    )
+    .map((text) => ({ startSeconds: null, text }));
+  if (lines.length > COURSE_LIMITS.transcriptLines) {
+    return { error: { code: 'too-long' } };
+  }
+  return { lines, timed: false, mergedCount: 0 };
+}
+
 /**
  * Turns the text of a Transcript file into lines. A timed file keeps each line's start time; a
- * line without a stamp joins the timed line before it. `durationSeconds`, when known, bounds the
- * times. The text is already decoded and its line ends are LF.
+ * line without a stamp joins the timed line before it. A file with no timestamp is untimed: its
+ * paragraphs are packed into lines by sentence, each with a null time. `durationSeconds`, when
+ * known, bounds the times of a timed file. The text is already decoded and its line ends are LF.
  */
 export function parseTranscriptText(
   text: string,
@@ -91,7 +167,7 @@ export function parseTranscriptText(
   }
 
   if (!entries.length) {
-    return { error: { code: lead.length ? 'untimed' : 'empty' } };
+    return lead.length ? untimedLines(rows) : { error: { code: 'empty' } };
   }
   entries[0].text = joinText(...lead, entries[0].text);
   const lines = entries
@@ -162,8 +238,6 @@ export function transcriptErrorMessage(error: TranscriptError): string {
       return 'Tệp phải được lưu với mã hóa UTF-8.';
     case 'empty':
       return 'Tệp transcript không có nội dung.';
-    case 'untimed':
-      return 'Tệp transcript chưa có mốc thời gian: mỗi dòng cần bắt đầu bằng mốc như 00:01:02.';
     case 'too-long':
       return 'Transcript quá dài: tối đa 2.000 dòng × 1.000 ký tự.';
     case 'order':

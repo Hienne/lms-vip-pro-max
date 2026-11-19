@@ -360,6 +360,49 @@ describe('video chapters and transcript', () => {
     expect(parsed.transcript[0].text).toBe('Xin chào');
   });
 
+  it('read an untimed transcript line with a null time', () => {
+    const parsed = LessonBlockSchema.parse({
+      ...block,
+      transcript: [
+        { startSeconds: null, text: 'Xin chào' },
+        { startSeconds: null, text: 'Hẹn gặp lại' },
+      ],
+    });
+    expect(parsed.transcript.map((line) => line.startSeconds)).toEqual([
+      null,
+      null,
+    ]);
+  });
+
+  it('save an untimed transcript but still need a time on every chapter', () => {
+    const input = {
+      blockType: 'video',
+      title: 'Video',
+      completionMode: 'video_coverage',
+      assets: [],
+      steps: [],
+    };
+    const lesson = (video: unknown) => ({
+      title: 'Bài',
+      lessonType: 'content',
+      estimatedDurationSeconds: 60,
+      blocks: [video],
+    });
+    expect(
+      LessonInputSchema.safeParse(
+        lesson({ ...input, transcript: [{ startSeconds: null, text: 'B' }] }),
+      ).success,
+    ).toBe(true);
+    expect(
+      LessonInputSchema.safeParse(
+        lesson({
+          ...input,
+          videoChapters: [{ startSeconds: null, title: 'A' }],
+        }),
+      ).success,
+    ).toBe(false);
+  });
+
   it('are optional in a saved block and checked against the backend limits', () => {
     const input = {
       blockType: 'video',

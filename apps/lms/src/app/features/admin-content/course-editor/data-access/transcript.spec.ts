@@ -176,13 +176,19 @@ describe('parseTranscriptText', () => {
       });
     });
 
-    it('refuses a file with no timestamp, for now', () => {
-      const error = errorOf(
-        parseTranscriptText('Một đoạn văn bản thường.\n\nĐoạn thứ hai.'),
+    it('reads a file with no timestamp as untimed lines, not as a refusal', () => {
+      const result = parseTranscriptText(
+        'Một đoạn văn bản thường.\n\nĐoạn thứ hai.',
       );
 
-      expect(error).toEqual({ code: 'untimed' });
-      expect(transcriptErrorMessage(error)).toMatch(/mốc thời gian/);
+      expect(result).toEqual({
+        timed: false,
+        mergedCount: 0,
+        lines: [
+          { startSeconds: null, text: 'Một đoạn văn bản thường.' },
+          { startSeconds: null, text: 'Đoạn thứ hai.' },
+        ],
+      });
     });
 
     it('refuses a file of stamps with no words', () => {
@@ -218,6 +224,90 @@ describe('parseTranscriptText', () => {
       const result = parseTranscriptText(text);
 
       expect(linesOf(result)).toHaveLength(2000);
+    });
+  });
+
+  describe('a file with no timestamp', () => {
+    const PLAIN = [
+      'Giảng viên: Xin chào các bạn. Hôm nay chúng ta học về hạch toán!',
+      'Ai đã nghe về tài khoản tổng hợp?',
+      '',
+      '',
+      'Phần hai bắt đầu ở đây, họp lúc 10:30 sáng nay.',
+    ].join('\n');
+
+    it('splits paragraphs on blank lines and gives every line a null time', () => {
+      const result = parseTranscriptText(PLAIN);
+
+      expect(result).toEqual({
+        timed: false,
+        mergedCount: 0,
+        lines: [
+          {
+            startSeconds: null,
+            text: 'Giảng viên: Xin chào các bạn. Hôm nay chúng ta học về hạch toán! Ai đã nghe về tài khoản tổng hợp?',
+          },
+          {
+            startSeconds: null,
+            text: 'Phần hai bắt đầu ở đây, họp lúc 10:30 sáng nay.',
+          },
+        ],
+      });
+    });
+
+    it('packs the sentences of a long paragraph into lines of up to 1,000 characters', () => {
+      const sentence = (i: number) =>
+        `Câu số ${i} nói về sổ cái và ${'bút toán '.repeat(10).trim()}.`;
+      const sentences = Array.from({ length: 40 }, (_, i) => sentence(i));
+
+      const lines = linesOf(parseTranscriptText(sentences.join(' ')));
+
+      expect(lines.length).toBeGreaterThan(1);
+      expect(lines.every((line) => line.startSeconds === null)).toBe(true);
+      expect(lines.every((line) => line.text.length <= 1000)).toBe(true);
+      // Packed, not one sentence per line: the first line holds several whole sentences.
+      expect(lines[0].text.startsWith(sentence(0))).toBe(true);
+      expect(lines[0].text).toContain(sentence(1));
+      // Nothing is lost or cut inside a sentence.
+      expect(lines.map((line) => line.text).join(' ')).toBe(
+        sentences.join(' '),
+      );
+    });
+
+    it('falls back to word boundaries for a sentence over 1,000 characters', () => {
+      const sentence = `${Array.from({ length: 300 }, (_, i) => `từ${i}`).join(' ')}.`;
+      expect(sentence.length).toBeGreaterThan(1000);
+
+      const lines = linesOf(parseTranscriptText(sentence));
+
+      expect(lines.length).toBeGreaterThan(1);
+      expect(lines.every((line) => line.text.length <= 1000)).toBe(true);
+      expect(lines.map((line) => line.text).join(' ')).toBe(sentence);
+      // Every line starts on a whole word.
+      expect(lines.every((line) => line.text.startsWith('từ'))).toBe(true);
+    });
+
+    it('cuts a word longer than 1,000 characters rather than refusing the file', () => {
+      const lines = linesOf(parseTranscriptText('a'.repeat(2500)));
+
+      expect(lines.map((line) => line.text.length)).toEqual([1000, 1000, 500]);
+    });
+
+    it('refuses more than 2,000 lines', () => {
+      const many = Array.from({ length: 2001 }, (_, i) => `Đoạn ${i}`).join(
+        '\n\n',
+      );
+
+      expect(errorOf(parseTranscriptText(many))).toEqual({ code: 'too-long' });
+      expect(
+        linesOf(parseTranscriptText(many.slice(0, many.lastIndexOf('\n\n')))),
+      ).toHaveLength(2000);
+    });
+
+    it('still refuses a file of blanks', () => {
+      expect(errorOf(parseTranscriptText(' \n\n  '))).toEqual({
+        code: 'empty',
+      });
     });
   });
 

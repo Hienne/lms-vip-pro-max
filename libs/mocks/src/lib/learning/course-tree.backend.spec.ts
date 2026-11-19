@@ -8,7 +8,7 @@ import {
 } from '@lms/contracts';
 import { FakeBackend, type FakeReply } from '../backend/fake-backend';
 import { SEED_PASSWORD } from '../backend/seed';
-import { ARCHITECTURE_VIDEO } from './video-notes.fixtures';
+import { ARCHITECTURE_VIDEO, DEPOSIT_VIDEO } from './video-notes.fixtures';
 
 describe('video chapters and transcript in the course tree of the mock backend', () => {
   let backend: FakeBackend;
@@ -105,6 +105,17 @@ describe('video chapters and transcript in the course tree of the mock backend',
     );
     expect(videoOf(published).transcript).toHaveLength(7);
     expect(videoOf(published).transcript[1].startSeconds).toBe(50);
+  });
+
+  it('seeds one untimed transcript, with a null time on every line, on the deposit course video', () => {
+    const deposit = CourseDetailSchema.parse(
+      call(courseEndpoints.getCourse, { params: { courseId: '5' } }).body.data,
+    );
+    expect(videoOf(deposit).transcript).toEqual(DEPOSIT_VIDEO.transcript);
+    expect(videoOf(deposit).transcript).toHaveLength(2);
+    expect(
+      videoOf(deposit).transcript.every((line) => line.startSeconds === null),
+    ).toBe(true);
   });
 
   it('copies them into a new draft', () => {
