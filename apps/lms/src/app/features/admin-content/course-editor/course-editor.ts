@@ -355,6 +355,12 @@ export class CourseEditor implements HasUnsavedChanges {
     this.keepDraftWhenTheSessionEnds();
     this.applyChatPrefill();
     this.store.registerBlockPositions(this.blockPositions);
+    this.store.registerBlockLookup((blockKey) =>
+      this.model()
+        .chapters.flatMap((chapter) => chapter.lessons)
+        .flatMap((lesson) => lesson.blocks)
+        .find((block) => block.key === blockKey),
+    );
     this.store.registerAssetAttacher((blockKey, asset) =>
       this.model.update((value) => ({
         ...value,

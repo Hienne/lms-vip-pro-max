@@ -33,6 +33,7 @@ import {
   type LibraryAsset,
   type SaveDraftCommand,
   type ScormPackage,
+  type TranscriptLine,
 } from '@lms/contracts';
 import { choose, confirm, NOW, Toaster, type StepperItem } from '@lms/ui';
 import {
@@ -76,6 +77,7 @@ import {
   FILE_USAGE,
   toCreateCourseCommand,
   type AssetValue,
+  type BlockValue,
   type CourseDraftValue,
 } from '../course-draft';
 import {
@@ -115,6 +117,11 @@ import {
   WAITING_STATUS,
   type UploadEntry,
 } from './upload-entry';
+import {
+  decodeTranscriptFile,
+  parseTranscriptText,
+  transcriptErrorMessage,
+} from './transcript';
 
 export const EDITOR_STEPS: readonly StepperItem[] = [
   { label: 'Thông tin cơ bản', subtitle: 'Tên, mã, chương trình' },
@@ -158,6 +165,17 @@ interface UploadContext {
   readonly position: string | undefined;
   /** The kept upload this one continues. */
   readonly resumed?: KeptUpload;
+}
+
+/**
+ * A Video Block's Transcript as this drawer session left it: the lines the lesson saves, and what
+ * the row says about the file they came from. The file name is view state: it is not saved, and
+ * a block that was only removed has none.
+ */
+export interface TranscriptEntry {
+  readonly lines: readonly TranscriptLine[];
+  readonly name: string | null;
+  readonly timed: boolean;
 }
 
 /**
@@ -318,6 +336,14 @@ export class CourseEditorStore {
       () => this.courseData.value()?.revision.programId ?? undefined,
     ),
     uploads: signal<Readonly<Record<string, UploadEntry>>>({}),
+    /** The Transcripts attached or removed in the open lesson's drawer session, by block key. */
+    transcripts: signal<Readonly<Record<string, TranscriptEntry>>>({}),
+    /** Why the last file picked for a block's Transcript was refused, by block key. */
+    transcriptRefusals: signal<Readonly<Record<string, string>>>({}),
+    /** How the page finds a block of its draft by key, handed over once. */
+    blockLookup: signal<((blockKey: string) => BlockValue | undefined) | null>(
+      null,
+    ),
     /** The uploads the server still holds for this course, kept across reloads. */
     kept: linkedSignal<readonly KeptUpload[]>(() => {
       const userId = this.userId();
@@ -748,6 +774,10 @@ export class CourseEditorStore {
   /** The files chosen in this editor by block key, and where each one's upload stands. */
   readonly uploads$ = this.state.uploads.asReadonly();
 
+  /** The Transcripts changed in the open lesson, by block key; the lesson form saves them. */
+  readonly transcripts$ = this.state.transcripts.asReadonly();
+  readonly transcriptRefusals$ = this.state.transcriptRefusals.asReadonly();
+
   /** Files still on their way (the cover included): a block saved now would have no asset. */
   readonly pendingUploads$ = computed(
     () => Object.values(this.state.uploads()).filter(isBusy).length,
@@ -856,6 +886,27 @@ export class CourseEditorStore {
 
   private setEditingLesson(target: LessonTarget | null): void {
     this.state.editingLesson.set(target);
+  }
+
+  private setTranscript(key: string, entry: TranscriptEntry): void {
+    this.state.transcripts.update((all) => ({ ...all, [key]: entry }));
+  }
+
+  private clearTranscripts(): void {
+    this.state.transcripts.set({});
+    this.state.transcriptRefusals.set({});
+  }
+
+  private setTranscriptRefusal(key: string, message: string | undefined): void {
+    this.state.transcriptRefusals.update(({ [key]: _, ...rest }) =>
+      message === undefined ? rest : { ...rest, [key]: message },
+    );
+  }
+
+  private setBlockLookup(
+    find: ((blockKey: string) => BlockValue | undefined) | null,
+  ): void {
+    this.state.blockLookup.set(find);
   }
 
   private setSessionUploads(keys: readonly string[]): void {
@@ -984,6 +1035,13 @@ export class CourseEditorStore {
     this.setBlockPositions(positions);
   }
 
+  /** The page hands over how to find a block of its draft by key, so a Transcript can be checked against it. */
+  registerBlockLookup(
+    find: (blockKey: string) => BlockValue | undefined,
+  ): void {
+    this.setBlockLookup(find);
+  }
+
   /** A final exam was made for this course: the draft references it, and the quizzes are read again. */
   attachExam(quizId: number): void {
     this.state.examAttacher()?.(quizId);
@@ -1056,12 +1114,14 @@ export class CourseEditorStore {
     if (!this.isDraft$()) return;
     this.setScormPickerOpen(false);
     this.setSessionUploads([]);
+    this.clearTranscripts();
     this.setEditingLesson(target);
   }
 
   closeLesson(): void {
     this.setScormPickerOpen(false);
     this.setSessionUploads([]);
+    this.clearTranscripts();
     this.setEditingLesson(null);
   }
 
@@ -1263,6 +1323,70 @@ export class CourseEditorStore {
         sizeBytes: asset.sizeBytes,
       },
     });
+  }
+
+  /**
+   * The author picked a `.txt` file for a Video Block's Transcript: it is checked, parsed and,
+   * when the block already has a Transcript, put in its place only after the author confirms. A
+   * refusal is kept for the row to show and leaves the Transcript as it was.
+   */
+  async attachTranscript(blockKey: string, file: File): Promise<void> {
+    this.setTranscriptRefusal(blockKey, undefined);
+    const decoded = await decodeTranscriptFile(file);
+    const parsed =
+      'error' in decoded
+        ? decoded
+        : parseTranscriptText(decoded.text, this.videoSeconds(blockKey));
+    if ('error' in parsed) {
+      this.setTranscriptRefusal(blockKey, transcriptErrorMessage(parsed.error));
+      return;
+    }
+    if (this.transcriptLines(blockKey).length) {
+      const replace = await firstValueFrom(
+        confirm(this.dialog, {
+          title: 'Thay transcript hiện tại?',
+          message:
+            'Transcript mới thay toàn bộ transcript đang có của khối video này.',
+          confirmLabel: 'Thay',
+        }),
+      );
+      if (!replace) return;
+    }
+    if (!this.state.editingLesson()) return;
+    this.setTranscript(blockKey, {
+      lines: parsed.lines,
+      name: file.name,
+      timed: parsed.timed,
+    });
+  }
+
+  /** Clears a Video Block's Transcript; the draft discard of the drawer covers a mistake. */
+  removeTranscript(blockKey: string): void {
+    this.setTranscriptRefusal(blockKey, undefined);
+    this.setTranscript(blockKey, { lines: [], name: null, timed: false });
+  }
+
+  /** What the block's Transcript holds now: this session's change, else what the draft has. */
+  private transcriptLines(blockKey: string): readonly TranscriptLine[] {
+    return (
+      this.state.transcripts()[blockKey]?.lines ??
+      this.state.blockLookup()?.(blockKey)?.transcript ??
+      []
+    );
+  }
+
+  /** The length of the block's primary video, when the stored course knows it. */
+  private videoSeconds(blockKey: string): number | undefined {
+    const assetId = this.state
+      .blockLookup()?.(blockKey)
+      ?.assets.find((asset) => asset.usage === 'primary')?.assetId;
+    if (assetId === undefined) return undefined;
+    const seconds = this.course$()
+      ?.chapters.flatMap((chapter) => chapter.lessons)
+      .flatMap((lesson) => lesson.blocks)
+      .flatMap((block) => block.assets)
+      .find(({ asset }) => asset.id === assetId)?.asset.durationSeconds;
+    return seconds ? seconds : undefined;
   }
 
   /** The cover image to show for the asset `assetId` names; an author reads it with no block. */

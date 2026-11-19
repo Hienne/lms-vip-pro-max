@@ -267,6 +267,30 @@ export class LessonForm {
     );
   });
 
+  /** What each Video Block's Transcript row shows: this session's file, else what the draft has. */
+  protected readonly transcriptRows = computed(() => {
+    const changes = this.store.transcripts$();
+    return Object.fromEntries(
+      this.model()
+        .blocks.filter((block) => block.blockType === 'video')
+        .map((block) => {
+          const change = changes[block.key];
+          const count = (change?.lines ?? block.transcript).length;
+          return [
+            block.key,
+            {
+              count,
+              name: change?.name ?? `Đã có transcript · ${count} dòng`,
+              status: change?.name
+                ? `${count} dòng · ${change.timed ? 'có' : 'không có'} mốc thời gian`
+                : undefined,
+            },
+          ];
+        }),
+    );
+  });
+  protected readonly transcriptRefusals = this.store.transcriptRefusals$;
+
   /** The course's quizzes to pick from; the chosen one stays listed even when it is no longer there. */
   protected readonly missingScormOption = computed(() => {
     const chosen = this.model().scormPackageId;
@@ -433,6 +457,14 @@ export class LessonForm {
     input.value = '';
   }
 
+  /** The `.txt` file a Video Block's picker chose; the input is emptied so the same file can be picked again. */
+  protected pickedTranscript(event: Event, blockKey: string): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (file) void this.store.attachTranscript(blockKey, file);
+  }
+
   protected imageAdded(key: string, asset: AssetValue): void {
     this.model.update((value) => ({
       ...value,
@@ -511,6 +543,8 @@ export class LessonForm {
       blocks: (value.lessonType === 'content' ? value.blocks : []).map(
         ({ stepsText, bodyFormat, ...block }) => ({
           ...block,
+          transcript:
+            this.store.transcripts$()[block.key]?.lines ?? block.transcript,
           ...(block.blockType === 'text' ? { bodyFormat } : {}),
           title: block.title.trim(),
           assets:

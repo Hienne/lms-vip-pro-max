@@ -44,6 +44,10 @@
     @include ui.stack(2);
   }
 
+  &__hint {
+    @include ui.text(sm, muted);
+  }
+
   &__row-actions {
     @include ui.row(2);
     flex-wrap: wrap;

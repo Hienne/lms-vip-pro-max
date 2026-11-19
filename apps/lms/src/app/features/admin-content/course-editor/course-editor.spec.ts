@@ -3195,4 +3195,189 @@ describe('CourseEditor', () => {
       });
     });
   });
+
+  describe('the Transcript of a video block', () => {
+    const ARCHITECTURE = 'Kiến trúc tổng thể hệ thống Core Banking';
+    const TIMED =
+      '[00:00:05] Chào các bạn\r\n[00:01:02] Giảng viên: Bắt đầu\r\n[00:02:15] Hết bài';
+    const TIMED_LINES = [
+      { startSeconds: 5, text: 'Chào các bạn' },
+      { startSeconds: 62, text: 'Giảng viên: Bắt đầu' },
+      { startSeconds: 135, text: 'Hết bài' },
+    ];
+    const ROW = 'Transcript (không bắt buộc)';
+    const txt = (content: BlobPart, name = 'bai-1.txt') =>
+      new File([content], name, { type: 'text/plain' });
+
+    /** The Transcript file input of the open lesson's `index`-th Video Block. */
+    const picker = (index = 0) =>
+      screen
+        .drawer()!
+        .querySelectorAll<HTMLInputElement>('input[type=file][accept=".txt"]')[
+        index
+      ];
+    const pickTranscript = async (file: File, index = 0) => {
+      Object.defineProperty(picker(index), 'files', {
+        value: [file],
+        configurable: true,
+      });
+      picker(index).dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      await screen.settle();
+    };
+    const drawerText = () => screen.text(screen.drawer()!);
+    /** A button of the drawer by its exact text: "Thay tệp" of the video file is not "Thay". */
+    const rowButton = (text: string) =>
+      Array.from(screen.drawer()!.querySelectorAll('button')).find(
+        (b) => b.textContent?.trim() === text,
+      );
+
+    /** A new Video Block in the first lesson of a stored draft, which has no Transcript yet. */
+    async function newVideoBlock() {
+      await screen.open('/admin/courses/6/edit');
+      await step('Nội dung khóa học');
+      await screen.click(screen.button('Sửa bài học'));
+      await screen.click(screen.button('Video', screen.drawer()!));
+      return screen.drawer()!;
+    }
+    /** The Architecture lesson of the demo course: a Video Block that already has 7 Transcript lines. */
+    async function architectureLesson() {
+      await screen.open('/admin/courses/1/edit');
+      await screen.click(screen.button('Mở bản nháp để sửa'));
+      await step('Nội dung khóa học');
+      await screen.click(editLessonButton(ARCHITECTURE));
+      return screen.drawer()!;
+    }
+    /** Saves the drawer and the draft, then the video block the save command carried. */
+    async function savedVideo() {
+      await screen.click(screen.button('Lưu', screen.drawer()!));
+      await screen.click(screen.button('Lưu nháp'));
+      const { chapters } = screen.lastCall(courseEndpoints.saveDraft)
+        ?.body as SaveDraftCommand;
+      return chapters
+        .flatMap((c) => c.lessons)
+        .flatMap((l) => l.blocks)
+        .find((b) => b.blockType === 'video');
+    }
+
+    it('shows the row on a Video Block only, with its hint and a .txt picker', async () => {
+      const drawer = await newVideoBlock();
+      const rows = () => drawerText().split(ROW).length - 1;
+      const before = rows();
+      expect(before).toBeGreaterThan(0);
+      expect(drawerText()).toContain('Định dạng: TXT (UTF-8) · tối đa 2 MB');
+      expect(screen.button('Tải transcript (.txt)', drawer)).toBeTruthy();
+
+      await screen.click(screen.button('Văn bản', drawer));
+
+      expect(rows()).toBe(before);
+    });
+
+    it('reads a timed file into lines and says what it found, without asking', async () => {
+      await newVideoBlock();
+
+      await pickTranscript(txt('\uFEFF' + TIMED));
+
+      expect(drawerText()).toContain('bai-1.txt');
+      expect(drawerText()).toContain('3 dòng');
+      expect(drawerText()).toContain('có mốc thời gian');
+      expect(screen.alertDialog()).toBeNull();
+      expect(rowButton('Thay')).toBeTruthy();
+      expect(rowButton('Xoá')).toBeTruthy();
+    });
+
+    it('shows a Transcript that was already saved as "Đã có transcript · N dòng"', async () => {
+      await architectureLesson();
+
+      expect(drawerText()).toContain('Đã có transcript · 7 dòng');
+    });
+
+    it.each([
+      ['is not .txt', () => txt(TIMED, 'bai-1.srt'), 'Chỉ nhận tệp .txt.'],
+      [
+        'is over 2 MB',
+        () => txt(new Uint8Array(2 * 1024 * 1024 + 1)),
+        'Tệp transcript tối đa 2 MB.',
+      ],
+      [
+        'is not UTF-8',
+        () => txt(new Uint8Array([0x30, 0x30, 0x3a, 0xe1, 0x6e, 0xff])),
+        'Tệp phải được lưu với mã hóa UTF-8.',
+      ],
+      ['is empty', () => txt(' \r\n '), 'Tệp transcript không có nội dung.'],
+      [
+        'has no timestamp',
+        () => txt('Chỉ là một đoạn văn.'),
+        'chưa có mốc thời gian',
+      ],
+      [
+        'goes back in time',
+        () => txt('00:05:00 Một\n00:02:03 Hai'),
+        'Dòng 2: thời điểm 00:02:03 nhỏ hơn dòng trước.',
+      ],
+      [
+        'is too long',
+        () => txt(`00:05 ${'a'.repeat(1001)}`),
+        'Transcript quá dài: tối đa 2.000 dòng × 1.000 ký tự.',
+      ],
+    ])(
+      'refuses a file that %s, inline on the row',
+      async (_, file, message) => {
+        await newVideoBlock();
+
+        await pickTranscript(file());
+
+        expect(drawerText()).toContain(message);
+        expect(drawerText()).toContain('Tải transcript (.txt)');
+        expect(drawerText()).not.toContain('bai-1.txt');
+      },
+    );
+
+    it('refuses a time past the length of the video the store knows', async () => {
+      await architectureLesson();
+
+      await pickTranscript(txt('00:00:05 Một\n00:11:00 Hai'));
+
+      expect(drawerText()).toContain(
+        'Dòng 2: thời điểm 00:11:00 vượt quá thời lượng video.',
+      );
+      expect(drawerText()).toContain('Đã có transcript · 7 dòng');
+    });
+
+    it('asks before replacing a Transcript, keeps it on "Hủy" and saves the new lines on "Thay"', async () => {
+      const drawer = await architectureLesson();
+
+      await pickTranscript(txt(TIMED));
+      const ask = screen.alertDialog()!;
+      expect(screen.text(ask)).toContain('Thay transcript hiện tại?');
+      await screen.click(screen.button('Hủy', ask));
+      expect(drawerText()).toContain('Đã có transcript · 7 dòng');
+
+      await pickTranscript(txt(TIMED));
+      await screen.click(screen.button('Thay', screen.alertDialog()!));
+      expect(screen.text(drawer)).toContain('bai-1.txt');
+      expect(screen.text(drawer)).toContain('3 dòng');
+
+      expect((await savedVideo())?.transcript).toEqual(TIMED_LINES);
+    });
+
+    it('clears the Transcript on "Xoá" without asking, and saves the block with none', async () => {
+      const drawer = await architectureLesson();
+
+      await screen.click(screen.button('Xoá', drawer));
+
+      expect(screen.alertDialog()).toBeNull();
+      expect(screen.text(drawer)).toContain('Tải transcript (.txt)');
+      expect(await savedVideo()).not.toHaveProperty('transcript');
+    });
+
+    it('sends a Transcript attached to a Video Block that the lesson keeps', async () => {
+      await architectureLesson();
+      await screen.click(screen.button('Xoá', screen.drawer()!));
+      await pickTranscript(txt(TIMED));
+      expect(screen.alertDialog()).toBeNull();
+
+      expect((await savedVideo())?.transcript).toEqual(TIMED_LINES);
+    });
+  });
 });
