@@ -353,55 +353,58 @@
       </div>
       } @if (block().value().blockType === 'video') { @let transcript =
       transcriptRows()[block().value().key];
-      <div class="lesson-form__files">
-        <h4 class="lesson-form__heading">Transcript (không bắt buộc)</h4>
-        <p class="lesson-form__hint">Định dạng: TXT (UTF-8) · tối đa 2 MB</p>
-        @if (transcriptRefusals()[block().value().key]; as message) {
-        <ui-alert tone="danger">{{ message }}</ui-alert>
-        } @if (transcript.count) {
-        <ui-upload-item
-          [name]="transcript.name"
-          [status]="transcript.status"
-          icon="file-text"
-        />
-        }
-        <div class="lesson-form__row-actions">
-          @if (transcript.count) {
-          <button
-            uiButton
-            type="button"
-            size="sm"
-            (click)="transcriptFile.click()"
-          >
-            Thay
-          </button>
-          <button
-            uiButton
-            type="button"
-            size="sm"
-            (click)="store.removeTranscript(block().value().key)"
-          >
-            Xoá
-          </button>
-          } @else {
-          <button
-            uiButton
-            type="button"
-            size="sm"
-            (click)="transcriptFile.click()"
-          >
-            <ui-icon name="upload" size="sm" />Tải transcript (.txt)
-          </button>
+      <ui-field
+        label="Transcript (không bắt buộc)"
+        hint="Định dạng: TXT (UTF-8) · tối đa 2 MB"
+      >
+        <div class="lesson-form__files">
+          @if (transcriptRefusals()[block().value().key]; as message) {
+          <ui-alert tone="danger">{{ message }}</ui-alert>
+          } @if (transcript.count) {
+          <ui-upload-item
+            [name]="transcript.name"
+            [status]="transcript.status"
+            icon="file-text"
+          />
           }
+          <div class="lesson-form__row-actions">
+            @if (transcript.count) {
+            <button
+              uiButton
+              type="button"
+              size="sm"
+              (click)="transcriptFile.click()"
+            >
+              Thay
+            </button>
+            <button
+              uiButton
+              type="button"
+              size="sm"
+              (click)="store.removeTranscript(block().value().key)"
+            >
+              Xoá
+            </button>
+            } @else {
+            <button
+              uiButton
+              type="button"
+              size="sm"
+              (click)="transcriptFile.click()"
+            >
+              <ui-icon name="upload" size="sm" />Tải transcript (.txt)
+            </button>
+            }
+          </div>
+          <input
+            #transcriptFile
+            type="file"
+            hidden
+            accept=".txt"
+            (change)="pickedTranscript($event, block().value().key)"
+          />
         </div>
-        <input
-          #transcriptFile
-          type="file"
-          hidden
-          accept=".txt"
-          (change)="pickedTranscript($event, block().value().key)"
-        />
-      </div>
+      </ui-field>
       } @switch (block().value().blockType) { @case ('text') {
       <ui-field label="Nội dung bài học">
         <app-lesson-text-editor

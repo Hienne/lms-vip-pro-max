@@ -49,8 +49,12 @@ function readStamp(row: string): { seconds: number; text: string } | null {
   return { seconds: h * 3600 + m * 60 + s, text: row.slice(stamp.length) };
 }
 
-const joinText = (...parts: string[]): string =>
-  parts.filter(Boolean).join(' ');
+/** A row with control and format characters (NUL, BOM fragments, bidi overrides) and whitespace runs as single spaces. */
+const normalise = (row: string): string =>
+  row
+    .replace(/[\p{Cc}\p{Cf}]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 const SENTENCE_END = /(?<=[.!?…])\s+/;
 
@@ -105,14 +109,28 @@ function packSentences(paragraph: string, max: number): string[] {
   return lines;
 }
 
+/** The lines kept within the line limit by merging, with how many were merged away. */
+function mergeToLimit(
+  lines: readonly TranscriptLine[],
+  timed: boolean,
+): TranscriptParse {
+  const merged = mergePairs(
+    lines,
+    COURSE_LIMITS.transcriptLines,
+    COURSE_LIMITS.transcriptText,
+  );
+  if (!merged) return { error: { code: 'too-long' } };
+  return { lines: merged, timed, mergedCount: lines.length - merged.length };
+}
+
 /**
  * A file with no timestamp: its paragraphs (blocks of rows between blank rows), each packed into
- * lines by sentence. Every line has no time.
+ * lines by sentence, then merged down to the line limit like a timed file. No line has a time.
  */
 function untimedLines(rows: readonly string[]): TranscriptParse {
   const paragraphs: string[][] = [[]];
   for (const raw of rows) {
-    const row = raw.replace(/\s+/g, ' ').trim();
+    const row = normalise(raw);
     if (row) paragraphs[paragraphs.length - 1].push(row);
     else if (paragraphs[paragraphs.length - 1].length) paragraphs.push([]);
   }
@@ -122,10 +140,7 @@ function untimedLines(rows: readonly string[]): TranscriptParse {
       packSentences(paragraph.join(' '), COURSE_LIMITS.transcriptText),
     )
     .map((text) => ({ startSeconds: null, text }));
-  if (lines.length > COURSE_LIMITS.transcriptLines) {
-    return { error: { code: 'too-long' } };
-  }
-  return { lines, timed: false, mergedCount: 0 };
+  return mergeToLimit(lines, false);
 }
 
 const MS = 1000;
@@ -133,30 +148,36 @@ const MS = 1000;
 /**
  * Each line over `max` characters cut into pieces by sentence, then by word. A piece after the
  * first starts 0.001 s after the one before it, so times stay strictly increasing. Those times
- * must stay below the next line's start and, when the video length is known, within it. When a
- * gap is too small for them, no piece is nudged onto a neighbour: the file does not fit (`null`).
+ * must stay below the next line's start and within the video's length when it is known. When a
+ * gap is too small for them, no piece is nudged onto a neighbour: the file does not fit
+ * (`too-long`). Pieces that would pass the end of the video are a time past it (`duration`, with
+ * the file line and start of the long line).
  */
 function splitLongLines(
   lines: readonly TranscriptLine[],
+  fileLines: readonly number[],
   max: number,
   durationSeconds: number | undefined,
-): TranscriptLine[] | null {
+): TranscriptLine[] | TranscriptError {
   const out: TranscriptLine[] = [];
   for (const [index, line] of lines.entries()) {
     if (line.text.length <= max) {
       out.push(line);
       continue;
     }
-    const firstMs = Math.round((line.startSeconds as number) * MS);
+    const start = line.startSeconds as number;
+    const firstMs = Math.round(start * MS);
     const pieces = packSentences(line.text, max);
     const lastMs = firstMs + pieces.length - 1;
-    const next = lines[index + 1]?.startSeconds;
     if (
-      (next != null && lastMs >= Math.round(next * MS)) ||
-      (durationSeconds !== undefined &&
-        lastMs > Math.round(durationSeconds * MS))
+      durationSeconds !== undefined &&
+      lastMs > Math.round(durationSeconds * MS)
     ) {
-      return null;
+      return { code: 'duration', line: fileLines[index], time: start };
+    }
+    const next = lines[index + 1]?.startSeconds;
+    if (next != null && lastMs >= Math.round(next * MS)) {
+      return { code: 'too-long' };
     }
     for (const [k, text] of pieces.entries()) {
       out.push({ startSeconds: (firstMs + k) / MS, text });
@@ -202,26 +223,16 @@ function mergePairs(
 /** Timed lines fitted to the limits: long lines split, then adjacent lines merged. */
 function fitTimedLines(
   lines: readonly TranscriptLine[],
+  fileLines: readonly number[],
   durationSeconds: number | undefined,
 ): TranscriptParse {
   const split = splitLongLines(
     lines,
+    fileLines,
     COURSE_LIMITS.transcriptText,
     durationSeconds,
   );
-  const merged =
-    split &&
-    mergePairs(
-      split,
-      COURSE_LIMITS.transcriptLines,
-      COURSE_LIMITS.transcriptText,
-    );
-  if (!split || !merged) return { error: { code: 'too-long' } };
-  return {
-    lines: merged,
-    timed: true,
-    mergedCount: split.length - merged.length,
-  };
+  return 'code' in split ? { error: split } : mergeToLimit(split, true);
 }
 
 /**
@@ -236,15 +247,16 @@ export function parseTranscriptText(
 ): TranscriptParse {
   const rows = text.split(/\r\n?|\n/);
   const lead: string[] = [];
-  const entries: { start: number; text: string }[] = [];
+  // The parts of each entry are joined once, at the end: joining as rows arrive is quadratic.
+  const entries: { start: number; line: number; parts: string[] }[] = [];
 
   for (const [index, raw] of rows.entries()) {
-    const row = raw.replace(/\s+/g, ' ').trim();
+    const row = normalise(raw);
     if (!row) continue;
     const stamp = readStamp(row);
     const last = entries.at(-1);
     if (!stamp) {
-      if (last) last.text = joinText(last.text, row);
+      if (last) last.parts.push(row);
       else lead.push(row);
       continue;
     }
@@ -255,22 +267,28 @@ export function parseTranscriptText(
     if (durationSeconds !== undefined && stamp.seconds > durationSeconds) {
       return { error: { code: 'duration', line, time: stamp.seconds } };
     }
+    const words = stamp.text.trim();
     if (last?.start === stamp.seconds) {
-      last.text = joinText(last.text, stamp.text.trim());
+      if (words) last.parts.push(words);
     } else {
-      entries.push({ start: stamp.seconds, text: stamp.text.trim() });
+      entries.push({ start: stamp.seconds, line, parts: words ? [words] : [] });
     }
   }
 
   if (!entries.length) {
     return lead.length ? untimedLines(rows) : { error: { code: 'empty' } };
   }
-  entries[0].text = joinText(...lead, entries[0].text);
-  const lines = entries
-    .filter((entry) => entry.text)
-    .map(({ start, text: words }) => ({ startSeconds: start, text: words }));
-  if (!lines.length) return { error: { code: 'empty' } };
-  return fitTimedLines(lines, durationSeconds);
+  entries[0].parts.unshift(...lead);
+  const kept = entries.filter((entry) => entry.parts.length);
+  if (!kept.length) return { error: { code: 'empty' } };
+  return fitTimedLines(
+    kept.map(({ start, parts }) => ({
+      startSeconds: start,
+      text: parts.join(' '),
+    })),
+    kept.map(({ line }) => line),
+    durationSeconds,
+  );
 }
 
 // `Promise.withResolvers` is not in the project's TypeScript `lib`, so the executor form stays.
@@ -303,6 +321,8 @@ export async function decodeTranscriptFile(
   } catch {
     return { error: { code: 'encoding' } };
   }
+  // A NUL is what UTF-16 without a BOM looks like once decoded as UTF-8.
+  if (decoded.includes('\u0000')) return { error: { code: 'encoding' } };
   const text = decoded.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
   return text.trim() ? { text } : { error: { code: 'empty' } };
 }

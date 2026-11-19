@@ -3415,5 +3415,65 @@ describe('CourseEditor', () => {
 
       expect((await savedVideo())?.transcript).toEqual(TIMED_LINES);
     });
+
+    it('checks the times against the video now in the drawer, not the one the page had', async () => {
+      const drawer = await architectureLesson();
+      const again = Array.from(
+        drawer.querySelectorAll<HTMLInputElement>('input[type=file]'),
+      ).find((input) => input.accept && input.accept !== '.txt')!;
+      Object.defineProperty(again, 'files', {
+        value: [new File(['mp4'], 'moi.mp4', { type: 'video/mp4' })],
+        configurable: true,
+      });
+      vi.useFakeTimers();
+      again.dispatchEvent(new Event('change', { bubbles: true }));
+      await vi.advanceTimersByTimeAsync(POLL_MS * 3);
+      TestBed.tick();
+      vi.useRealTimers();
+      await screen.settle();
+      expect(drawerText()).not.toContain('Đang xử lý tệp');
+
+      await pickTranscript(txt('00:00:05 Một\n00:11:00 Hai'));
+      await screen.click(screen.button('Thay', screen.alertDialog()!));
+
+      expect(drawerText()).not.toContain('vượt quá thời lượng video');
+      expect(drawerText()).toContain('bai-1.txt');
+      expect(drawerText()).toContain('2 dòng');
+    });
+
+    it('shows the server’s refusal of a Transcript in the alert, with its message, when it names no block', async () => {
+      await architectureLesson();
+      await screen.click(screen.button('Xoá', screen.drawer()!));
+      await pickTranscript(txt(TIMED));
+      await screen.click(screen.button('Lưu', screen.drawer()!));
+      screen.calls.mockImplementation((endpoint, request) =>
+        endpoint === courseEndpoints.saveDraft
+          ? {
+              status: 200,
+              body: envelopeError(
+                'CORE-VALIDATION_FAILED',
+                'Thông tin chưa hợp lệ',
+                'Dữ liệu đầu vào không hợp lệ.',
+                [
+                  {
+                    field: 'transcript',
+                    code: 'INVALID_VALUE',
+                    message: 'Thời điểm của đoạn transcript phải tăng dần.',
+                  },
+                ],
+              ),
+            }
+          : MockBackend.prototype.handle.call(
+              TestBed.inject(MockBackend),
+              endpoint,
+              request,
+            ),
+      );
+      await screen.click(screen.button('Lưu nháp'));
+
+      expect(screen.text()).toContain(
+        'Thời điểm của đoạn transcript phải tăng dần.',
+      );
+    });
   });
 });

@@ -92,6 +92,19 @@ describe('parseTranscriptText', () => {
         linesOf(parseTranscriptText('00:05   Một \t  hai\u00a0 ba   ')),
       ).toEqual([{ startSeconds: 5, text: 'Một hai ba' }]);
     });
+
+    it('turns control and format characters (NUL, BOM fragments, bidi overrides) into spaces', () => {
+      const text =
+        '00:05 Một\u0000hai\uFEFFba\u202Ebốn\u200Bnăm\n\u202E00:09 Sau';
+
+      expect(linesOf(parseTranscriptText(text))).toEqual([
+        { startSeconds: 5, text: 'Một hai ba bốn năm' },
+        { startSeconds: 9, text: 'Sau' },
+      ]);
+      expect(linesOf(parseTranscriptText('Xin\u0000chào.\u202E Hết.'))).toEqual(
+        [{ startSeconds: null, text: 'Xin chào. Hết.' }],
+      );
+    });
   });
 
   describe('lines without a stamp', () => {
@@ -133,6 +146,23 @@ describe('parseTranscriptText', () => {
         { startSeconds: 3, text: 'Các bạn' },
       ]);
     });
+  });
+
+  it('finishes a file of one stamp and 50,000 unstamped rows within a generous budget', () => {
+    const rows = Array.from({ length: 50_000 }, (_, i) => `dòng số ${i}`);
+    const started = performance.now();
+
+    const result = parseTranscriptText(['00:00:05 Mở đầu', ...rows].join('\n'));
+
+    expect(performance.now() - started).toBeLessThan(3000);
+    const lines = linesOf(result);
+    expect(lines[0]).toEqual({
+      startSeconds: 5,
+      text: expect.stringMatching(/^Mở đầu dòng số 0 /) as string,
+    });
+    expect(lines.map((line) => line.text).join(' ')).toBe(
+      ['Mở đầu', ...rows].join(' '),
+    );
   });
 
   it('merges consecutive lines of equal time', () => {
@@ -188,11 +218,13 @@ describe('parseTranscriptText', () => {
       expect(error).toEqual({ code: 'too-long' });
     });
 
-    it('refuses a split whose times would pass the end of the video', () => {
+    it('refuses a split whose times would pass the end of the video, as a time past the end', () => {
       const text = `00:00:05 ${sentence('a')} ${sentence('b')}`;
 
       expect(errorOf(parseTranscriptText(text, 5))).toEqual({
-        code: 'too-long',
+        code: 'duration',
+        line: 1,
+        time: 5,
       });
       expect(linesOf(parseTranscriptText(text, 6))).toHaveLength(2);
     });
@@ -386,15 +418,32 @@ describe('parseTranscriptText', () => {
       expect(lines.map((line) => line.text.length)).toEqual([1000, 1000, 500]);
     });
 
-    it('refuses more than 2,000 lines', () => {
+    it('merges more than 2,000 lines down to 2,000 and reports how many it merged', () => {
       const many = Array.from({ length: 2001 }, (_, i) => `Đoạn ${i}`).join(
         '\n\n',
       );
 
-      expect(errorOf(parseTranscriptText(many))).toEqual({ code: 'too-long' });
+      const result = parseTranscriptText(many);
+
+      expect(linesOf(result)).toHaveLength(2000);
+      expect(result).toMatchObject({ timed: false, mergedCount: 1 });
+      expect(linesOf(result).every((line) => line.startSeconds === null)).toBe(
+        true,
+      );
       expect(
-        linesOf(parseTranscriptText(many.slice(0, many.lastIndexOf('\n\n')))),
-      ).toHaveLength(2000);
+        linesOf(result)
+          .map((line) => line.text)
+          .join(' '),
+      ).toBe(Array.from({ length: 2001 }, (_, i) => `Đoạn ${i}`).join(' '));
+    });
+
+    it('refuses more than 2,000 lines that cannot be merged within 1,000 characters', () => {
+      const wide = Array.from(
+        { length: 2001 },
+        (_, i) => `${'e'.repeat(600)} ${i}`,
+      ).join('\n\n');
+
+      expect(errorOf(parseTranscriptText(wide))).toEqual({ code: 'too-long' });
     });
 
     it('still refuses a file of blanks', () => {
@@ -459,6 +508,14 @@ describe('decodeTranscriptFile', () => {
     const legacy = file(bytes(0x47, 0x69, 0xe1, 0x6e, 0x67, 0xff));
 
     expect(await decodeTranscriptFile(legacy)).toEqual({
+      error: { code: 'encoding' },
+    });
+  });
+
+  it('refuses a text with a NUL, which is UTF-16 saved without a BOM', async () => {
+    const utf16 = file(bytes(0x30, 0x00, 0x30, 0x00, 0x3a, 0x00, 0x30, 0x00));
+
+    expect(await decodeTranscriptFile(utf16)).toEqual({
       error: { code: 'encoding' },
     });
   });

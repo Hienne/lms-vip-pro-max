@@ -335,6 +335,30 @@ describe('VideoBlock', () => {
       expect(current()).toBe(2);
     });
 
+    it('marks the first piece of a long line that was split into pieces sharing one second', () => {
+      const probe = render();
+      probe.set('transcript', [
+        { startSeconds: 5, text: 'Phần một.' },
+        { startSeconds: 5.001, text: 'Phần hai.' },
+        { startSeconds: 5.002, text: 'Phần ba.' },
+        { startSeconds: 20, text: 'Câu sau.' },
+      ]);
+      const current = () =>
+        buttons(probe).findIndex(
+          (b) => b.getAttribute('aria-current') === 'true',
+        );
+
+      probe.time(5);
+      probe.fire('timeupdate');
+      expect(current()).toBe(0);
+      probe.time(19);
+      probe.fire('timeupdate');
+      expect(current()).toBe(0);
+      probe.time(20);
+      probe.fire('timeupdate');
+      expect(current()).toBe(3);
+    });
+
     it('filters by a substring, ignoring case and accents, and keeps marking the played line', () => {
       const probe = render();
       probe.set('transcript', lines);
