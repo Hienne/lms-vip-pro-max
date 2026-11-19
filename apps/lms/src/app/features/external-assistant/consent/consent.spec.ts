@@ -210,14 +210,14 @@ describe('Consent (/tro-ly-ngoai/cho-phep)', () => {
       );
     await settle();
 
-    expect(text()).toContain('Yêu cầu đã hết hạn');
+    expect(text()).toContain('Yêu cầu không còn dùng được');
     expect(button('Cho phép')).toBeUndefined();
   });
 
   it('opened without a request, says the same and asks nothing', async () => {
     await render(null);
     backend.expectNone(REQUEST);
-    expect(text()).toContain('Yêu cầu đã hết hạn');
+    expect(text()).toContain('Yêu cầu không còn dùng được');
   });
 
   it('tells a caller who may not connect, and never reads the request', async () => {
