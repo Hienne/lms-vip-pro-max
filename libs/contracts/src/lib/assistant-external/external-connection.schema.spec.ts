@@ -1,15 +1,21 @@
 import { toUrl } from '../http/endpoint';
-import { externalConnectionEndpoints } from './external-connection.endpoints';
+import {
+  externalConnectionEndpoints,
+  oauthConsentEndpoints,
+} from './external-connection.endpoints';
 import {
   CreatedExternalConnectionSchema,
   CreateExternalConnectionCommandSchema,
   ExternalAssistantStatusSchema,
   ExternalConnectionSchema,
+  OAuthConsentRequestSchema,
+  OAuthConsentResultSchema,
 } from './external-connection.schema';
 
 const connection = {
   id: 7,
   name: 'Laptop cơ quan',
+  kind: 'token',
   tokenPrefix: 'chan_ext_ab12',
   createTime: '2026-11-18T09:00:00+07:00',
   expiresAt: '2026-12-18T09:00:00+07:00',
@@ -34,6 +40,42 @@ describe('external connection contracts', () => {
         token: 'chan_ext_secret',
       }).token,
     ).toBe('chan_ext_secret');
+  });
+
+  it('parses an oauth connection, which has no token prefix', () => {
+    const oauth = {
+      ...connection,
+      kind: 'oauth',
+      name: 'Claude',
+      tokenPrefix: null,
+    };
+    expect(ExternalConnectionSchema.parse(oauth)).toEqual(oauth);
+    expect(
+      ExternalConnectionSchema.safeParse({ ...connection, kind: 'other' })
+        .success,
+    ).toBe(false);
+  });
+
+  it('parses the Cho phép kết nối request and its result', () => {
+    const request = {
+      clientName: 'Claude',
+      redirectHost: 'claude.ai',
+      idleDays: 30,
+      atLimit: false,
+      maxConnections: 10,
+    };
+    expect(OAuthConsentRequestSchema.parse(request)).toEqual(request);
+    expect(
+      OAuthConsentResultSchema.parse({
+        redirectUrl: 'http://127.0.0.1:53682/callback?code=abc&state=s',
+      }).redirectUrl,
+    ).toContain('code=abc');
+    expect(
+      OAuthConsentResultSchema.safeParse({ redirectUrl: 'not a url' }).success,
+    ).toBe(false);
+    expect(toUrl(oauthConsentEndpoints.approve, { requestId: 'abc_123' })).toBe(
+      '/api/v1/assistant/oauth-requests/abc_123/approve',
+    );
   });
 
   it('refuses a token without the connection prefix', () => {

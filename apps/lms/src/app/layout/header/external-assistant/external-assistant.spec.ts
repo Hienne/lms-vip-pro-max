@@ -1,6 +1,7 @@
 import { HttpTestingController } from '@angular/common/http/testing';
 import { ErrorHandler } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import type {
   CreatedExternalConnection,
   ExternalConnection,
@@ -27,6 +28,7 @@ const STATUS = `${BASE}/status`;
 const connection = (id: number, name = `Máy ${id}`): ExternalConnection => ({
   id,
   name,
+  kind: 'token',
   tokenPrefix: `chan_ext_ab${id}`,
   createTime: '2026-11-10T09:00:00Z',
   expiresAt: '2026-12-10T09:00:00Z',
@@ -53,6 +55,7 @@ describe('ExternalAssistant', () => {
       providers: [
         provideAppConfig(parseAppConfig(testAppConfig())),
         provideEnvelopeHttpClient(),
+        provideRouter([]),
         { provide: SessionStore, useClass: FakeSessionStore },
         { provide: ErrorHandler, useValue: { handleError: () => undefined } },
       ],
@@ -124,6 +127,30 @@ describe('ExternalAssistant', () => {
     expect(text).toContain('Claude Code ở nhà');
     expect(text).toContain('chưa dùng');
     expect(text).not.toContain(TOKEN);
+  });
+
+  it('labels a pasted code as the old way, shows an OAuth connection by its client, and links the guide', async () => {
+    await openWith([
+      {
+        ...connection(5, 'Claude'),
+        kind: 'oauth',
+        tokenPrefix: null,
+      },
+      connection(4, 'Máy cũ'),
+    ]);
+    const rows = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        '[data-testid="external-connections"] li',
+      ),
+    ).map((row) => row.textContent?.replace(/\s+/g, ' ') ?? '');
+    expect(rows[0]).toContain('Claude');
+    expect(rows[0]).toContain('Cấp');
+    expect(rows[0]).not.toContain('Mã kết nối (cũ)');
+    expect(rows[1]).toContain('Mã kết nối (cũ) · chan_ext_ab4…');
+    const guide = document.querySelector<HTMLAnchorElement>(
+      '[data-testid="external-guide-link"]',
+    );
+    expect(guide?.getAttribute('href')).toBe('/tro-ly-ngoai');
   });
 
   it('shows the token and the command once after create, and forgets them on close', async () => {

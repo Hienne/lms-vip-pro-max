@@ -1,0 +1,45 @@
+@use 'ui';
+
+.guide {
+  display: grid;
+  gap: ui.space(4);
+  max-width: 48rem;
+}
+
+.guide__placeholder {
+  max-width: 48rem;
+  height: ui.space(12);
+}
+
+.guide__stack {
+  display: grid;
+  gap: ui.space(2);
+}
+
+.guide__copy {
+  display: flex;
+  gap: ui.space(2);
+  align-items: flex-start;
+}
+
+.guide__value {
+  flex: 1;
+  min-width: 0;
+}
+
+.guide__steps {
+  display: grid;
+  gap: ui.space(3);
+  margin: 0;
+  padding-inline-start: ui.space(5);
+}
+
+.guide__faq {
+  display: grid;
+  gap: ui.space(4);
+  margin: 0;
+
+  dd {
+    margin: ui.space(1) 0 0;
+  }
+}

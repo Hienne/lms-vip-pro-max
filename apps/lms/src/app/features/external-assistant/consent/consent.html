@@ -1,0 +1,115 @@
+<ui-page-header
+  title="Cho phép kết nối"
+  description="Một trợ lý ngoài xin quyền soạn khóa học nháp thay bạn."
+/>
+
+@if (store.isLoading$()) {
+<div uiSkeleton variant="block" class="consent__placeholder"></div>
+} @else if (store.statusError$(); as error) {
+<ui-error-state
+  title="Không tải được yêu cầu kết nối"
+  [message]="error.message"
+  (retry)="store.retryLoad()"
+/>
+} @else if (!store.available$()) {
+<ui-empty
+  icon="lock"
+  [headingLevel]="2"
+  title="Bạn chưa dùng được trợ lý ngoài"
+  description="Chỉ giảng viên và quản trị viên có quyền dùng trợ lý mới cho phép trợ lý ngoài kết nối. Nếu cần quyền, hãy liên hệ quản trị viên đơn vị."
+>
+  <a uiButton variant="primary" routerLink="/">Về trang chủ của tôi</a>
+</ui-empty>
+} @else if (store.isMissing$()) {
+<ui-empty
+  icon="clock"
+  [headingLevel]="2"
+  title="Yêu cầu đã hết hạn"
+  description="Yêu cầu kết nối chỉ dùng được một lần trong 10 phút. Hãy bấm Connect lại trong Claude App, hoặc /mcp → Authenticate trong Claude Code."
+>
+  <a uiButton routerLink="/tro-ly-ngoai">Xem hướng dẫn kết nối</a>
+</ui-empty>
+} @else if (store.requestError$(); as error) {
+<ui-error-state
+  title="Không tải được yêu cầu kết nối"
+  [message]="error.message"
+  (retry)="store.retryLoad()"
+/>
+} @else if (store.request$(); as request) {
+<div class="consent">
+  <ui-section-card title="Yêu cầu kết nối">
+    <dl class="consent__facts" data-testid="consent-facts">
+      <div>
+        <dt>Ứng dụng</dt>
+        <dd>
+          <strong data-testid="client-name">{{ request.clientName }}</strong>
+          <small
+            >Tên do ứng dụng tự khai, CHAN Academy không xác minh. Quay về: {{
+            request.redirectHost }}.</small
+          >
+        </dd>
+      </div>
+      <div>
+        <dt>Tài khoản</dt>
+        <dd data-testid="account">{{ store.account$() }}</dd>
+      </div>
+      <div>
+        <dt>Được làm</dt>
+        <dd>
+          Mở phiên soạn và đề xuất từng bước của khóa học nháp, chỉ từ tài liệu
+          bạn đưa cho trợ lý. Bạn vẫn tự sửa và Chốt bước trên trang soạn.
+        </dd>
+      </div>
+      <div>
+        <dt>Không được làm</dt>
+        <dd>
+          Đọc tài liệu, bài học hay khóa học khác trong hệ thống; viết nội dung
+          bài; xuất bản, giao hay chia sẻ khóa học.
+        </dd>
+      </div>
+      <div>
+        <dt>Thời hạn</dt>
+        <dd>
+          Kết nối hết hạn sau {{ request.idleDays }} ngày không dùng. Bạn thu
+          hồi được bất cứ lúc nào ở nút Kết nối trợ lý ngoài trên thanh đầu
+          trang.
+        </dd>
+      </div>
+    </dl>
+  </ui-section-card>
+
+  @if (request.atLimit) {
+  <ui-alert tone="warning" heading="Đã đủ số kết nối" data-testid="limit">
+    Bạn đã có {{ request.maxConnections }} kết nối trợ lý ngoài còn hiệu lực.
+    Hãy thu hồi bớt ở nút Kết nối trợ lý ngoài trên thanh đầu trang, rồi bấm Cho
+    phép.
+  </ui-alert>
+  } @if (store.answerError$(); as error) {
+  <ui-alert tone="danger" [heading]="error.title ?? ''"
+    >{{ error.message }}</ui-alert
+  >
+  } @if (store.isLeaving$()) {
+  <p role="status">Đang quay lại ứng dụng trợ lý…</p>
+  }
+
+  <div class="consent__actions">
+    <button
+      uiButton
+      variant="primary"
+      type="button"
+      [disabled]="store.isAnswering$()"
+      (click)="store.approve()"
+    >
+      Cho phép
+    </button>
+    <button
+      uiButton
+      type="button"
+      [disabled]="store.isAnswering$()"
+      (click)="store.deny()"
+    >
+      Từ chối
+    </button>
+  </div>
+</div>
+}

@@ -1,0 +1,29 @@
+@use 'ui';
+
+.consent {
+  display: grid;
+  gap: ui.space(4);
+  max-width: 40rem;
+}
+
+.consent__placeholder {
+  max-width: 40rem;
+  height: ui.space(12);
+}
+
+.consent__facts {
+  display: grid;
+  gap: ui.space(3);
+  margin: 0;
+
+  dd {
+    display: grid;
+    gap: ui.space(1);
+    margin: ui.space(1) 0 0;
+  }
+}
+
+.consent__actions {
+  display: flex;
+  gap: ui.space(2);
+}

@@ -1539,6 +1539,26 @@ export const MIGRATION_ENTRIES = [
       'Existing standalone player and author preview route retained for old links; course lessons use the embedded player with enrollment and lesson context. Full migration visual checks remain pending.',
   },
   {
+    id: 'route-tro-ly-ngoai',
+    kind: 'route',
+    mockupSource: null,
+    target: 'tro-ly-ngoai',
+    checklist: [],
+    status: 'todo',
+    notes:
+      'Hướng dẫn kết nối trợ lý ngoài bằng một địa chỉ MCP (ADR 0005); không có trong mockup. Visual checks pending.',
+  },
+  {
+    id: 'route-tro-ly-ngoai-cho-phep',
+    kind: 'route',
+    mockupSource: null,
+    target: 'tro-ly-ngoai/cho-phep',
+    checklist: [],
+    status: 'todo',
+    notes:
+      'Trang Cho phép kết nối mà đăng nhập OAuth của trợ lý ngoài dẫn tới (ADR 0005); không có trong mockup. Visual checks pending.',
+  },
+  {
     id: 'route-knowledge',
     kind: 'route',
     mockupSource: null,

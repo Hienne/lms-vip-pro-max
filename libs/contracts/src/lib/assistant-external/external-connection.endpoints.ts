@@ -5,6 +5,8 @@ import {
   CreateExternalConnectionCommandSchema,
   ExternalAssistantStatusSchema,
   ExternalConnectionSchema,
+  OAuthConsentRequestSchema,
+  OAuthConsentResultSchema,
 } from './external-connection.schema';
 
 /**
@@ -42,5 +44,39 @@ export const externalConnectionEndpoints = {
     path: '/api/v1/assistant/external-connections/{connectionId}',
     params: z.object({ connectionId: z.number().int() }),
     response: z.null(),
+  }),
+} as const;
+
+const REQUEST = '/api/v1/assistant/oauth-requests/{requestId}';
+
+/**
+ * Cho phép kết nối (ADR 0005): the page a Trợ lý ngoài's OAuth sign-in lands on, with the sign-in
+ * JWT. The backend (corebanking-academy `OAuthConsentController`) is the spec. A used, expired (10
+ * minutes) or unknown request is `CORE-RESOURCE_NOT_FOUND`; outside the Soạn cùng trợ lý roles,
+ * `CORE-ACCESS_DENIED`; with the flag off, 404.
+ */
+export const oauthConsentEndpoints = {
+  read: defineEndpoint({
+    method: 'get',
+    path: REQUEST,
+    params: z.object({ requestId: z.string().min(1) }),
+    response: OAuthConsentRequestSchema,
+  }),
+  /**
+   * Makes a connection and returns the client's redirect with a one-time code. At the connection
+   * limit it is `CORE-STATE_CONFLICT` on field `connections`, and the request stays open.
+   */
+  approve: defineEndpoint({
+    method: 'post',
+    path: `${REQUEST}/approve`,
+    params: z.object({ requestId: z.string().min(1) }),
+    response: OAuthConsentResultSchema,
+  }),
+  /** Returns the client's redirect with `error=access_denied`; nothing is made. */
+  deny: defineEndpoint({
+    method: 'post',
+    path: `${REQUEST}/deny`,
+    params: z.object({ requestId: z.string().min(1) }),
+    response: OAuthConsentResultSchema,
   }),
 } as const;
