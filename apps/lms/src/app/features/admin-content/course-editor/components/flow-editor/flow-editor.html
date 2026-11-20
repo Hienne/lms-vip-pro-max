@@ -1,0 +1,218 @@
+<div class="flow-editor" [class.flow-editor--narrow]="!store.wide$() || !webgl">
+  @if (!store.wide$() || !webgl) {
+  <ui-alert class="flow-editor__notice" tone="info" [announce]="false">
+    Trình dựng 3D cần màn hình rộng hơn. Ở đây bạn vẫn thêm đối tượng và sửa các
+    bước chuyển bằng danh sách.
+  </ui-alert>
+  }
+
+  <div class="flow-editor__side">
+    <ui-section-card title="Đối tượng">
+      <span slot="action" class="flow-editor__count"
+        >{{ store.objectCount$() }}</span
+      >
+      <ul class="flow-editor__palette" aria-label="Thêm đối tượng">
+        @for (kind of kinds; track kind) {
+        <li>
+          <button
+            uiButton
+            variant="ghost"
+            size="sm"
+            class="flow-editor__kind"
+            draggable="true"
+            [disabled]="!store.canAddObject$()"
+            (dragstart)="dragKind($event, kind)"
+            (click)="store.addObject(kind)"
+          >
+            <ui-icon [name]="kindIcon[kind]" size="sm" />{{ kindLabel[kind] }}
+          </button>
+        </li>
+        }
+      </ul>
+    </ui-section-card>
+
+    @if (store.selected$(); as object) {
+    <ui-section-card title="Đối tượng đang chọn">
+      <div class="flow-editor__form">
+        <ui-field label="Tên">
+          <input
+            uiInput
+            maxlength="60"
+            [value]="object.name"
+            (input)="rename(object.id, $event)"
+          />
+        </ui-field>
+        <ui-field label="Loại">
+          <select
+            uiSelect
+            [value]="object.kind"
+            (change)="changeKind(object.id, $event)"
+          >
+            @for (kind of kinds; track kind) {
+            <option [value]="kind">{{ kindLabel[kind] }}</option>
+            }
+          </select>
+        </ui-field>
+        <div>
+          <button
+            uiButton
+            variant="danger-ghost"
+            size="sm"
+            (click)="store.removeObject(object.id)"
+          >
+            <ui-icon name="trash-2" size="sm" />Xóa đối tượng
+          </button>
+        </div>
+      </div>
+    </ui-section-card>
+    } @else if (!store.wide$() || !webgl) {
+    <ui-section-card title="Các đối tượng">
+      <ul class="flow-editor__objects">
+        @for (object of store.objects$(); track object.id) {
+        <li>
+          <button
+            uiButton
+            variant="ghost"
+            size="sm"
+            (click)="store.select(object.id)"
+          >
+            <ui-icon [name]="kindIcon[object.kind]" size="sm" />{{ object.name
+            }}
+          </button>
+        </li>
+        }
+      </ul>
+    </ui-section-card>
+    }
+  </div>
+
+  @if (store.wide$() && webgl) {
+  <div class="flow-editor__centre">
+    <div class="flow-editor__toolbar">
+      <button
+        uiButton
+        [variant]="store.previewing$() ? 'secondary' : 'primary'"
+        size="sm"
+        [disabled]="!store.steps$().length"
+        (click)="store.togglePreview()"
+      >
+        <ui-icon [name]="store.previewing$() ? 'pen-line' : 'play'" size="sm" />
+        {{ store.previewing$() ? 'Quay lại chỉnh sửa' : 'Xem thử' }}
+      </button>
+      @if (!store.previewing$()) {
+      <button uiButton variant="ghost" size="sm" (click)="reframe()">
+        <ui-icon name="maximize" size="sm" />Về góc nhìn ban đầu
+      </button>
+      }
+    </div>
+    @if (store.previewing$()) {
+    <app-flow-player [flow]="store.flow$()" />
+    } @else {
+    <div
+      uiCard
+      class="flow-editor__stage"
+      (dragover)="allowDrop($event)"
+      (drop)="dropKind($event)"
+    >
+      <app-flow-canvas
+        mode="author"
+        [objects]="store.objects$()"
+        [steps]="store.steps$()"
+        [active]="store.activeStep$()"
+        [selectedId]="store.selectedId$()"
+        (selected)="store.select($event)"
+        (moved)="store.moveObject($event.id, $event.x, $event.z)"
+        (linked)="store.link($event.from, $event.to)"
+      />
+      @if (!store.objects$().length) {
+      <p class="flow-editor__empty">
+        Kéo một đối tượng từ bảng bên trái xuống sàn để bắt đầu.
+      </p>
+      }
+    </div>
+    <p class="flow-editor__hint">
+      Rê chuột vào đối tượng, kéo chấm tròn ở góc sang đối tượng khác để nối
+      (thả lại chính nó = tự xử lý) · kéo đối tượng để di chuyển · kéo nền để
+      dịch khung · cuộn để phóng to
+    </p>
+    }
+  </div>
+  }
+
+  <div class="flow-editor__side">
+    <ui-section-card [title]="store.stepCount$()">
+      <ol
+        class="flow-editor__steps"
+        cdkDropList
+        (cdkDropListDropped)="reorder($event)"
+      >
+        @for (step of store.steps$(); track step.id; let i = $index) {
+        <li
+          class="flow-editor__step"
+          cdkDrag
+          [cdkDragDisabled]="store.editingStepId$() === step.id"
+        >
+          @if (store.editingStepId$() === step.id) {
+          <app-flow-step-form
+            [step]="step"
+            [objects]="store.objects$()"
+            [fresh]="store.freshStepId$() === step.id"
+            (saved)="saveStep(step.id, $event)"
+            (cancelled)="store.closeStep(false)"
+          />
+          } @else {
+          <span class="flow-editor__grip" cdkDragHandle aria-hidden="true">
+            <ui-icon name="grip-vertical" size="sm" />
+          </span>
+          <button
+            uiButton
+            [variant]="store.activeStep$()?.id === step.id ? 'secondary' : 'ghost'"
+            size="sm"
+            class="flow-editor__step-body"
+            (click)="store.focusStep(i)"
+          >
+            <span class="flow-editor__no">{{ i + 1 }}</span>
+            <span class="flow-editor__step-text">
+              <span>{{ step.title }}</span>
+              <span class="flow-editor__route">{{ route(step) }}</span>
+            </span>
+          </button>
+          <button
+            uiIconButton
+            size="sm"
+            label="Sửa bước"
+            (click)="store.editStep(step.id)"
+          >
+            <ui-icon name="pen-line" size="sm" />
+          </button>
+          <button
+            uiIconButton
+            variant="danger"
+            size="sm"
+            label="Xóa bước"
+            (click)="store.removeStep(step.id)"
+          >
+            <ui-icon name="trash-2" size="sm" />
+          </button>
+          }
+        </li>
+        } @empty {
+        <li class="flow-editor__route">
+          Chưa có bước chuyển nào. Cần ít nhất 1 bước để xuất bản.
+        </li>
+        }
+      </ol>
+      <details class="flow-editor__more">
+        <summary>Thêm bước bằng form</summary>
+        <button
+          uiButton
+          size="sm"
+          [disabled]="!store.objects$().length || !store.canAddStep$()"
+          (click)="store.addStepByForm()"
+        >
+          <ui-icon name="plus" size="sm" />Thêm bước
+        </button>
+      </details>
+    </ui-section-card>
+  </div>
+</div>

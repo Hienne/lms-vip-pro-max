@@ -382,7 +382,12 @@
           [placeholder]="processExample"
         ></textarea>
       </ui-field>
-      } @case ('image') {
+      } @case ('flow') { @if (block.flow().value(); as flow) {
+      <app-flow-editor
+        [flow]="flow"
+        (flowChange)="block.flow().value.set($event)"
+      />
+      } } @case ('image') {
       <ui-field label="Chú thích hình">
         <input uiInput [formField]="block.body" />
       </ui-field>

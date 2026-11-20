@@ -50,6 +50,7 @@ import {
   UploadItem,
 } from '@lms/ui';
 import { AssetLibrary } from '../asset-library/asset-library';
+import { FlowEditor } from '../flow-editor/flow-editor';
 import { LessonTextEditor } from './lesson-text-editor';
 import { AssetLibraryStore } from '../asset-library/data-access/asset-library.store';
 import {
@@ -157,6 +158,7 @@ const quizLabel = (quiz: QuizSummary): string =>
   selector: 'app-lesson-form',
   imports: [
     Alert,
+    FlowEditor,
     AssetLibrary,
     Button,
     CourseExamForm,
@@ -204,11 +206,7 @@ export class LessonForm {
   /** Two sample lines for an empty "Quy trình từng bước" block, so the format reads at a glance. */
   protected readonly processExample =
     'Kiểm tra hồ sơ | Đối chiếu giấy tờ tùy thân với thông tin trên hệ thống\nDuyệt giao dịch | Kiểm soát viên phê duyệt trên màn hình chờ duyệt';
-  // The Mô phỏng luồng editor arrives with ticket 03 of .scratch/mo-phong-luong; until then a flow
-  // block can be loaded and saved back, not added.
-  protected readonly addable = BlockTypeSchema.options.filter(
-    (type) => type !== 'flow',
-  );
+  protected readonly addable = BlockTypeSchema.options;
   protected readonly mediaBlocks = [
     'image',
     'video',
