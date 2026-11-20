@@ -326,6 +326,15 @@ describe('VideoBlock', () => {
       expect(probe.video()!.currentTime).toBe(25);
     });
 
+    it('offers no jump on an untimed transcript line even when it is on', () => {
+      const probe = ready(true);
+      probe.set('transcript', [{ startSeconds: null, text: 'Không có mốc.' }]);
+      expect(probe.el.querySelectorAll('.transcript button')).toHaveLength(0);
+      expect(
+        probe.el.querySelector('.transcript__line')?.textContent,
+      ).toContain('Không có mốc.');
+    });
+
     it('lets a seek stand and reports it, closing the range played before it', () => {
       const probe = ready(true);
       probe.time(10);

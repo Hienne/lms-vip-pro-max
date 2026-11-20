@@ -17,7 +17,7 @@
     <ol class="transcript__lines">
       @for (item of shown(); track item.index) {
       <li>
-        @if (seekable()) {
+        @if (seekable() && item.line.startSeconds !== null) {
         <button
           type="button"
           class="transcript__line transcript__line--jump"
