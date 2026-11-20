@@ -129,7 +129,15 @@ describe('the learner reads of the mock backend', () => {
     const lessons = content.chapters.flatMap((c) => c.lessons);
     const blocks = lessons.flatMap((l) => l.blocks.map((b) => b.block));
     expect(new Set(blocks.map((b) => b.blockType))).toEqual(
-      new Set(['video', 'pdf', 'text', 'process', 'image', 'attachment']),
+      new Set([
+        'video',
+        'pdf',
+        'text',
+        'process',
+        'image',
+        'attachment',
+        'flow',
+      ]),
     );
     expect(new Set(blocks.map((b) => b.completionMode))).toEqual(
       new Set(['video_coverage', 'pdf_end', 'manual', 'open']),

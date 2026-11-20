@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { FlowModelSchema } from './flow-model.schema';
 import { BackendDateTimeSchema } from '../http/datetime';
 import { PageQuerySchema } from '../http/page';
 import { RatingSummarySchema } from '../feedback/feedback.schema';
@@ -30,6 +31,7 @@ export const BlockTypeSchema = z.enum([
   'process',
   'image',
   'attachment',
+  'flow',
 ]);
 export type BlockType = z.infer<typeof BlockTypeSchema>;
 
@@ -230,6 +232,8 @@ export const LessonBlockSchema = z.object({
   transcript: z.array(TranscriptLineSchema).default([]),
   /** Learners may seek freely in this `video` block; an older backend omits it, which reads as off. */
   allowSeeking: z.boolean().default(false),
+  /** The Mô phỏng luồng of a `flow` block; `null` (or absent from an older backend) for every other type. */
+  flow: FlowModelSchema.nullish(),
   rowVersion: z.number().int(),
   createTime: BackendDateTimeSchema.nullish(),
   updateTime: BackendDateTimeSchema.nullish(),
@@ -487,6 +491,8 @@ export const BlockInputSchema = z.object({
     .optional(),
   /** Only a `video` block may set it; left out it is off. */
   allowSeeking: z.boolean().optional(),
+  /** Required on a `flow` block and refused on any other type. */
+  flow: FlowModelSchema.optional(),
 });
 export type BlockInput = z.infer<typeof BlockInputSchema>;
 

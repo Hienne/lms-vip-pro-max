@@ -16,6 +16,7 @@ import type {
   ScormCompletionRule,
   TranscriptLine,
   VideoChapter,
+  FlowModel,
 } from '@lms/contracts';
 import type { IconName } from '@lms/ui';
 
@@ -58,6 +59,8 @@ export interface BlockValue {
   readonly transcript: readonly TranscriptLine[];
   /** Learners may seek freely in a video block; off for a new block and for every other type. */
   readonly allowSeeking: boolean;
+  /** The Mô phỏng luồng of a `flow` block; `null` for every other type. */
+  readonly flow: FlowModel | null;
 }
 
 export interface LessonValue {
@@ -111,6 +114,7 @@ export const BLOCK_TYPES: Readonly<
   process: { icon: 'workflow', label: 'Quy trình từng bước' },
   image: { icon: 'image', label: 'Hình ảnh' },
   attachment: { icon: 'paperclip', label: 'Tệp đính kèm' },
+  flow: { icon: 'route', label: 'Mô phỏng luồng' },
 };
 
 /** How a new block of each type counts as done; the server measures it. */
@@ -121,6 +125,7 @@ const COMPLETION: Record<BlockType, CompletionMode> = {
   process: 'manual',
   image: 'open',
   attachment: 'open',
+  flow: 'manual',
 };
 
 /** The block types that hold a file, and the usage the file takes. */
@@ -173,6 +178,7 @@ export function newBlock(blockType: BlockType): BlockValue {
     videoChapters: [],
     transcript: [],
     allowSeeking: false,
+    flow: blockType === 'flow' ? { version: 1, objects: [], steps: [] } : null,
   };
 }
 
@@ -221,6 +227,10 @@ function toBlockValue({ block, assets, steps }: BlockDetail): BlockValue {
     videoChapters: block.videoChapters.map((c) => ({ ...c })),
     transcript: block.transcript.map((t) => ({ ...t })),
     allowSeeking: block.blockType === 'video' && block.allowSeeking,
+    flow:
+      block.blockType === 'flow'
+        ? structuredClone(block.flow ?? { version: 1, objects: [], steps: [] })
+        : null,
   };
 }
 
@@ -325,6 +335,9 @@ function toBlockInput(block: BlockValue): BlockInput {
       : {}),
     ...(block.blockType === 'video'
       ? { allowSeeking: block.allowSeeking }
+      : {}),
+    ...(block.blockType === 'flow' && block.flow
+      ? { flow: structuredClone(block.flow) }
       : {}),
   };
 }
@@ -465,6 +478,12 @@ export function lessonProblem(lesson: LessonValue): string | null {
     )
   ) {
     return 'Khối quy trình chưa có bước';
+  }
+  const emptyFlow = lesson.blocks.find(
+    (block) => block.blockType === 'flow' && !block.flow?.steps.length,
+  );
+  if (emptyFlow) {
+    return `Khối Mô phỏng luồng “${emptyFlow.title}” chưa có bước chuyển nào.`;
   }
   const missing = lesson.blocks.find(
     (b) =>

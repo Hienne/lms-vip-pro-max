@@ -13,6 +13,7 @@ export * from './lib/learning-loop/learning-loop.mock';
 export * from './lib/reports/reports.fixtures';
 export * from './lib/reports/learning-report.handlers';
 export * from './lib/learning/learning.fixtures';
+export * from './lib/learning/flow.fixtures';
 export * from './lib/learning/video-notes.fixtures';
 export * from './lib/learning/learning.backend';
 export * from './lib/knowledge/knowledge.fixtures';
