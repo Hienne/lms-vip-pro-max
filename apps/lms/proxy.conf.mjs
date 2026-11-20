@@ -38,6 +38,13 @@ export default {
         },
       }
     : {}),
+  // OAuth discovery of the Trợ lý ngoài (ADR 0005): production's nginx sends these to the backend too.
+  '/.well-known/oauth-': {
+    target,
+    secure: false,
+    changeOrigin: true,
+    agent: new Agent({ proxyEnv: process.env }),
+  },
   '/api': {
     target,
     secure: false,

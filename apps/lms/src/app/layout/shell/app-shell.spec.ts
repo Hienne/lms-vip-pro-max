@@ -165,7 +165,15 @@ describe('AppShell', () => {
     backend
       .match('/api/v1/assistant/external-connections/status')
       .filter((r) => !r.cancelled)
-      .forEach((r) => r.flush(envelopeOk({ enabled: false, allowed: false })));
+      .forEach((r) =>
+        r.flush(
+          envelopeOk({
+            enabled: false,
+            allowed: false,
+            mcpUrl: 'https://lms.example/api/v1/mcp',
+          }),
+        ),
+      );
   }
 
   async function open(url: string, counts?: Counts) {

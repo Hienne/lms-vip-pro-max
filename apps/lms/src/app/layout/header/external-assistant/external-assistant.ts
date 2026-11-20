@@ -1,4 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import {
   form,
   FormField,
@@ -37,8 +38,9 @@ const CreateConnectionFormSchema = z.object({
 const EMPTY_FORM = { name: '', validDays: '30' as '30' | '90' };
 
 /**
- * The header's "Kết nối trợ lý ngoài" button and drawer: the author's connections, revoking one,
- * and creating one whose token and Claude Code command show once.
+ * The header's "Kết nối trợ lý ngoài" button and drawer: a link to the install guide (OAuth, ADR
+ * 0005), the author's connections of both kinds, revoking one, and, until OAuth is checked on
+ * production, creating a pasted code whose token and Claude Code command show once.
  */
 @Component({
   selector: 'app-external-assistant',
@@ -58,6 +60,7 @@ const EMPTY_FORM = { name: '', validDays: '30' as '30' | '90' };
     Input,
     List,
     ListItem,
+    RouterLink,
     Select,
     Skeleton,
   ],

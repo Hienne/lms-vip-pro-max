@@ -85,6 +85,8 @@ describe('route table', () => {
         'assistant',
         'assistant/tai-lieu',
         'chat-room',
+        'tro-ly-ngoai',
+        'tro-ly-ngoai/cho-phep',
         'notifications',
         'instructor',
         'instructor/inbox',

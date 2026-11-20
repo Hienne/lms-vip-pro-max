@@ -82,6 +82,24 @@
       </div>
     </section>
     } @else {
+    <section class="stack" aria-labelledby="external-guide-title">
+      <h3 id="external-guide-title">Kết nối bằng một địa chỉ</h3>
+      <p class="external-assistant__note">
+        Thêm CHAN Academy vào Claude App hoặc Claude Code bằng địa chỉ kết nối,
+        rồi đăng nhập và bấm Cho phép. Không cần tạo mã.
+      </p>
+      <div>
+        <a
+          uiButton
+          variant="primary"
+          routerLink="/tro-ly-ngoai"
+          data-testid="external-guide-link"
+          (click)="close()"
+          >Hướng dẫn cài đặt</a
+        >
+      </div>
+    </section>
+
     <section class="stack" aria-labelledby="external-list-title">
       <h3 id="external-list-title">Kết nối của bạn</h3>
       @if (store.isLoading$()) {
@@ -98,7 +116,7 @@
         variant="inline"
         icon="key"
         title="Chưa có kết nối nào"
-        description="Tạo một kết nối để Claude Code trên máy bạn soạn khóa học cùng bạn."
+        description="Làm theo hướng dẫn cài đặt để Claude soạn khóa học cùng bạn."
       />
       } @else {
       <ul uiList data-testid="external-connections">
@@ -107,10 +125,12 @@
           <div class="external-assistant__info">
             <strong>{{ connection.name }}</strong>
             <small>
-              {{ connection.tokenPrefix }}… · Tạo {{ connection.createTime |
-              fmtDate }} · Hết hạn {{ connection.expiresAt | fmtDate }} · Lần
-              dùng cuối {{ connection.lastUsedAt ? (connection.lastUsedAt |
-              fmtRelative) : 'chưa dùng' }}
+              @if (connection.kind === 'token') { Mã kết nối (cũ) · {{
+              connection.tokenPrefix }}… · Tạo } @else { Cấp } {{
+              connection.createTime | fmtDate }} · Hết hạn {{
+              connection.expiresAt | fmtDate }} · Lần dùng cuối {{
+              connection.lastUsedAt ? (connection.lastUsedAt | fmtRelative) :
+              'chưa dùng' }}
             </small>
           </div>
           <button
@@ -130,7 +150,7 @@
     </section>
 
     <section class="stack" aria-labelledby="external-create-title">
-      <h3 id="external-create-title">Tạo kết nối</h3>
+      <h3 id="external-create-title">Tạo mã kết nối (cách cũ)</h3>
       @if (store.createError$(); as error) {
       <ui-alert tone="danger" [heading]="error.title ?? ''"
         >{{ error.message }}</ui-alert

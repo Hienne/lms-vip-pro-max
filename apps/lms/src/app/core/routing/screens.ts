@@ -784,6 +784,28 @@ export const SCREEN_TABLE = {
       mockupPage: 'import',
     },
     {
+      // Trợ lý ngoài (ADR 0005): the server decides who may connect; the page says so to anyone else.
+      path: 'tro-ly-ngoai',
+      access: 'AI_ASSISTANT',
+      title: 'Kết nối trợ lý ngoài',
+      mockupPage: 'externalAssistant',
+      load: () =>
+        import('../../features/external-assistant/guide/guide').then(
+          (m) => m.Guide,
+        ),
+    },
+    {
+      // Where a Trợ lý ngoài's OAuth sign-in lands; a signed-out user signs in and comes back.
+      path: 'tro-ly-ngoai/cho-phep',
+      access: 'AI_ASSISTANT',
+      title: 'Cho phép kết nối',
+      mockupPage: 'externalAssistant',
+      load: () =>
+        import('../../features/external-assistant/consent/consent').then(
+          (m) => m.Consent,
+        ),
+    },
+    {
       path: 'notifications',
       title: 'Thông báo',
       mockupPage: 'notifications',

@@ -1,0 +1,157 @@
+<ui-page-header
+  title="Kết nối trợ lý ngoài"
+  description="Cho Claude soạn khóa học nháp cùng bạn từ tài liệu bạn đưa, bằng một địa chỉ và một lần đăng nhập."
+/>
+
+@if (store.isLoading$()) {
+<div uiSkeleton variant="block" class="guide__placeholder"></div>
+} @else if (store.loadError$(); as error) {
+<ui-error-state
+  title="Không tải được thông tin kết nối"
+  [message]="error.message"
+  (retry)="store.retryLoad()"
+/>
+} @else if (!store.available$()) {
+<ui-empty
+  icon="lock"
+  [headingLevel]="2"
+  title="Bạn chưa dùng được trợ lý ngoài"
+  description="Chỉ giảng viên và quản trị viên có quyền dùng trợ lý mới kết nối được trợ lý ngoài. Nếu cần quyền, hãy liên hệ quản trị viên đơn vị."
+>
+  <a uiButton variant="primary" routerLink="/">Về trang chủ của tôi</a>
+</ui-empty>
+} @else {
+<div class="guide">
+  <ui-section-card title="Địa chỉ kết nối">
+    <div class="guide__stack">
+      <ui-field
+        label="Địa chỉ MCP của CHAN Academy"
+        hint="Dán địa chỉ này vào Claude. Không cần mã hay token: Claude sẽ mở trang đăng nhập của CHAN Academy."
+      >
+        <div class="guide__copy">
+          <input
+            uiInput
+            readonly
+            class="guide__value"
+            data-testid="mcp-url"
+            [value]="store.mcpUrl$()"
+          />
+          <button
+            uiIconButton
+            label="Sao chép địa chỉ"
+            (click)="store.copy(store.mcpUrl$(), 'địa chỉ')"
+          >
+            <ui-icon name="copy" />
+          </button>
+        </div>
+      </ui-field>
+    </div>
+  </ui-section-card>
+
+  <ui-section-card title="Cài đặt">
+    <ui-tabs
+      label="Ứng dụng trợ lý"
+      [tabs]="tabs"
+      [selected]="store.tab$()"
+      (selectedChange)="store.selectTab($event)"
+    >
+      <section uiTabPanel="claude-app" aria-label="Claude App">
+        <ol class="guide__steps" data-testid="steps-claude-app">
+          <li>
+            Mở Claude (claude.ai hoặc ứng dụng Claude trên máy tính), vào
+            <strong>Cài đặt → Connectors</strong>.
+          </li>
+          <li>
+            Chọn <strong>Add custom connector</strong>, đặt tên
+            <strong>CHAN Academy</strong> và dán địa chỉ kết nối ở trên.
+          </li>
+          <li>
+            Bấm <strong>Connect</strong>. Trình duyệt mở CHAN Academy: đăng nhập
+            nếu cần, rồi bấm <strong>Cho phép</strong> trên trang Cho phép kết
+            nối.
+          </li>
+          <li>
+            Trong một cuộc trò chuyện mới, bật connector CHAN Academy, đính kèm
+            tài liệu và nhờ: “Soạn khóa học từ tài liệu này”.
+          </li>
+        </ol>
+      </section>
+
+      <section uiTabPanel="claude-code" aria-label="Claude Code">
+        <ol class="guide__steps" data-testid="steps-claude-code">
+          <li class="guide__stack">
+            <span>Trong terminal, chạy lệnh:</span>
+            <div class="guide__copy">
+              <input
+                uiInput
+                readonly
+                class="guide__value"
+                aria-label="Lệnh thêm vào Claude Code"
+                data-testid="claude-code-command"
+                [value]="store.claudeCodeCommand$()"
+              />
+              <button
+                uiIconButton
+                label="Sao chép lệnh"
+                (click)="store.copy(store.claudeCodeCommand$(), 'lệnh')"
+              >
+                <ui-icon name="copy" />
+              </button>
+            </div>
+          </li>
+          <li>
+            Mở Claude Code, gõ <code>/mcp</code>, chọn
+            <strong>chan-academy</strong> rồi <strong>Authenticate</strong>.
+          </li>
+          <li>
+            Trình duyệt mở trang Cho phép kết nối: bấm
+            <strong>Cho phép</strong>, rồi quay lại terminal.
+          </li>
+          <li>
+            Đưa tài liệu cho Claude và nhờ: “Soạn khóa học từ tài liệu này”.
+          </li>
+        </ol>
+      </section>
+    </ui-tabs>
+  </ui-section-card>
+
+  <ui-section-card title="Câu hỏi thường gặp">
+    <dl class="guide__faq" data-testid="faq">
+      <div>
+        <dt>Ngắt kết nối thế nào?</dt>
+        <dd>
+          Bấm nút Kết nối trợ lý ngoài trên thanh đầu trang và chọn
+          <strong>Thu hồi</strong> ở kết nối muốn ngắt: trợ lý dừng ngay. Nên
+          xóa luôn connector trong Claude: Cài đặt → Connectors với Claude App,
+          hoặc <code>{{ store.removeCommand }}</code> với Claude Code.
+        </dd>
+      </div>
+      <div>
+        <dt>Tài liệu của tôi đi đâu?</dt>
+        <dd>
+          Tài liệu nằm ở Claude (Anthropic) và do model của Claude đọc. CHAN
+          Academy chỉ nhận nội dung nháp trợ lý đề xuất cho từng bước, không
+          nhận file. Chỉ dùng với tài liệu không mật.
+        </dd>
+      </div>
+      <div>
+        <dt>Claude báo hết hạn hoặc cần đăng nhập?</dt>
+        <dd>
+          Kết nối hết hạn sau 30 ngày không dùng, hoặc khi bị thu hồi. Bấm
+          <strong>Connect</strong> lại trong Claude App, hoặc
+          <code>/mcp</code> → <strong>Authenticate</strong> trong Claude Code.
+        </dd>
+      </div>
+      <div>
+        <dt>Trợ lý được làm gì?</dt>
+        <dd>
+          Chỉ mở phiên soạn và đề xuất từng bước của một khóa học nháp; bạn sửa
+          và Chốt bước trên trang soạn. Trợ lý không đọc tài liệu, bài học hay
+          khóa học khác trong hệ thống, không viết nội dung bài, không xuất bản
+          hay giao khóa học.
+        </dd>
+      </div>
+    </dl>
+  </ui-section-card>
+</div>
+}
