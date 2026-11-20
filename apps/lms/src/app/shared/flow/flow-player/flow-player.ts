@@ -6,10 +6,9 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import type { FlowModel, FlowStep } from '@lms/contracts';
+import type { FlowModel } from '@lms/contracts';
 import { Button, Card, Icon, IconButton } from '@lms/ui';
 import { FlowCanvas } from '../flow-canvas/flow-canvas';
-import { stepRoute } from '../flow-support';
 import { FlowPlayerStore } from './data-access/flow-player.store';
 
 /**
@@ -36,14 +35,6 @@ export class FlowPlayer {
       const flow = this.flow();
       untracked(() => this.store.setFlow(flow));
     });
-  }
-
-  protected route(step: FlowStep): string {
-    return stepRoute(this.flow(), step);
-  }
-
-  protected nameOf(id: string): string {
-    return this.flow().objects.find((o) => o.id === id)?.name ?? id;
   }
 
   protected reframe(): void {

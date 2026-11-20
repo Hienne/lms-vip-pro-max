@@ -35,10 +35,9 @@
           <ui-icon name="chevron-left" size="sm" />
         </button>
         <button
-          uiButton
-          variant="primary"
+          uiIconButton
           size="sm"
-          [attr.aria-label]="store.playing$() ? 'Tạm dừng' : 'Phát'"
+          [label]="store.playing$() ? 'Tạm dừng' : 'Phát'"
           [disabled]="!store.total$() || store.reducedMotion$()"
           (click)="store.toggle()"
         >
@@ -75,7 +74,7 @@
   </div>
 
   <ol class="flow-player__steps" aria-label="Các bước chuyển">
-    @for (step of store.flow$().steps; track step.id; let i = $index) {
+    @for (row of store.rows$(); track row.step.id; let i = $index) {
     <li>
       <button
         uiButton
@@ -87,24 +86,24 @@
       >
         <span class="flow-player__no">{{ i + 1 }}</span>
         <span class="flow-player__step-text">
-          <span class="flow-player__step-title">{{ step.title }}</span>
-          <span class="flow-player__step-route">
-            {{ nameOf(step.from) }} → {{ step.to ? nameOf(step.to) : 'tự xử lý'
-            }}
-          </span>
+          <span class="flow-player__step-title">{{ row.step.title }}</span>
+          <span class="flow-player__step-route"> {{ row.route }} </span>
         </span>
       </button>
     </li>
     }
   </ol>
   } @else {
+  <p class="flow-player__hint">
+    Máy không hiển thị được 3D, các bước được liệt kê theo thứ tự.
+  </p>
   <ol class="flow-player__fallback">
-    @for (step of store.flow$().steps; track step.id) {
+    @for (row of store.rows$(); track row.step.id) {
     <li class="flow-player__fallback-step">
-      <strong class="flow-player__title">{{ step.title }}</strong>
-      <span class="flow-player__step-route">{{ route(step) }}</span>
-      @if (step.description) {
-      <span class="flow-player__description">{{ step.description }}</span>
+      <strong class="flow-player__title">{{ row.step.title }}</strong>
+      <span class="flow-player__step-route">{{ row.fullRoute }}</span>
+      @if (row.step.description) {
+      <span class="flow-player__description">{{ row.step.description }}</span>
       }
     </li>
     }

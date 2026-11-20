@@ -72,13 +72,16 @@ describe('FlowPlayer', () => {
     const fixture = await render(false);
     const el: HTMLElement = fixture.nativeElement;
     expect(el.querySelector('app-flow-canvas')).toBeNull();
+    expect(el.textContent).toContain(
+      'Máy không hiển thị được 3D, các bước được liệt kê theo thứ tự.',
+    );
     const items = el.querySelectorAll('.flow-player__fallback li');
     expect(items).toHaveLength(9);
     expect(text(items[0])).toContain(
       'Khách hàng (Khách hàng) → BIDV SmartBanking (Kênh (App/Web/Quầy))',
     );
     expect(text(items[3])).toContain(
-      'Core Banking (Hệ thống nội bộ) · tự xử lý',
+      'Core Banking (Hệ thống nội bộ) → tự xử lý',
     );
     expect(text(items[6])).toContain('NAPAS phản hồi thành công');
   });

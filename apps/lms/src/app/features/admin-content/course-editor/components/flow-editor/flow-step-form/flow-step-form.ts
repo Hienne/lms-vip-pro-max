@@ -54,8 +54,12 @@ export class FlowStepForm {
 
   protected readonly stepForm = form(this.model, (path) => {
     required(path.title, { message: 'Nhập tiêu đề bước.' });
-    maxLength(path.title, FLOW_LIMITS.title);
-    maxLength(path.description, FLOW_LIMITS.description);
+    maxLength(path.title, FLOW_LIMITS.title, {
+      message: `Tiêu đề tối đa ${FLOW_LIMITS.title} ký tự.`,
+    });
+    maxLength(path.description, FLOW_LIMITS.description, {
+      message: `Mô tả tối đa ${FLOW_LIMITS.description} ký tự.`,
+    });
   });
 
   private readonly title =
@@ -71,8 +75,7 @@ export class FlowStepForm {
     });
   }
 
-  protected save(event: Event): void {
-    event.preventDefault();
+  protected save(): void {
     void submit(this.stepForm, {
       action: async () => {
         const value = this.model();

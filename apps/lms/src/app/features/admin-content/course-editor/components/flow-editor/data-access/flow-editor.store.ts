@@ -17,9 +17,12 @@ import {
 } from '@lms/contracts';
 import { confirm } from '@lms/ui';
 import { filter, map } from 'rxjs';
-import { FLOW_KIND_LABEL } from '../../../../../../shared/flow/flow-support';
-
-const EMPTY: FlowModel = { version: 1, objects: [], steps: [] };
+import {
+  emptyFlow,
+  FLOW_EDITOR_WIDE_QUERY,
+  FLOW_KIND_NAME,
+  stepRouteShort,
+} from '../../../../../../shared/flow/flow-support';
 
 /** The free cells tried in order around the centre, two cells apart so plinths never touch. */
 function* spiral(): Generator<{ x: number; z: number }> {
@@ -27,7 +30,7 @@ function* spiral(): Generator<{ x: number; z: number }> {
     for (let dz = -ring; dz <= ring; dz++) {
       for (let dx = -ring; dx <= ring; dx++) {
         if (Math.max(Math.abs(dx), Math.abs(dz)) === ring)
-          yield { x: dx * 3 + 0, z: dz * 3 + 0 };
+          yield { x: cellOf(dx), z: cellOf(dz) };
       }
     }
   }
@@ -41,7 +44,7 @@ function* spiral(): Generator<{ x: number; z: number }> {
 @Injectable()
 export class FlowEditorStore {
   private readonly state = {
-    flow: signal<FlowModel>(EMPTY),
+    flow: signal<FlowModel>(emptyFlow()),
     selectedId: signal<string | null>(null),
     editingStepId: signal<string | null>(null),
     freshStepId: signal<string | null>(null),
@@ -66,7 +69,7 @@ export class FlowEditorStore {
   /** The 3D editor needs the `lg` width; below it only the list and the form edit. */
   readonly wide$ = toSignal(
     inject(BreakpointObserver)
-      .observe('(min-width: 1100px)')
+      .observe(FLOW_EDITOR_WIDE_QUERY)
       .pipe(map((state) => state.matches)),
     { initialValue: true },
   );
@@ -83,6 +86,14 @@ export class FlowEditorStore {
   readonly canAddStep$ = computed(
     () => this.state.flow().steps.length < FLOW_LIMITS.steps,
   );
+  /** Each step with its route by names, as the step list shows it. */
+  readonly rows$ = computed(() => {
+    const flow = this.state.flow();
+    return flow.steps.map((step) => ({
+      step,
+      route: stepRouteShort(flow, step),
+    }));
+  });
   readonly objectCount$ = computed(
     () =>
       `${this.state.flow().objects.length}/${FLOW_LIMITS.objects} đối tượng`,
@@ -146,10 +157,13 @@ export class FlowEditorStore {
       'o',
       flow.objects.map((o) => o.id),
     );
-    const sameKind = flow.objects.filter((o) => o.kind === kind).length;
+    const base = FLOW_KIND_NAME[kind];
+    const taken = new Set(flow.objects.map((o) => o.name));
+    let name = base;
+    for (let n = 2; taken.has(name); n++) name = `${base} ${n}`;
     const object: FlowObject = {
       id,
-      name: `${FLOW_KIND_LABEL[kind].split(' (')[0]} ${sameKind + 1}`,
+      name,
       kind,
       x: at.x,
       z: at.z,
@@ -213,7 +227,7 @@ export class FlowEditorStore {
       from,
       to,
       title: to
-        ? `${this.nameOf(from)} gửi tới ${this.nameOf(to)}`
+        ? `${this.nameOf(from)} gửi cho ${this.nameOf(to)}`
         : `${this.nameOf(from)} xử lý`,
       description: null,
     };
@@ -276,6 +290,12 @@ export class FlowEditorStore {
     this.setFlow({ ...flow, steps });
   }
 
+  /** Moves a step one place up or down: the keyboard way to reorder. */
+  moveStepBy(id: string, by: -1 | 1): void {
+    const index = this.state.flow().steps.findIndex((s) => s.id === id);
+    if (index >= 0) this.moveStep(index, index + by);
+  }
+
   // ---- helpers ----
 
   private patchObject(id: string, change: Partial<FlowObject>): void {
@@ -314,6 +334,9 @@ export class FlowEditorStore {
     return null;
   }
 }
+
+/** A spiral offset as a grid cell, three cells apart; `|| 0` turns -0 into 0. */
+const cellOf = (offset: number) => offset * 3 || 0;
 
 const inGrid = (cell: { x: number; z: number }) =>
   Math.abs(cell.x) <= FLOW_LIMITS.grid && Math.abs(cell.z) <= FLOW_LIMITS.grid;

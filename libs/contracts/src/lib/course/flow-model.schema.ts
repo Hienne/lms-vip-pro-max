@@ -39,7 +39,7 @@ const CellSchema = z
 /** Đối tượng: one participant on the floor. */
 export const FlowObjectSchema = z.strictObject({
   id: FlowIdSchema,
-  name: z.string().max(FLOW_LIMITS.name),
+  name: z.string().trim().min(1).max(FLOW_LIMITS.name),
   kind: FlowKindSchema,
   x: CellSchema,
   z: CellSchema,
@@ -51,7 +51,7 @@ export const FlowStepSchema = z.strictObject({
   id: FlowIdSchema,
   from: FlowIdSchema,
   to: FlowIdSchema.nullable(),
-  title: z.string().max(FLOW_LIMITS.title),
+  title: z.string().trim().min(1).max(FLOW_LIMITS.title),
   description: z.string().max(FLOW_LIMITS.description).nullable(),
 });
 export type FlowStep = z.infer<typeof FlowStepSchema>;

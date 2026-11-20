@@ -1,14 +1,14 @@
 @use 'ui';
 
-// Variant A: the scene with its player bar, the step list beside it; under it below `md`.
+// Variant A: the step list under the scene and its player bar; beside it from `md` up.
 .flow-player {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(14rem, 18rem);
+  grid-template-columns: minmax(0, 1fr);
   gap: ui.space(4);
   align-items: start;
 
-  @include ui.bp-below(md) {
-    grid-template-columns: minmax(0, 1fr);
+  @include ui.bp(md) {
+    grid-template-columns: minmax(0, 1fr) minmax(14rem, 18rem);
   }
 
   &__main {

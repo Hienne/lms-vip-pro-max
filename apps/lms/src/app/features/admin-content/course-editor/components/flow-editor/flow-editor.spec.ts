@@ -55,7 +55,7 @@ describe('FlowEditor', () => {
     buttons(el, 'Cơ sở dữ liệu')[0].click();
     await fixture.whenStable();
     expect(changes.at(-1)?.objects).toEqual([
-      { id: 'o1', name: 'Cơ sở dữ liệu 1', kind: 'database', x: 0, z: 0 },
+      { id: 'o1', name: 'Cơ sở dữ liệu', kind: 'database', x: 0, z: 0 },
     ]);
     expect(el.textContent).toContain('1/30 đối tượng');
     expect(el.textContent).toContain('Đối tượng đang chọn');

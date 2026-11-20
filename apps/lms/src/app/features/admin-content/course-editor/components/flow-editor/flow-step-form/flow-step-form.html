@@ -1,4 +1,5 @@
-<form class="flow-step-form" novalidate (submit)="save($event)">
+<!-- A div, not a form: it sits inside the lesson form, and forms do not nest. -->
+<div class="flow-step-form">
   @if (fresh()) {
   <p class="flow-step-form__hint">
     Bước mới vừa nối. Đặt tiêu đề và mô tả cho bước này.
@@ -28,7 +29,9 @@
     <textarea uiTextarea rows="3" [formField]="stepForm.description"></textarea>
   </ui-field>
   <div class="flow-step-form__actions">
-    <button uiButton variant="primary" size="sm" type="submit">Lưu bước</button>
+    <button uiButton variant="primary" size="sm" type="button" (click)="save()">
+      Lưu bước
+    </button>
     <button
       uiButton
       variant="ghost"
@@ -39,4 +42,4 @@
       {{ fresh() ? 'Bỏ bước này' : 'Hủy' }}
     </button>
   </div>
-</form>
+</div>

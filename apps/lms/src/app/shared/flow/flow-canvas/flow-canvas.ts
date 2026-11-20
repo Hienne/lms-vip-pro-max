@@ -73,15 +73,27 @@ export class FlowCanvas {
         this.framed = false;
       });
     });
-    // Mirrors the inputs into the scene (a non-reactive three.js object).
+    // Each effect mirrors one concern into the scene (a non-reactive three.js object).
     effect(() => {
-      this.objects();
-      this.steps();
-      this.active();
-      this.selectedId();
-      this.mode();
-      this.reducedMotion();
-      untracked(() => this.push());
+      const objects = this.objects();
+      const steps = this.steps();
+      untracked(() => this.scene?.setData(objects, steps, this.selectedId()));
+    });
+    effect(() => {
+      const active = this.active();
+      untracked(() => this.scene?.setActive(active));
+    });
+    effect(() => {
+      const selectedId = this.selectedId();
+      untracked(() => this.scene?.setSelected(selectedId));
+    });
+    effect(() => {
+      const mode = this.mode();
+      const reduced = this.reducedMotion();
+      untracked(() => {
+        this.scene?.setMode(mode);
+        this.scene?.setReducedMotion(reduced);
+      });
     });
   }
 
@@ -95,6 +107,7 @@ export class FlowCanvas {
     return this.scene?.floorAt(clientX, clientY) ?? null;
   }
 
+  /** Hands the whole state to a scene that has just been created, and frames it once. */
   private push(): void {
     const scene = this.scene;
     if (!scene) return;

@@ -6,18 +6,22 @@ import {
   signal,
 } from '@angular/core';
 import type { FlowModel } from '@lms/contracts';
-import { FLOW_REDUCED_MOTION, FLOW_WEBGL } from '../../flow-support';
+import {
+  emptyFlow,
+  FLOW_REDUCED_MOTION,
+  FLOW_WEBGL,
+  stepRoute,
+  stepRouteShort,
+} from '../../flow-support';
 
 /** How long each Bước chuyển stays on screen while playing. */
 export const FLOW_STEP_MS = 3000;
-
-const EMPTY: FlowModel = { version: 1, objects: [], steps: [] };
 
 /** Playback of one Mô phỏng luồng: which step is shown and whether it moves on by itself. */
 @Injectable()
 export class FlowPlayerStore {
   private readonly state = {
-    flow: signal<FlowModel>(EMPTY),
+    flow: signal<FlowModel>(emptyFlow()),
     index: signal(0),
     playing: signal(false),
     sceneFailed: signal(false),
@@ -31,6 +35,15 @@ export class FlowPlayerStore {
   readonly reducedMotion$ = computed(() => this.reducedMotion);
   readonly showScene$ = computed(() => this.webgl && !this.state.sceneFailed());
   readonly total$ = computed(() => this.state.flow().steps.length);
+  /** Each step with its route, short for the step list and with kinds for the fallback list. */
+  readonly rows$ = computed(() => {
+    const flow = this.state.flow();
+    return flow.steps.map((step) => ({
+      step,
+      route: stepRouteShort(flow, step),
+      fullRoute: stepRoute(flow, step),
+    }));
+  });
   readonly step$ = computed(
     () => this.state.flow().steps[this.state.index()] ?? null,
   );

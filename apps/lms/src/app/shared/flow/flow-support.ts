@@ -16,6 +16,23 @@ export const FLOW_KIND_LABEL: Record<FlowKind, string> = {
   decision: 'Quyết định',
 };
 
+/** The name a new Đối tượng of each kind starts with ("Kênh", then "Kênh 2"). */
+export const FLOW_KIND_NAME: Record<FlowKind, string> = {
+  customer: 'Khách hàng',
+  staff: 'Cán bộ',
+  channel: 'Kênh',
+  system: 'Hệ thống nội bộ',
+  database: 'Cơ sở dữ liệu',
+  queue: 'Hàng đợi',
+  gateway: 'API Gateway',
+  document: 'Chứng từ',
+  external: 'Hệ thống ngoài',
+  decision: 'Quyết định',
+};
+
+/** The width from which the 3D editor shows: the `lg` breakpoint of the token map. */
+export const FLOW_EDITOR_WIDE_QUERY = '(min-width: 1100px)';
+
 export const FLOW_KIND_ICON: Record<FlowKind, IconName> = {
   customer: 'user',
   staff: 'users',
@@ -35,7 +52,10 @@ export const FLOW_WEBGL = new InjectionToken<boolean>('FLOW_WEBGL', {
   factory: () => {
     try {
       const canvas = document.createElement('canvas');
-      return !!(canvas.getContext('webgl2') ?? canvas.getContext('webgl'));
+      const gl = canvas.getContext('webgl2') ?? canvas.getContext('webgl');
+      // Releases the probe's context at once: browsers allow only a few live ones.
+      gl?.getExtension('WEBGL_lose_context')?.loseContext();
+      return !!gl;
     } catch {
       return false;
     }
@@ -53,7 +73,7 @@ export const FLOW_REDUCED_MOTION = new InjectionToken<boolean>(
   },
 );
 
-/** "Khách hàng (Khách hàng) → Core Banking (Hệ thống nội bộ)" or "… | tự xử lý". */
+/** "Khách hàng (Khách hàng) → Core Banking (Hệ thống nội bộ)", or "Core Banking (Hệ thống nội bộ) → tự xử lý". */
 export function stepRoute(flow: FlowModel, step: FlowStep): string {
   const named = (id: string) => {
     const object = flow.objects.find((o) => o.id === id);
@@ -61,5 +81,19 @@ export function stepRoute(flow: FlowModel, step: FlowStep): string {
   };
   return step.to
     ? `${named(step.from)} → ${named(step.to)}`
-    : `${named(step.from)} · tự xử lý`;
+    : `${named(step.from)} → tự xử lý`;
 }
+
+/** The route of a step by names only, as the step lists show it. */
+export function stepRouteShort(flow: FlowModel, step: FlowStep): string {
+  const name = (id: string) =>
+    flow.objects.find((o) => o.id === id)?.name ?? id;
+  return `${name(step.from)} → ${step.to ? name(step.to) : 'tự xử lý'}`;
+}
+
+/** A Mô phỏng luồng with nothing on the floor yet. */
+export const emptyFlow = (): FlowModel => ({
+  version: 1,
+  objects: [],
+  steps: [],
+});

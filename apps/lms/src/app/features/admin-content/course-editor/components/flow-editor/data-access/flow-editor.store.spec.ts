@@ -22,13 +22,13 @@ describe('FlowEditorStore', () => {
     const [first, second, third] = store.objects$();
     expect(first).toMatchObject({
       id: a,
-      name: 'Hệ thống nội bộ 1',
+      name: 'Hệ thống nội bộ',
       x: 0,
       z: 0,
     });
     expect(second.name).toBe('Hệ thống nội bộ 2');
     expect([second.x, second.z]).not.toEqual([0, 0]);
-    expect(third).toMatchObject({ id: c, name: 'Khách hàng 1', x: 6, z: -3 });
+    expect(third).toMatchObject({ id: c, name: 'Khách hàng', x: 6, z: -3 });
     expect(store.selectedId$()).toBe(c);
     expect(store.objectCount$()).toBe('3/30 đối tượng');
     expect(b).not.toBe(a);
@@ -96,7 +96,12 @@ describe('FlowEditorStore', () => {
     const { store } = setup();
     store.setFlow(NAPAS_FLOW);
     const id = store.link('kh', 'core')!;
-    expect(store.steps$().at(-1)).toMatchObject({ id, from: 'kh', to: 'core' });
+    expect(store.steps$().at(-1)).toMatchObject({
+      id,
+      from: 'kh',
+      to: 'core',
+      title: 'Khách hàng gửi cho Core Banking',
+    });
     expect(store.editingStepId$()).toBe(id);
     expect(store.freshStepId$()).toBe(id);
     store.closeStep(false);
@@ -120,6 +125,14 @@ describe('FlowEditorStore', () => {
     store.setFlow(NAPAS_FLOW);
     store.moveStep(8, 0);
     expect(store.steps$()[0].id).toBe('s9');
+    store.moveStepBy('s9', 1);
+    expect(
+      store
+        .steps$()
+        .slice(0, 2)
+        .map((s) => s.id),
+    ).toEqual(['s1', 's9']);
+    store.moveStepBy('s9', -1);
     store.updateStep('s1', { to: 'kh' });
     expect(store.steps$().find((s) => s.id === 's1')?.to).toBeNull();
     store.removeStep('s2');

@@ -37,7 +37,9 @@ export class FlowScene {
   private readonly floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   private readonly resize: ResizeObserver;
   private readonly visibility: IntersectionObserver;
-  private readonly maxAniso: number;
+  private readonly font =
+    getComputedStyle(document.body).fontFamily || 'sans-serif';
+  private cableKey = '';
   private readonly colors = readColors();
   private mode: FlowSceneMode = 'learner';
   private reducedMotion = false;
@@ -56,11 +58,12 @@ export class FlowScene {
     private readonly events: FlowSceneEvents,
   ) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio * 1.25, 2.5));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.maxAniso = this.renderer.capabilities.getMaxAnisotropy();
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    // Shadows are redrawn only when something on the floor moves (setData, a drag), not each frame.
+    this.renderer.shadowMap.autoUpdate = false;
     const canvas = this.renderer.domElement;
     canvas.setAttribute('aria-hidden', 'true');
     Object.assign(canvas.style, {
@@ -83,7 +86,7 @@ export class FlowScene {
     sun.position.set(-10, 22, 12);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
-    sun.shadow.radius = 6;
+    sun.shadow.radius = 3;
     sun.shadow.bias = -0.0004;
     Object.assign(sun.shadow.camera, {
       left: -26,
@@ -121,7 +124,7 @@ export class FlowScene {
       glow,
     );
     capsule.rotation.z = Math.PI / 2;
-    capsule.castShadow = true;
+    capsule.castShadow = false;
     this.packet.add(capsule);
     this.packet.add(
       new THREE.Mesh(
@@ -225,7 +228,13 @@ export class FlowScene {
       if (entry.name !== o.name) this.setLabel(entry, o.name);
       if (this.drag?.id !== o.id) entry.group.position.set(o.x, 0, o.z);
     }
+    this.renderer.shadowMap.needsUpdate = true;
     this.rebuildCables();
+  }
+
+  /** Only the selection ring changes; nothing to rebuild. */
+  setSelected(selectedId: string | null): void {
+    this.selectedId = selectedId;
   }
 
   setActive(step: FlowStep | null): void {
@@ -266,6 +275,11 @@ export class FlowScene {
     this.visibility.disconnect();
     this.controls.dispose();
     this.scene.environment?.dispose();
+    const canvas = this.renderer.domElement;
+    canvas.removeEventListener('pointerdown', this.onPointerDown);
+    canvas.removeEventListener('pointermove', this.onPointerMove);
+    canvas.removeEventListener('pointerup', this.onPointerUp);
+    canvas.removeEventListener('pointerleave', this.onPointerLeave);
     disposeTree(this.scene);
     this.renderer.dispose();
     this.renderer.forceContextLoss();
@@ -394,11 +408,21 @@ export class FlowScene {
 
   /** One cable per unordered pair that at least one Bước chuyển uses. */
   private rebuildCables(): void {
-    disposeTree(this.cables);
-    this.cables.clear();
     const activeKey = this.active?.to
       ? pairKey(this.active.from, this.active.to)
       : null;
+    // Skips the rebuild when neither the cables, their ends nor the active pair changed.
+    const signature = [
+      activeKey,
+      ...this.steps.map((st) => `${st.from}>${st.to}`),
+      ...[...this.entries].map(
+        ([id, e]) => `${id}@${e.group.position.x},${e.group.position.z}`,
+      ),
+    ].join(';');
+    if (signature === this.cableKey) return;
+    this.cableKey = signature;
+    disposeTree(this.cables);
+    this.cables.clear();
     const seen = new Set<string>();
     for (const step of this.steps) {
       if (!step.to || step.to === step.from) continue;
@@ -546,9 +570,15 @@ export class FlowScene {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    const font = `600 ${px}px ${getComputedStyle(document.body).fontFamily || 'sans-serif'}`;
+    const font = `600 ${px}px ${this.font}`;
     ctx.font = font;
-    const w = Math.ceil(ctx.measureText(text).width) + padX * 2;
+    // A name of very wide glyphs must not make a huge texture: cap the width, end with "…".
+    const maxText = 300 * scale;
+    let shown = text;
+    while (shown.length > 1 && ctx.measureText(shown).width > maxText) {
+      shown = shown.slice(0, -2) + '…';
+    }
+    const w = Math.ceil(ctx.measureText(shown).width) + padX * 2;
     const h = px + padY * 2;
     canvas.width = w + shadow * 2;
     canvas.height = h + shadow * 2;
@@ -567,10 +597,9 @@ export class FlowScene {
     ctx.fillStyle = this.colors.text;
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
-    ctx.fillText(text, shadow + w / 2, shadow + h / 2 + scale);
+    ctx.fillText(shown, shadow + w / 2, shadow + h / 2 + scale);
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
-    texture.anisotropy = this.maxAniso;
     const material = entry.label.material as THREE.SpriteMaterial;
     material.map?.dispose();
     material.map = texture;
@@ -585,7 +614,6 @@ export class FlowScene {
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
-    if (!this.visible) this.renderer.render(this.scene, this.camera);
   }
 
   private ndc(clientX: number, clientY: number): THREE.Vector2 {
@@ -677,8 +705,15 @@ export class FlowScene {
       this.drag.moved = true;
     const cell = this.floorAt(ev.clientX, ev.clientY);
     const entry = this.entries.get(this.drag.id);
-    if (cell && entry && !this.occupied(cell, this.drag.id)) {
-      entry.group.position.set(cell.x, 0, cell.z);
+    const p = entry?.group.position;
+    if (
+      cell &&
+      p &&
+      (cell.x !== p.x || cell.z !== p.z) &&
+      !this.occupied(cell, this.drag.id)
+    ) {
+      p.set(cell.x, 0, cell.z);
+      this.renderer.shadowMap.needsUpdate = true;
       this.rebuildCables();
     }
   };
@@ -985,7 +1020,7 @@ function readColors() {
     grid: token('chart-grid') || token('border'),
     cable: token('border-strong'),
     active: token('primary'),
-    packet: token('accent'),
+    packet: token('primary'),
     text: token('text'),
     ink: token('text'),
     shadow: token('overlay'),

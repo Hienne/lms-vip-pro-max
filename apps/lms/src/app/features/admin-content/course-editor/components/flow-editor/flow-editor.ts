@@ -14,6 +14,7 @@ import {
   viewChild,
 } from '@angular/core';
 import {
+  FLOW_LIMITS,
   FlowKindSchema,
   type FlowKind,
   type FlowModel,
@@ -77,6 +78,7 @@ export class FlowEditor {
   protected readonly store = inject(FlowEditorStore);
   protected readonly webgl = inject(FLOW_WEBGL);
   protected readonly kinds = FlowKindSchema.options;
+  protected readonly nameLimit = FLOW_LIMITS.name;
   protected readonly kindLabel = FLOW_KIND_LABEL;
   protected readonly kindIcon = FLOW_KIND_ICON;
   private readonly canvas = viewChild(FlowCanvas);
@@ -93,12 +95,6 @@ export class FlowEditor {
         if (flow !== this.flow()) this.flowChange.emit(flow);
       });
     });
-  }
-
-  protected route(step: FlowStep): string {
-    return `${this.store.nameOf(step.from)} → ${
-      step.to ? this.store.nameOf(step.to) : 'tự xử lý'
-    }`;
   }
 
   protected dragKind(event: DragEvent, kind: FlowKind): void {

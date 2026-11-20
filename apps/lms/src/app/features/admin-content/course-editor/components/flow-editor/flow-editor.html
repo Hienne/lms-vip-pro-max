@@ -37,9 +37,9 @@
         <ui-field label="Tên">
           <input
             uiInput
-            maxlength="60"
+            [maxlength]="nameLimit"
             [value]="object.name"
-            (input)="rename(object.id, $event)"
+            (change)="rename(object.id, $event)"
           />
         </ui-field>
         <ui-field label="Loại">
@@ -146,18 +146,19 @@
         cdkDropList
         (cdkDropListDropped)="reorder($event)"
       >
-        @for (step of store.steps$(); track step.id; let i = $index) {
+        @for (row of store.rows$(); track row.step.id; let i = $index; let last
+        = $last) {
         <li
           class="flow-editor__step"
           cdkDrag
-          [cdkDragDisabled]="store.editingStepId$() === step.id"
+          [cdkDragDisabled]="store.editingStepId$() === row.step.id"
         >
-          @if (store.editingStepId$() === step.id) {
+          @if (store.editingStepId$() === row.step.id) {
           <app-flow-step-form
-            [step]="step"
+            [step]="row.step"
             [objects]="store.objects$()"
-            [fresh]="store.freshStepId$() === step.id"
-            (saved)="saveStep(step.id, $event)"
+            [fresh]="store.freshStepId$() === row.step.id"
+            (saved)="saveStep(row.step.id, $event)"
             (cancelled)="store.closeStep(false)"
           />
           } @else {
@@ -166,22 +167,40 @@
           </span>
           <button
             uiButton
-            [variant]="store.activeStep$()?.id === step.id ? 'secondary' : 'ghost'"
+            [variant]="store.activeStep$()?.id === row.step.id ? 'secondary' : 'ghost'"
             size="sm"
             class="flow-editor__step-body"
             (click)="store.focusStep(i)"
           >
             <span class="flow-editor__no">{{ i + 1 }}</span>
             <span class="flow-editor__step-text">
-              <span>{{ step.title }}</span>
-              <span class="flow-editor__route">{{ route(step) }}</span>
+              <span>{{ row.step.title }}</span>
+              <span class="flow-editor__route">{{ row.route }}</span>
             </span>
           </button>
           <button
             uiIconButton
             size="sm"
+            label="Chuyển lên"
+            [disabled]="i === 0"
+            (click)="store.moveStepBy(row.step.id, -1)"
+          >
+            <ui-icon name="chevron-up" size="sm" />
+          </button>
+          <button
+            uiIconButton
+            size="sm"
+            label="Chuyển xuống"
+            [disabled]="last"
+            (click)="store.moveStepBy(row.step.id, 1)"
+          >
+            <ui-icon name="chevron-down" size="sm" />
+          </button>
+          <button
+            uiIconButton
+            size="sm"
             label="Sửa bước"
-            (click)="store.editStep(step.id)"
+            (click)="store.editStep(row.step.id)"
           >
             <ui-icon name="pen-line" size="sm" />
           </button>
@@ -190,7 +209,7 @@
             variant="danger"
             size="sm"
             label="Xóa bước"
-            (click)="store.removeStep(step.id)"
+            (click)="store.removeStep(row.step.id)"
           >
             <ui-icon name="trash-2" size="sm" />
           </button>
