@@ -120,6 +120,26 @@ describe('FlowEditorStore', () => {
     expect(store.link('kh', 'ghost')).toBeNull();
   });
 
+  it('opens and closes the builder; closing keeps a fresh step and leaves Xem thử', () => {
+    const { store } = setup();
+    store.setFlow(NAPAS_FLOW);
+    store.openBuilder();
+    expect(store.open$()).toBe(true);
+    store.link('kh', 'core');
+    store.closeBuilder();
+    expect(store.open$()).toBe(false);
+    expect(store.steps$()).toHaveLength(10);
+    expect(store.editingStepId$()).toBeNull();
+
+    store.openBuilder();
+    store.togglePreview();
+    store.closeBuilder();
+    expect(store.previewing$()).toBe(false);
+    expect(store.summary$()).toBe(
+      `${NAPAS_FLOW.objects.length} đối tượng · 10 bước chuyển`,
+    );
+  });
+
   it('reorders, edits and deletes steps; the 101st step is refused', () => {
     const { store } = setup();
     store.setFlow(NAPAS_FLOW);

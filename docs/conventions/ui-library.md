@@ -125,7 +125,8 @@ SCSS only. There is no PostCSS step and no utility framework; the Sass compiler 
   - **Breakpoints**: `@include ui.bp(md)` is a mobile-first `min-width` media query from the
     `sm 640 / md 720 / lg 1100 / xl 1280` map, the only place widths are written. Write the narrow
     layout as the base style. `ui.bp-below(md)` exists for the one narrow-only case (a responsive table
-    turning into cards).
+    turning into cards). `ui.cq(lg)` is the same step measured against the nearest
+    `container-type: inline-size` ancestor, for a block that sits in panels of different widths.
   - **Layout mixins**: `ui.stack($gap)`, `ui.row($gap)`, `ui.row-between($gap)`, `ui.grow`,
     `ui.grid((md: 2, lg: 3), $gap)` (columns per breakpoint, `base` defaults to 1). Gaps are spacing
     keys.

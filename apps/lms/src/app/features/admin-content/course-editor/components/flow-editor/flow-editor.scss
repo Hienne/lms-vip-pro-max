@@ -1,17 +1,45 @@
 @use 'ui';
 
-// Variant A: palette and selection | scene | steps. Below `lg` the scene is left out.
+// The builder measures its own width, not the screen's: it is shown in the lesson drawer (lists
+// only) and in a full-screen dialog (with the scene).
+.flow-editor-frame {
+  container-type: inline-size;
+}
+
+// In the drawer: the counts, the steps in order and the way into the builder.
+.flow-editor__summary {
+  @include ui.stack(3);
+}
+
+.flow-editor__digest {
+  @include ui.stack(2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    @include ui.row(2);
+    align-items: flex-start;
+  }
+}
+
+// Variant A, mobile-first: one column (palette as a wrapping row, scene, steps); from `lg` of its
+// own width, palette and selection | scene | steps.
 .flow-editor {
   display: grid;
-  grid-template-columns: minmax(12rem, 15rem) minmax(0, 1fr) minmax(
-      16rem,
-      20rem
-    );
+  grid-template-columns: minmax(0, 1fr);
   gap: ui.space(4);
   align-items: start;
 
-  &--narrow {
-    grid-template-columns: minmax(0, 1fr);
+  @include ui.cq(lg) {
+    grid-template-columns: minmax(12rem, 15rem) minmax(0, 1fr) minmax(
+        16rem,
+        20rem
+      );
+
+    &--narrow {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 
   &__notice {
@@ -40,6 +68,15 @@
     list-style: none;
   }
 
+  // Above the scene the palette is a wrapping row; beside it, a column.
+  &__palette {
+    flex-flow: row wrap;
+
+    @include ui.cq(lg) {
+      flex-flow: column;
+    }
+  }
+
   &__kind,
   &__step-body {
     justify-content: flex-start;
@@ -50,7 +87,12 @@
   }
 
   &__kind {
+    width: auto;
     cursor: grab;
+
+    @include ui.cq(lg) {
+      width: 100%;
+    }
   }
 
   &__toolbar {
@@ -59,7 +101,8 @@
 
   &__stage {
     position: relative;
-    height: clamp(24rem, 60vh, 36rem);
+    // The dialog's height less its header, footer, toolbar and hint.
+    height: max(24rem, calc(100dvh - 20rem));
   }
 
   &__empty {

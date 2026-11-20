@@ -50,6 +50,8 @@ export class FlowEditorStore {
     freshStepId: signal<string | null>(null),
     previewIndex: signal<number | null>(null),
     previewing: signal(false),
+    /** The builder is open in its full-screen dialog. */
+    open: signal(false),
   };
 
   private readonly dialog = inject(Dialog);
@@ -61,6 +63,7 @@ export class FlowEditorStore {
   readonly freshStepId$ = this.state.freshStepId.asReadonly();
   readonly previewIndex$ = this.state.previewIndex.asReadonly();
   readonly previewing$ = this.state.previewing.asReadonly();
+  readonly open$ = this.state.open.asReadonly();
   /** The step the author last clicked or linked: its packet runs in the editing scene. */
   readonly activeStep$ = computed(() => {
     const index = this.state.previewIndex();
@@ -102,6 +105,10 @@ export class FlowEditorStore {
     () =>
       `Bước chuyển (${this.state.flow().steps.length}/${FLOW_LIMITS.steps})`,
   );
+  readonly summary$ = computed(() => {
+    const { objects, steps } = this.state.flow();
+    return `${objects.length} đối tượng · ${steps.length} bước chuyển`;
+  });
 
   // ---- setters ----
 
@@ -129,7 +136,23 @@ export class FlowEditorStore {
     this.state.previewing.set(previewing);
   }
 
+  setOpen(open: boolean): void {
+    this.state.open.set(open);
+  }
+
   // ---- commands ----
+
+  /** Opens the builder in its full-screen dialog. */
+  openBuilder(): void {
+    this.setOpen(true);
+  }
+
+  /** "Xong" or a dismissal: a step still in its form keeps what the drag gave it. */
+  closeBuilder(): void {
+    this.closeStep(true);
+    this.setPreviewing(false);
+    this.setOpen(false);
+  }
 
   /** "Xem thử": plays the flow as a learner sees it, in place of the editing scene. */
   togglePreview(): void {

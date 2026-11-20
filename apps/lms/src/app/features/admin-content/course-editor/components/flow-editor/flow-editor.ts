@@ -4,8 +4,10 @@ import {
   CdkDragHandle,
   CdkDropList,
 } from '@angular/cdk/drag-drop';
+import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
+  computed,
   effect,
   inject,
   input,
@@ -24,6 +26,7 @@ import {
   Alert,
   Button,
   Card,
+  DrawerOutlet,
   Field,
   Icon,
   IconButton,
@@ -44,9 +47,10 @@ import { FlowStepForm } from './flow-step-form/flow-step-form';
 const DRAG_TYPE = 'application/x-flow-kind';
 
 /**
- * The author's editor of a Mô phỏng luồng block (variant A): the palette and the selected Đối tượng
- * on the left, the author-mode scene (or "Xem thử") in the centre, the Bước chuyển on the right.
- * It edits a copy in its store and reports every change through `flowChange`.
+ * The author's editor of a Mô phỏng luồng block. In the lesson drawer it shows a summary and opens
+ * the builder (variant A: palette and selected Đối tượng | author-mode scene or "Xem thử" | Bước
+ * chuyển) in a full-screen dialog; without WebGL or on a narrow screen the lists are edited in
+ * place. It edits a copy in its store and reports every change through `flowChange`.
  */
 @Component({
   selector: 'app-flow-editor',
@@ -54,9 +58,11 @@ const DRAG_TYPE = 'application/x-flow-kind';
     CdkDropList,
     CdkDrag,
     CdkDragHandle,
+    NgTemplateOutlet,
     Alert,
     Button,
     Card,
+    DrawerOutlet,
     Field,
     Icon,
     IconButton,
@@ -81,6 +87,10 @@ export class FlowEditor {
   protected readonly nameLimit = FLOW_LIMITS.name;
   protected readonly kindLabel = FLOW_KIND_LABEL;
   protected readonly kindIcon = FLOW_KIND_ICON;
+  /** The 3D builder needs WebGL and a wide screen; otherwise the block is edited as lists. */
+  protected readonly canBuild = computed(
+    () => this.webgl && this.store.wide$(),
+  );
   private readonly canvas = viewChild(FlowCanvas);
 
   constructor() {

@@ -17,7 +17,6 @@ async function render(flow: FlowModel, wide = true) {
   TestBed.configureTestingModule({
     providers: [
       { provide: FLOW_WEBGL, useValue: true },
-      { provide: Dialog, useValue: { open: () => ({ closed: of(true) }) } },
       {
         provide: BreakpointObserver,
         useValue: { observe: () => of({ matches: wide, breakpoints: {} }) },
@@ -36,35 +35,68 @@ async function render(flow: FlowModel, wide = true) {
   return { fixture, el: fixture.nativeElement as HTMLElement, changes };
 }
 
-const buttons = (el: HTMLElement, label: string) =>
-  [...el.querySelectorAll('button')].filter((b) =>
+const buttons = (root: ParentNode, label: string) =>
+  [...root.querySelectorAll('button')].filter((b) =>
     b.textContent?.includes(label),
   );
 
+const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
+
+afterEach(() => {
+  TestBed.inject(Dialog).closeAll();
+  document.querySelector('.cdk-overlay-container')?.remove();
+});
+
 describe('FlowEditor', () => {
-  it('starts an empty block with the starter hint and adds a Đối tượng from the palette', async () => {
+  it('shows a summary in the drawer and builds in the full-screen dialog', async () => {
     const { fixture, el, changes } = await render({
       version: 1,
       objects: [],
       steps: [],
     });
-    expect(el.textContent).toContain(
+    expect(el.textContent).toContain('0 đối tượng · 0 bước chuyển');
+    expect(el.querySelector('app-flow-canvas')).toBeNull();
+    expect(dialog()).toBeNull();
+
+    buttons(el, 'Mở trình dựng 3D')[0].click();
+    await fixture.whenStable();
+    const builder = dialog()!;
+    expect(builder.textContent).toContain('Trình dựng Mô phỏng luồng');
+    expect(document.querySelector('.drawer-pane--full')).not.toBeNull();
+    expect(builder.querySelector('app-flow-canvas')).not.toBeNull();
+    expect(builder.textContent).toContain(
       'Kéo một đối tượng từ bảng bên trái xuống sàn để bắt đầu.',
     );
-    expect(el.textContent).toContain('0/30 đối tượng');
-    buttons(el, 'Cơ sở dữ liệu')[0].click();
+
+    buttons(builder, 'Cơ sở dữ liệu')[0].click();
     await fixture.whenStable();
     expect(changes.at(-1)?.objects).toEqual([
       { id: 'o1', name: 'Cơ sở dữ liệu', kind: 'database', x: 0, z: 0 },
     ]);
-    expect(el.textContent).toContain('1/30 đối tượng');
-    expect(el.textContent).toContain('Đối tượng đang chọn');
+    expect(builder.textContent).toContain('1/30 đối tượng');
+    expect(builder.textContent).toContain('Đối tượng đang chọn');
+
+    buttons(builder, 'Xong')[0].click();
+    await fixture.whenStable();
+    await vi.waitFor(() => expect(dialog()).toBeNull());
+    expect(el.textContent).toContain('1 đối tượng · 0 bước chuyển');
   });
 
-  it('lists the steps with their route and edits one in the form', async () => {
-    const { fixture, el, changes } = await render(NAPAS_FLOW);
-    expect(el.textContent).toContain('Bước chuyển (9/100)');
+  it('lists the steps with their route in the summary', async () => {
+    const { el } = await render(NAPAS_FLOW);
+    expect(el.textContent).toContain(
+      `${NAPAS_FLOW.objects.length} đối tượng · 9 bước chuyển`,
+    );
     expect(el.textContent).toContain('Core Banking → tự xử lý');
+  });
+
+  it('below lg shows the notice and edits the lists in place, with no scene', async () => {
+    const { fixture, el, changes } = await render(NAPAS_FLOW, false);
+    expect(el.textContent).toContain('Trình dựng 3D cần màn hình rộng hơn');
+    expect(el.querySelector('app-flow-canvas')).toBeNull();
+    expect(buttons(el, 'Mở trình dựng 3D')).toHaveLength(0);
+    expect(el.textContent).toContain('Bước chuyển (9/100)');
+
     el.querySelector<HTMLButtonElement>('[aria-label="Sửa bước"]')!.click();
     await fixture.whenStable();
     const title = el.querySelector<HTMLInputElement>(
@@ -76,12 +108,5 @@ describe('FlowEditor', () => {
     await fixture.whenStable();
     expect(changes.at(-1)?.steps[0].title).toBe('Khách hàng mở ứng dụng');
     expect(el.querySelector('app-flow-step-form')).toBeNull();
-  });
-
-  it('below lg shows the notice and no scene, keeping list editing', async () => {
-    const { el } = await render(NAPAS_FLOW, false);
-    expect(el.textContent).toContain('Trình dựng 3D cần màn hình rộng hơn');
-    expect(el.querySelector('app-flow-canvas')).toBeNull();
-    expect(el.querySelectorAll('[aria-label="Sửa bước"]')).toHaveLength(9);
   });
 });
