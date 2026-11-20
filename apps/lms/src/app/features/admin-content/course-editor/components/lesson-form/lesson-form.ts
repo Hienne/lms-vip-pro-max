@@ -334,6 +334,16 @@ export class LessonForm {
     );
   });
 
+  /** What each Video Block's Transcript row shows: this session's file, else what the draft has. */
+  protected readonly transcriptRows = computed(() =>
+    Object.fromEntries(
+      this.model()
+        .blocks.filter((block) => block.blockType === 'video')
+        .map((block) => [block.key, this.store.transcriptView(block)]),
+    ),
+  );
+  protected readonly transcriptRefusals = this.store.transcriptRefusals$;
+
   /** The course's quizzes to pick from; the chosen one stays listed even when it is no longer there. */
   protected readonly missingScormOption = computed(() => {
     const chosen = this.model().scormPackageId;
@@ -503,6 +513,21 @@ export class LessonForm {
     input.value = '';
   }
 
+  /**
+   * The `.txt` file a Video Block's picker chose; the input is emptied so the same file can be
+   * picked again. The video the drawer holds now bounds the Transcript's times.
+   */
+  protected pickedTranscript(event: Event, blockKey: string): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    const video = this.files()[blockKey]?.find(
+      (asset) => asset.usage === 'primary',
+    );
+    void this.store.attachTranscript(blockKey, file, video?.assetId);
+  }
+
   protected imageAdded(key: string, asset: AssetValue): void {
     this.model.update((value) => ({
       ...value,
@@ -586,6 +611,7 @@ export class LessonForm {
       blocks: (value.lessonType === 'content' ? value.blocks : []).map(
         ({ stepsText, bodyFormat, ...block }) => ({
           ...block,
+          transcript: this.store.transcriptView(block).lines,
           ...(block.blockType === 'text' ? { bodyFormat } : {}),
           title: block.title.trim(),
           assets:

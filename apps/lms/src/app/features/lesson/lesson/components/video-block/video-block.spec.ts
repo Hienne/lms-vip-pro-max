@@ -326,6 +326,15 @@ describe('VideoBlock', () => {
       expect(probe.video()!.currentTime).toBe(25);
     });
 
+    it('offers no jump on an untimed transcript line even when it is on', () => {
+      const probe = ready(true);
+      probe.set('transcript', [{ startSeconds: null, text: 'Không có mốc.' }]);
+      expect(probe.el.querySelectorAll('.transcript button')).toHaveLength(0);
+      expect(
+        probe.el.querySelector('.transcript__line')?.textContent,
+      ).toContain('Không có mốc.');
+    });
+
     it('lets a seek stand and reports it, closing the range played before it', () => {
       const probe = ready(true);
       probe.time(10);
@@ -479,6 +488,30 @@ describe('VideoBlock', () => {
       expect(current()).toBe(2);
     });
 
+    it('marks the first piece of a long line that was split into pieces sharing one second', () => {
+      const probe = render();
+      probe.set('transcript', [
+        { startSeconds: 5, text: 'Phần một.' },
+        { startSeconds: 5.001, text: 'Phần hai.' },
+        { startSeconds: 5.002, text: 'Phần ba.' },
+        { startSeconds: 20, text: 'Câu sau.' },
+      ]);
+      const current = () =>
+        buttons(probe).findIndex(
+          (b) => b.getAttribute('aria-current') === 'true',
+        );
+
+      probe.time(5);
+      probe.fire('timeupdate');
+      expect(current()).toBe(0);
+      probe.time(19);
+      probe.fire('timeupdate');
+      expect(current()).toBe(0);
+      probe.time(20);
+      probe.fire('timeupdate');
+      expect(current()).toBe(3);
+    });
+
     it('filters by a substring, ignoring case and accents, and keeps marking the played line', () => {
       const probe = render();
       probe.set('transcript', lines);
@@ -520,6 +553,71 @@ describe('VideoBlock', () => {
       probe.time(10);
       probe.fire('timeupdate');
       expect(scroll).not.toHaveBeenCalled();
+    });
+
+    describe('without times', () => {
+      const untimed = [
+        { startSeconds: null, text: 'Xin chào, đây là bản gỡ băng.' },
+        { startSeconds: null, text: 'Hệ thống Core Banking xử lý sổ cái.' },
+        { startSeconds: null, text: 'Tổng kết bài học.' },
+      ];
+
+      it('lists every line as plain text, with no time label', () => {
+        const probe = render();
+        probe.set('transcript', untimed);
+        expect(buttons(probe).map((b) => b.textContent?.trim())).toEqual([
+          'Xin chào, đây là bản gỡ băng.',
+          'Hệ thống Core Banking xử lý sổ cái.',
+          'Tổng kết bài học.',
+        ]);
+        expect(probe.el.querySelector('.transcript__time')).toBeNull();
+        expect(
+          probe.el.querySelector('.transcript__summary')?.textContent?.trim(),
+        ).toBe('Lời thoại (3 đoạn)');
+      });
+
+      it('filters on search like a timed one', () => {
+        const probe = render();
+        probe.set('transcript', untimed);
+        search(probe, 'TONG KET');
+        expect(buttons(probe).map((b) => b.textContent?.trim())).toEqual([
+          'Tổng kết bài học.',
+        ]);
+        search(probe, 'không có từ này');
+        expect(probe.el.textContent).toContain('Không có đoạn nào khớp.');
+        search(probe, '');
+        expect(buttons(probe)).toHaveLength(3);
+      });
+
+      it('never marks a line as the one being played', () => {
+        const probe = render();
+        probe.set('transcript', untimed);
+        for (const second of [0, 5, 10, 600]) {
+          probe.time(second);
+          probe.fire('timeupdate');
+          expect(
+            buttons(probe).filter(
+              (b) => b.getAttribute('aria-current') === 'true',
+            ),
+          ).toHaveLength(0);
+        }
+      });
+
+      it('offers nothing to click to seek', () => {
+        const probe = render();
+        probe.set('transcript', untimed);
+        const seek = vi.fn();
+        probe.el
+          .querySelector<HTMLVideoElement>('video')
+          ?.addEventListener('seeking', seek);
+        buttons(probe).forEach((b) => b.click());
+        expect(seek).not.toHaveBeenCalled();
+        expect(
+          probe.el.querySelectorAll(
+            'details.transcript button, details.transcript a',
+          ),
+        ).toHaveLength(0);
+      });
     });
   });
 });

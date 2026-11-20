@@ -71,6 +71,7 @@ import {
   COVER_KEY,
   CourseEditorStore,
   EDITOR_STEPS,
+  type PlacedBlock,
 } from './data-access/course-editor.store';
 
 export const KEPT_DRAFT_TITLE =
@@ -344,14 +345,15 @@ export class CourseEditor implements HasUnsavedChanges {
     return pending ? `Còn ${pending} tệp đang tải` : '';
   });
 
-  /** Where each block of the draft sits, by key: what a kept upload records. */
-  private readonly blockPositions = computed(
-    (): ReadonlyMap<string, string> =>
+  /** The blocks of the draft by key, each with where it sits: what a kept upload records. */
+  private readonly blocks = computed(
+    (): ReadonlyMap<string, PlacedBlock> =>
       new Map(
         this.model().chapters.flatMap((chapter, ci) =>
           chapter.lessons.flatMap((lesson, li) =>
             lesson.blocks.map(
-              (block, bi) => [block.key, `${ci}.${li}.${bi}`] as const,
+              (block, bi) =>
+                [block.key, { position: `${ci}.${li}.${bi}`, block }] as const,
             ),
           ),
         ),
@@ -360,7 +362,7 @@ export class CourseEditor implements HasUnsavedChanges {
 
   constructor() {
     this.keepDraftWhenTheSessionEnds();
-    this.store.registerBlockPositions(this.blockPositions);
+    this.store.registerBlocks(this.blocks);
     this.store.registerAssetAttacher((blockKey, asset) =>
       this.model.update((value) => ({
         ...value,

@@ -51,8 +51,9 @@ export interface BlockValue {
   readonly assets: readonly AssetValue[];
   readonly steps: readonly StepValue[];
   /**
-   * The chapters and transcript of a loaded video block. The editor has no UI for them, but a tree
-   * save replaces them, so they travel back unchanged; a new block has none.
+   * The chapters and transcript of a video block. The editor has no UI for the chapters, but a
+   * tree save replaces them, so they travel back unchanged; the transcript is the author's to
+   * attach or remove in the lesson form. A new block has neither.
    */
   readonly videoChapters: readonly VideoChapter[];
   readonly transcript: readonly TranscriptLine[];
