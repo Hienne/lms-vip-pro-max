@@ -763,8 +763,56 @@ the server sends a route and speed for frame-by-frame rendering and confirms arr
 
 Deploy the matching `corebanking-academy` module and configure WebSocket upgrade for
 `/api/v1/chat-room/socket` on the FE reverse proxy. The development `/api` proxy enables WebSocket.
-Apply the backend's `2026-11-09-chat-room-games.sql` upgrade first. Presence and invitations belong to one
-backend instance. Wallets and game data persist in PostgreSQL.
+The November 17 playground upgrade needs no new table, column or migration. It uses the existing
+wallet settlement API internally. Presence, invitations, board positions, moves, clocks and color-floor
+rounds belong to one backend instance in RAM; wallets and existing dice data persist in PostgreSQL.
+Only older installations without the wallet schema need the existing `2026-11-09-chat-room-games.sql` upgrade.
+
+Join capabilities `reactions`, `boardGames` and `floorGame` gate the new event groups; `playground-ready`
+acknowledges them. Reaction IDs come from `ROOM_REACTIONS`. A new reaction replaces that player's
+previous one, expires after 2.8 seconds and clears on departure/disconnect. It sits above the speech
+bubble, honors reduced motion and never enters chat history. Bubble textures use grapheme-safe wrapping,
+three lines with ellipsis, a bright sRGB untone-mapped surface and dark text. Full text stays in history.
+
+`RoomBoard` renders three chess and three xiangqi tables from the same map used for collision and seating.
+Both seated players confirm the same contribution (at least 10 CPoint) before play starts. The map exposes
+the 5-minute + 3-second clock. Snapshots carry legal destinations, turn, clocks, last move, check, history,
+result and any repetition warning. The server validates identity, seat, match/version and deadline;
+spectators can watch but cannot move. Arrow keys navigate cells and Enter chooses; promotions offer
+queen/rook/bishop/knight. Reconnecting players receive their match and can return to their reserved chair.
+Clocks run while disconnected. UI controls let players resign or offer/accept a draw. The former
+draw-claim controls have been removed; legacy commands remain server-compatible. Player clocks,
+turn and internally scrolling history sit to the left on desktop and above the board on narrow
+screens. Chess/xiangqi scale to the remaining height; Caro retains intentional panning inside
+its 50 × 50 board. Xiangqi uses a plain river gap and palace diagonals without the river text or
+general instruction footer. FIDE dead-position reachability and WXF diagram coverage remain limitations
+documented in the backend's `docs/api/CHAT_ROOM.md`; do not claim complete rules certification.
+
+`RoomPlayground` now exposes the “Thách đấu trí tuệ” menu for all three Caro tables, six chess/xiangqi
+tables and Trên/Dưới. Board tables share three compact rows next to the dice table. Choosing Caro sends
+the selected table's available chair through normal server-authoritative seating. Choosing Trên/Dưới
+sends `dice-approach`; only confirmed arrival opens the dice panel. Manual movement or leaving cancels
+that pending intent. There are no separate Caro/dice entry buttons outside the menu.
+The reaction picker and challenge picker use `ui-menu` with its opt-in `translucent` appearance.
+The retired color floor has no map tiles, UI or advertised capability; legacy event schemas remain
+parseable for compatibility. This change has no database migration.
+
+The map's `presentation` references the board, presenter desk and chair. Joining with
+`presentation: true` enables `media-state`, `media-peer`, `media-signal` and `media-error`.
+`RoomMediaStore` owns streams, object URLs, peers, YouTube SDK state and cleanup; `RoomScreen`
+mounts the native surface in the 3D board through `CSS3DRenderer` and offers fullscreen.
+Only the seated presenter can start, stop or control a source. Local files stream directly from
+the browser over WebRTC; the backend relays bounded signaling messages and holds metadata in RAM,
+without receiving file bytes or changing the DB. Images become a 1920 × 1080 canvas stream;
+video uses a local object URL and media-element capture, without reading the full file into a JS buffer.
+YouTube links become validated video IDs; each viewer plays directly from YouTube and follows the
+presenter's shared clock, pause and seek. Viewers enable audio with a gesture.
+Standing, disconnecting, replacing a source or leaving the route closes media resources. Late viewers
+negotiate a fresh peer connection. Browser memory still holds decode buffers and live frames.
+File presentation requires media-element capture support (tested Chrome); screen sharing is an
+alternative where supported. Production requires HTTPS and may require TURN across restrictive NATs;
+see backend configuration and limits in `docs/api/CHAT_ROOM.md`. Direct peer streaming consumes the
+presenter's upload bandwidth once per viewer. This is not a server recording or scalable broadcast service.
 
 Course lesson authoring accepts `lessonType: "scorm"` and nullable `scormPackageId` on a draft (required for publication). The lesson form uploads a ZIP directly, or opens the optional lesson-library picker; uploaded draft packages publish with the course. Manual content and quiz authoring stay available, including mixed courses. SCORM lessons send no manual blocks. The embedded lesson player uses the exact enrollmentId and lessonId for progress and launch. A save receipt triggers authenticated progress reads without relaunching the iframe. Completion is server-owned and follows the lesson's `scormCompletionRule`; a configured final exam remains required. Each lesson/enrollment has its own score and bookmark, even when sharing a package. Apply backend `2026-11-13-scorm-course-lessons.sql` after the SCORM 1.2 base upgrade, then `2026-11-14-scorm-completion-rule.sql`, before deploying both applications.
 

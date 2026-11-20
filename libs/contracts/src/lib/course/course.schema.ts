@@ -231,6 +231,8 @@ export const LessonBlockSchema = z.object({
   /** Chapters and transcript of a `video` block, in time order; the backend sends `[]` when it has none. */
   videoChapters: z.array(VideoChapterSchema).default([]),
   transcript: z.array(TranscriptLineSchema).default([]),
+  /** Learners may seek freely in this `video` block; an older backend omits it, which reads as off. */
+  allowSeeking: z.boolean().default(false),
   rowVersion: z.number().int(),
   createTime: BackendDateTimeSchema.nullish(),
   updateTime: BackendDateTimeSchema.nullish(),
@@ -486,6 +488,8 @@ export const BlockInputSchema = z.object({
     )
     .max(COURSE_LIMITS.transcriptLines)
     .optional(),
+  /** Only a `video` block may set it; left out it is off. */
+  allowSeeking: z.boolean().optional(),
 });
 export type BlockInput = z.infer<typeof BlockInputSchema>;
 

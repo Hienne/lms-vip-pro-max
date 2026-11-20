@@ -4,6 +4,9 @@
     có. Thông tin khóa học, bài kiểm tra và bộ câu hỏi được lưu cùng lúc.
   </p>
   <app-proposed-questions />
+  @if (fill?.rulesShown$()) {
+  <app-drafting-questions />
+  }
   <section uiCard>
     <div uiCardBody class="stack">
       <h2 class="course-rules__title">Bài kiểm tra cuối khóa</h2>
@@ -208,8 +211,11 @@
       <ui-field
         label="Điểm thưởng khi hoàn thành"
         hint="Cộng vào điểm tích lũy và bảng xếp hạng."
-        ><input uiInput type="number" [formField]="draft().rewardPoints"
-      /></ui-field>
+        ><input uiInput type="number" [formField]="draft().rewardPoints" />
+        @if (suggested().has('rewardPoints')) {
+        <app-suggested-mark />
+        }
+      </ui-field>
     </div>
   </section>
 </div>

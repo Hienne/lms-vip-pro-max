@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, viewChild } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { AgentComposer } from './agent-composer';
 
@@ -15,6 +15,7 @@ import { AgentComposer } from './agent-composer';
   />`,
 })
 class Host {
+  readonly composer = viewChild.required(AgentComposer);
   readonly answering = signal(false);
   readonly offline = signal(false);
   readonly canAttach = signal(false);

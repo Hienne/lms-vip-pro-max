@@ -1,7 +1,6 @@
 import {
   courseContentEndpoints,
   courseJobEndpoints,
-  CourseJobInputsSchema,
   CourseOutlineSchema,
   type AnyEndpoint,
   type CourseContent,
@@ -13,12 +12,14 @@ import {
   type QuestionDecision,
 } from '@lms/contracts';
 import type { FakeReply, FakeRequest } from '../backend/fake-backend';
+import { backendRefusal } from '../backend-responses';
 import { envelopeError, envelopeOk } from '../envelope';
 
 // The backend's course generation jobs (corebanking-academy, /api/v1/assistant/course-jobs) as the
 // in-app mock: jobs live in memory and move one step each time the app asks about them, so the
 // owl's progress, the review screen and a reload (the list is read again) can be tried without a
-// model. The real queue, steps and model are the backend's.
+// model. The real queue, steps and model are the backend's. Starting a job is retired (HTTP 410,
+// "Soạn cùng trợ lý" replaced it): only jobs queued before, here through `queue`, still run.
 
 const ok = (data: unknown): FakeReply => ({
   status: 200,
@@ -134,7 +135,7 @@ export class CourseJobMock {
     );
   }
 
-  /** Queues a job the way a confirmed chat card does; `owner` is the signed-in user. */
+  /** Puts a job in the queue as if it was started before the start was retired; `owner` is its user. */
   queue(owner: string, inputs: CourseJobInputs, fileName: string): CourseJob {
     const now = new Date().toISOString();
     const job: CourseJob = {
@@ -171,7 +172,7 @@ export class CourseJobMock {
   ): FakeReply | undefined {
     if (!this.answers(endpoint)) return undefined;
     if (endpoint === courseJobEndpoints.start)
-      return this.start(request, owner);
+      return backendRefusal('assistantCourseJobsRetired');
     if (endpoint === courseJobEndpoints.list) {
       const mine = this.jobs.filter((entry) => entry.owner === owner);
       mine.forEach((entry) => this.advance(entry));
@@ -225,50 +226,6 @@ export class CourseJobMock {
     }
     this.jobs = this.jobs.filter((item) => item !== entry);
     return ok(null);
-  }
-
-  private start(request: FakeRequest, owner: string): FakeReply {
-    const body = request.body;
-    const file =
-      body instanceof FormData
-        ? body.get('file')
-        : (body as { file?: unknown } | null)?.file;
-    const text =
-      body instanceof FormData
-        ? body.get('inputs')
-        : (body as { inputs?: unknown } | null)?.inputs;
-    if (!(file instanceof Blob) || typeof text !== 'string') {
-      return refuse(
-        'CORE-VALIDATION_FAILED',
-        'Cần chọn một tệp và nhập thông tin.',
-      );
-    }
-    let inputs: CourseJobInputs;
-    try {
-      inputs = CourseJobInputsSchema.parse(JSON.parse(text));
-    } catch {
-      return refuse(
-        'CORE-VALIDATION_FAILED',
-        'Thông tin khởi tạo không hợp lệ.',
-      );
-    }
-    if (inputs.chapters == null && inputs.durationMinutes == null) {
-      return refuse(
-        'CORE-VALIDATION_FAILED',
-        'Nhập số chương hoặc thời lượng mong muốn.',
-      );
-    }
-    const live = this.jobs.filter(
-      (entry) => entry.owner === owner && entry.job.status !== 'cancelled',
-    );
-    if (live.length >= 3) {
-      return refuse(
-        'ASSISTANT-JOB_RATE_LIMITED',
-        'Bạn đã tạo 3 khóa học bằng AI trong ngày, thử lại sau 24 giờ.',
-      );
-    }
-    const name = (file as File).name || 'tai-lieu.md';
-    return ok(this.queue(owner, inputs, name));
   }
 
   /** The review calls: read, edit and approve the outline, redo a lesson, decide, retry. */

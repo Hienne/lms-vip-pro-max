@@ -205,6 +205,14 @@ export const BACKEND_RESPONSES = {
     title: 'Dữ liệu đã thay đổi',
     message: 'Dữ liệu đã thay đổi từ lúc trợ lý đề xuất. Vui lòng yêu cầu lại.',
   },
+  /** The retired "Tạo bằng AI" job start: the one assistant refusal sent as HTTP 410, not 200. */
+  assistantCourseJobsRetired: {
+    status: 410,
+    code: 'ASSISTANT-COURSE_JOBS_RETIRED',
+    title: 'Tính năng đã thay đổi',
+    message:
+      'Tạo khóa học bằng AI theo cách cũ đã ngừng. Hãy dùng Soạn cùng trợ lý.',
+  },
   // LearningResponseCode: the study session protocol. All are HTTP 200 `ERROR` envelopes.
   sessionInUse: {
     status: 200,

@@ -147,6 +147,43 @@ describe('course draft', () => {
     expect(text).not.toHaveProperty('videoChapters');
   });
 
+  it('sends allowSeeking only for a video block, off for a new one, and loads it back', () => {
+    expect(newBlock('video').allowSeeking).toBe(false);
+    expect(newBlock('text').allowSeeking).toBe(false);
+
+    const lesson: LessonValue = {
+      ...newLesson(1),
+      blocks: [
+        newBlock('video'),
+        { ...newBlock('video'), allowSeeking: true },
+        newBlock('text'),
+      ],
+    };
+    const value = {
+      ...toDraftValue(eod),
+      chapters: [{ key: 'a', title: 'C', lessons: [lesson] }],
+    };
+    const [off, on, text] = toSaveDraftCommand(value, 0).chapters[0].lessons[0]
+      .blocks;
+    expect(off.allowSeeking).toBe(false);
+    expect(on.allowSeeking).toBe(true);
+    expect(text).not.toHaveProperty('allowSeeking');
+
+    const detail = structuredClone(
+      courseDetailFixtures.find((d) => d.course.code === 'NV-101')!,
+    );
+    const block = detail.chapters
+      .flatMap((c) => c.lessons)
+      .flatMap((l) => l.blocks)
+      .find((b) => b.block.blockType === 'video')!;
+    block.block.allowSeeking = true;
+    const loaded = toDraftValue(detail)
+      .chapters.flatMap((c) => c.lessons)
+      .flatMap((l) => l.blocks)
+      .find((b) => b.blockType === 'video');
+    expect(loaded?.allowSeeking).toBe(true);
+  });
+
   it('keeps the quiz of a quiz lesson both ways and drops it from a content lesson', () => {
     const detail = structuredClone(eod);
     const lessons = detail.chapters[0].lessons;
@@ -224,6 +261,24 @@ describe('course draft', () => {
     expect(checks.find((c) => c.label.includes('mục tiêu'))?.optional).toBe(
       true,
     );
+  });
+
+  // The drafting assistant's step 4 lists the failing required checks in the chat; the server
+  // (corebanking-academy DraftingPublishCheck, pinned by DraftingPublishCheckTest) copies these
+  // labels. Change both sides together.
+  it('keeps the required check labels the drafting assistant copies on the server', () => {
+    const quiz = { id: 2, status: 'CLOSED' as const, selectionMode: 'FIXED' };
+    const checks = draftChecks({ ...toDraftValue(eod), finalQuizId: '2' }, [
+      quiz,
+    ]);
+
+    expect(checks.filter((c) => !c.optional).map((c) => c.label)).toEqual([
+      'Có tên khóa học và chương trình',
+      'Có ít nhất 1 bài học',
+      'Mọi bài học có nội dung, đủ tệp hoặc đã chọn bài kiểm tra',
+      'Bài kiểm tra cuối khóa đã xuất bản',
+      'Đã chọn mức độ khóa học',
+    ]);
   });
 
   it('round-trips the cover image, left out when there is none', () => {

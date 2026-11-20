@@ -61,6 +61,10 @@ export * from './lib/assistant-course/course-job.schema';
 export * from './lib/assistant-course/course-job.endpoints';
 export * from './lib/assistant-course/course-content.schema';
 export * from './lib/assistant-course/course-content.endpoints';
+export * from './lib/assistant-drafting/drafting-session.schema';
+export * from './lib/assistant-drafting/drafting-session.endpoints';
+export * from './lib/assistant-external/external-connection.schema';
+export * from './lib/assistant-external/external-connection.endpoints';
 export * from './lib/community/community.schema';
 export * from './lib/community/community.endpoints';
 
@@ -72,3 +76,7 @@ export * from './lib/assessment/flashcard.endpoints';
 
 export * from './lib/assessment/personal-flashcard.endpoints';
 export * from './lib/scorm/scorm.endpoints';
+export * from './lib/learning-loop/checkpoint.schema';
+export * from './lib/learning-loop/checkpoint.endpoints';
+export * from './lib/learning-loop/self-explain.endpoints';
+export * from './lib/learning-loop/competency-review.endpoints';

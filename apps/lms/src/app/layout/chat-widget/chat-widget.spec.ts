@@ -12,6 +12,7 @@ import {
   type BackgroundNotice,
 } from '../../core/background/background-jobs.store';
 import { ChatWidget } from './chat-widget';
+import { CourseDraftingStore } from '../../core/course-drafting/course-drafting.store';
 
 const turn = (id: number, text: string): AgentTurn => ({
   id,
@@ -62,6 +63,7 @@ function fakeStore() {
       openError$: signal<string | null>(null).asReadonly(),
       conversationId$: signal<number | null>(null).asReadonly(),
       lesson$: lesson.asReadonly(),
+      askWithFile: vi.fn(),
       showHistory: vi.fn(() => historyOpen.set(true)),
       hideHistory: vi.fn(() => historyOpen.set(false)),
       openConversation: vi.fn(),
@@ -104,16 +106,22 @@ class Blank {}
 describe('ChatWidget', () => {
   const notice = signal<BackgroundNotice | null>(null);
   const background = { notice$: notice, dismiss: vi.fn() };
+  const canGenerate = signal(false);
 
   async function render() {
     notice.set(null);
     background.dismiss.mockClear();
+    canGenerate.set(false);
     const fake = fakeStore();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([{ path: '**', component: Blank }]),
         { provide: AgentChatStore, useValue: fake.store },
-        { provide: CourseJobAccess, useValue: { canGenerate$: signal(false) } },
+        {
+          provide: CourseDraftingStore,
+          useValue: { confirmFromChat: vi.fn(), openEditor: vi.fn() },
+        },
+        { provide: CourseJobAccess, useValue: { canGenerate$: canGenerate } },
         { provide: ConversationsStore, useValue: fake.history },
         { provide: BackgroundJobsStore, useValue: background },
       ],

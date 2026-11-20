@@ -1,5 +1,6 @@
 import {
   CitationSchema,
+  DraftingCardSchema,
   FeedbackSchema,
   PendingActionSchema,
   type PendingAction,
@@ -58,6 +59,8 @@ export const AgentReplySchema = z.object({
   grounded: z.boolean().optional(),
   navigatedTo: z.object({ path: z.string(), title: z.string() }).nullable(),
   action: ActionCardSchema.nullable(),
+  /** A step message's "Đã chốt" card: the step's state as the server read it with the turn. */
+  draftingCard: DraftingCardSchema.nullish(),
   error: z.string().nullable(),
 });
 export type AgentReply = z.infer<typeof AgentReplySchema>;

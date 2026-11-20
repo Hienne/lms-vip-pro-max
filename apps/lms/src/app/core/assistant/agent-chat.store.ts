@@ -2,6 +2,7 @@ import {
   computed,
   DestroyRef,
   effect,
+  ErrorHandler,
   inject,
   Injectable,
   linkedSignal,
@@ -13,17 +14,26 @@ import { Router } from '@angular/router';
 import {
   agentEndpoints,
   answerFeedbackEndpoints,
+  draftingSessionEndpoints,
   type RateAnswerCommand,
   type AgentCommand,
   type AgentSkill,
   type AgentStreamEvent,
-  type CourseFormPrefill,
   type ConversationContext,
   type LessonContext,
   type PendingAction,
 } from '@lms/contracts';
-import { finalize, of, Subscription, switchMap } from 'rxjs';
+import {
+  catchError,
+  EMPTY,
+  finalize,
+  map,
+  of,
+  Subscription,
+  switchMap,
+} from 'rxjs';
 import { activeHref } from '../menu/menu-catalog';
+import { serverMutation } from '../data-access/server-mutation';
 import { CourseJobTrackerStore } from '../course-jobs/course-job-tracker.store';
 import { toAppError } from '../errors/app-error';
 import { isStaleBuildError, PAGE_LOCATION } from '../errors/stale-build';
@@ -33,7 +43,6 @@ import { SessionStore } from '../session/session.store';
 import type { ActionCard, AgentReply, AgentTurn } from './agent-chat.model';
 import { AgentChatStorage } from './agent-chat.storage';
 import { ConversationsStore } from './conversations.store';
-import { CourseFormPrefillStore } from './course-form-prefill.store';
 import { turnFromStored } from './stored-turns';
 import { toolStatusText } from './agent-status';
 
@@ -45,6 +54,17 @@ export const GENERIC_ERROR =
 export const EXPIRED_MESSAGE =
   'Yêu cầu này đã hết hạn hoặc đã được xử lý. Vui lòng yêu cầu lại trợ lý.';
 const CANCELLED_MESSAGE = 'Đã huỷ thay đổi.';
+
+/** What a file picked from "Soạn cùng trợ lý" is sent with: the user has said nothing yet. */
+export const DRAFTING_SOURCE_QUESTION = 'Soạn khóa học từ tài liệu này';
+
+/** A question with its attachment, while the attachment uploads as a drafting source. */
+interface SourceUpload {
+  readonly turnId: number;
+  readonly question: string;
+  readonly userId: string | undefined;
+  readonly file: File;
+}
 const NOT_FOUND_CODE = 'ASSISTANT-ACTION_NOT_FOUND';
 
 const WAITING: AgentReply = {
@@ -73,7 +93,7 @@ export class AgentChatStore {
   private readonly storage = inject(AgentChatStorage);
   private readonly conversations = inject(ConversationsStore);
   private readonly courseJobs = inject(CourseJobTrackerStore);
-  private readonly prefill = inject(CourseFormPrefillStore);
+  private readonly errorHandler = inject(ErrorHandler);
   private readonly router = inject(Router);
   private readonly location = inject(PAGE_LOCATION);
   private readonly destroyRef = inject(DestroyRef);
@@ -84,8 +104,6 @@ export class AgentChatStore {
   /** The saved conversation being read back, if any. */
   private loading: Subscription | null = null;
   private lastUserId: string | undefined;
-  /** The file attached to the question on its way; it goes to the course form, never to the server. */
-  private attachedFile: File | null = null;
 
   private readonly userId = computed(() => this.session.user$()?.userId);
 
@@ -273,15 +291,68 @@ export class AgentChatStore {
   }
 
   /**
-   * Asks the `tao_khoa_hoc` skill with a file the user attached. The file is not uploaded: it is
-   * kept for the course form, which the server's `open_course_form` navigation opens, and the
-   * form uploads it only when "Tạo bằng AI" is pressed.
+   * Asks the `tao_khoa_hoc` skill with a file the user attached: the file is uploaded as a
+   * drafting source first, and the question names it, so the server's `start_course_drafting`
+   * starts a session from it for this conversation. A refused upload ends the turn with why.
    */
   askWithFile(rawQuestion: string, file: File): void {
-    if (!rawQuestion.trim() || this.isAnswering$()) return;
-    this.attachedFile = file;
-    this.ask(rawQuestion, 'tao_khoa_hoc');
+    const question = rawQuestion.trim();
+    if (!question || this.isAnswering$()) return;
+    const id = Math.max(0, ...this.turns$().map((t) => t.id)) + 1;
+    this.setTurns([...this.turns$(), { id, question, reply: WAITING }]);
+    this.setAnsweringId(id);
+    if (this.network.offline$()) {
+      this.fail(id, OFFLINE_MESSAGE);
+      return;
+    }
+    this.sourceUpload.run({
+      turnId: id,
+      question,
+      userId: this.userId(),
+      file,
+    });
   }
+
+  /**
+   * The attachment of a question, uploaded as a drafting source; the question is then sent naming
+   * it. A refused upload ends the turn with why, for the user who asked only.
+   */
+  private readonly sourceUpload = serverMutation(
+    (upload: SourceUpload) =>
+      this.client
+        .call(draftingSessionEndpoints.uploadSource, {
+          body: { file: upload.file },
+        })
+        .pipe(
+          map((source) => ({ upload, documentId: source.documentId })),
+          catchError((error: unknown) => {
+            if (this.userId() === upload.userId) {
+              const app = toAppError(error);
+              // The daily upload cap says how long to wait on its `limit` field.
+              const limit = app.fieldErrors?.find(
+                (field) => field.field === 'limit',
+              );
+              this.fail(
+                upload.turnId,
+                app.kind === 'offline'
+                  ? OFFLINE_MESSAGE
+                  : (limit?.message ?? app.message),
+              );
+            }
+            return EMPTY;
+          }),
+        ),
+    {
+      // A failure is the turn's own text (above), not an alert or a toast.
+      errors: 'alert',
+      onSuccess: ({ upload, documentId }) => {
+        // A turn stopped while its file uploaded asks nothing.
+        if (this.userId() !== upload.userId) return;
+        if (this.state.answeringId() !== upload.turnId) return;
+        this.stream(upload.turnId, upload.question, 'tao_khoa_hoc', documentId);
+      },
+    },
+  );
 
   /**
    * Opens the panel on the user's latest conversation about this lesson, read from the server, or on
@@ -396,7 +467,6 @@ export class AgentChatStore {
   stop(): void {
     const id = this.state.answeringId();
     if (id === null) return;
-    this.attachedFile = null;
     // The server holds the turn until the model call ends, so tell it to let go; a failure changes nothing here.
     const conversationId = this.state.conversationId();
     if (conversationId !== null) {
@@ -418,6 +488,18 @@ export class AgentChatStore {
     this.setConversationId(null);
     this.state.lesson.set(null);
     this.state.history.set(false);
+  }
+
+  /**
+   * "Soạn cùng trợ lý" on the new course page, with the file picked there: the panel opens on a new
+   * conversation and the file is sent as from the paperclip. While a reply is on its way the panel
+   * only opens, since that conversation cannot be left yet.
+   */
+  draftFrom(file: File): void {
+    this.open();
+    if (this.isAnswering$()) return;
+    this.clear();
+    this.askWithFile(DRAFTING_SOURCE_QUESTION, file);
   }
 
   // ---- saved conversations ---------------------------------------------------------------------
@@ -462,6 +544,26 @@ export class AgentChatStore {
           this.setConversationId(null);
         }
       }),
+    });
+  }
+
+  /**
+   * Reads the open conversation again: the drafting session it started moved on, so a step message
+   * or a card's state is new on the server. It waits for an answer on its way; a failed read keeps
+   * what shows and goes to the error handler.
+   */
+  reloadConversation(conversationId: number): void {
+    if (this.isAnswering$() || this.state.conversationId() !== conversationId)
+      return;
+    this.loading?.unsubscribe();
+    const userId = this.userId();
+    this.loading = this.conversations.detail(conversationId).subscribe({
+      next: this.sameUser(userId, (detail) => {
+        if (this.isAnswering$()) return;
+        if (this.state.conversationId() !== detail.id) return;
+        this.setTurns(detail.turns.map(turnFromStored));
+      }),
+      error: (error: unknown) => this.errorHandler.handleError(error),
     });
   }
 
@@ -641,7 +743,7 @@ export class AgentChatStore {
         }));
         break;
       case 'navigate':
-        this.navigate(id, event.path, event.title, event.prefill);
+        this.navigate(id, event.path, event.title);
         break;
       case 'action_required':
         this.patchReply(id, {
@@ -677,17 +779,8 @@ export class AgentChatStore {
     }
   }
 
-  /**
-   * Only a screen under the user's own menu opens; the route guard still applies on top. A course
-   * form opened by the chat gets the attached file and the fields the user said, through the
-   * prefill store.
-   */
-  private navigate(
-    id: number,
-    path: string,
-    title: string,
-    said?: CourseFormPrefill,
-  ): void {
+  /** Only a screen under the user's own menu opens; the route guard still applies on top. */
+  private navigate(id: number, path: string, title: string): void {
     const inMenu = activeHref(this.session.user$()?.nav ?? [], path) !== null;
     if (!inMenu) {
       this.dropStream();
@@ -695,23 +788,15 @@ export class AgentChatStore {
       return;
     }
     this.patchReply(id, { navigatedTo: { path, title } });
-    if (said || this.attachedFile) {
-      this.prefill.set({ file: this.attachedFile, fields: said ?? {} });
-    }
-    this.attachedFile = null;
     Promise.resolve(this.router.navigateByUrl(path)).then(
-      (opened) => {
-        if (opened === false) this.prefill.clear();
-      },
+      () => undefined,
       (error: unknown) => {
         // A tab older than the last deploy cannot load the page's chunk: the full page load gets
-        // the new build and still lands where the user asked. The prefill store is in memory, so
-        // a course form opened this way starts empty.
+        // the new build and still lands where the user asked.
         if (isStaleBuildError(error)) {
           this.location.assign(path);
           return;
         }
-        this.prefill.clear();
         this.fail(id, GENERIC_ERROR);
       },
     );
@@ -724,7 +809,6 @@ export class AgentChatStore {
 
   /** Turn `id` no longer streams; a newer turn that is still answering keeps the composer locked. */
   private answered(id: number): void {
-    this.attachedFile = null;
     if (this.state.answeringId() === id) this.setAnsweringId(null);
     this.conversations.touch();
   }
@@ -732,6 +816,7 @@ export class AgentChatStore {
   private dropStream(): void {
     this.streaming?.unsubscribe();
     this.streaming = null;
+    this.sourceUpload.reset();
   }
 
   // ---- history and storage ---------------------------------------------------------------------

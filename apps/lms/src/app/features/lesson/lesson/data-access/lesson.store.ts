@@ -107,7 +107,13 @@ const idParam = (value: string | null): number | undefined => {
 };
 
 /** The side panel's tabs. */
-export type SideTab = 'outline' | 'notes';
+export type SideTab = 'outline' | 'notes' | 'review';
+
+/**
+ * How the lesson's "Câu hỏi nhanh" card is asked for: `auto` shows it once the last block is done,
+ * `open` is the learner (or a `?checkpoint=1` link) asking for it, `skipped` is "Bỏ qua".
+ */
+export type CheckpointMode = 'auto' | 'open' | 'skipped';
 
 /** The final exam as the server evaluated it (`NOT_REQUIRED` is not shown). */
 const FINAL_EXAM_LABEL = {
@@ -215,6 +221,14 @@ export class LessonStore {
     }),
     /** The side panel tab: the outline, or the notes of this lesson. */
     sideTab: signal<SideTab>('outline'),
+    /** The quick-questions card of this lesson; a new lesson starts over, from `?checkpoint=1` if present. */
+    checkpoint: linkedSignal<number | undefined, CheckpointMode>({
+      source: () => this.lessonId$(),
+      computation: () =>
+        this.route.snapshot.queryParamMap.get('checkpoint') === '1'
+          ? 'open'
+          : 'auto',
+    }),
     /** Focus mode: from `lg` the side panel is hidden and the content takes its width. Per browser. */
     focus: signal(false),
     /** Where the learner is in the active block, as its player tells; a new block starts over. */
@@ -390,6 +404,20 @@ export class LessonStore {
   /** Changes when a note was saved: the note form empties. */
   readonly noteAdded$ = this.lessonNotes.added;
   readonly sideTab$ = this.state.sideTab.asReadonly();
+  readonly checkpointMode$ = this.state.checkpoint.asReadonly();
+  /** The learner asked for the questions, so a card with nothing to show says so instead of hiding. */
+  readonly checkpointAsked$ = computed(() => this.checkpointMode$() === 'open');
+  /** The last block of the lesson is done: the natural pause to recall what was read. */
+  readonly lessonDone$ = computed(
+    () => this.blocks$().at(-1)?.status === 'completed',
+  );
+  /** The card is wanted: asked for, or the lesson is done and the learner has not skipped it. */
+  readonly checkpointWanted$ = computed(
+    () =>
+      this.view$() === 'ready' &&
+      (this.checkpointAsked$() ||
+        (this.checkpointMode$() === 'auto' && this.lessonDone$())),
+  );
   readonly focus$ = this.state.focus.asReadonly();
 
   /** Where a new note would go: the page or second on screen, else the whole lesson. */
@@ -725,7 +753,36 @@ export class LessonStore {
   }
 
   setSideTab(tab: string): void {
-    this.state.sideTab.set(tab === 'notes' ? 'notes' : 'outline');
+    this.state.sideTab.set(
+      tab === 'notes' || tab === 'review' ? tab : 'outline',
+    );
+  }
+
+  setCheckpointMode(mode: CheckpointMode): void {
+    this.state.checkpoint.set(mode);
+  }
+
+  /** "Tự kiểm tra" in the side panel: shows the card now, and closes the drawer of a narrow screen. */
+  openCheckpoint(): void {
+    this.setCheckpointMode('open');
+    this.closeOutline();
+  }
+
+  /** "Giải thích lại bằng lời của bạn" from the lesson page: shows the side panel's "Tự kiểm tra" tab, drawer included. */
+  openSelfExplain(): void {
+    this.setSideTab('review');
+    this.openOutline();
+  }
+
+  /** "Bỏ qua": the card goes for this lesson. It never held "Tiếp theo" back. */
+  skipCheckpoint(): void {
+    this.setCheckpointMode('skipped');
+  }
+
+  /** "Xem lại bài học" from the quick questions: the first block again. */
+  reviewFromStart(): void {
+    const first = this.blocks$()[0];
+    if (first) this.selectBlock(first.id);
   }
 
   setFocus(focus: boolean): void {
@@ -755,6 +812,14 @@ export class LessonStore {
     const lessonId = this.lessonId$();
     if (lessonId !== undefined) {
       this.lessonNotes.add({ lessonId, anchor: this.anchor$(), text });
+    }
+  }
+
+  /** "Lưu vào ghi chú" of the explain-it-back card: a note on the whole lesson, whatever is on screen. */
+  saveLessonNote(text: string): void {
+    const lessonId = this.lessonId$();
+    if (lessonId !== undefined) {
+      this.lessonNotes.add({ lessonId, anchor: NO_ANCHOR, text });
     }
   }
 
@@ -935,7 +1000,11 @@ export class LessonStore {
     this.channel.send({ type: 'PAUSE', playing: false, positionSeconds });
   }
 
-  /** A seek from `from` to `to`; the range played up to `from` is closed first. */
+  /** A seek the author allows, to this second: reported without a range. */
+  videoSeek(positionSeconds: number): void {
+    this.channel.send({ type: 'SEEK', playing: false, positionSeconds });
+  }
+
   pdfPage(pdfPage: number): void {
     this.channel.send({ type: 'PDF_PAGE', pdfPage });
   }

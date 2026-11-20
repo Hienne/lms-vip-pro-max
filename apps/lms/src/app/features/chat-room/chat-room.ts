@@ -12,6 +12,11 @@ import { RoomCaro } from './components/room-caro/room-caro';
 import { RoomComposer } from './components/room-composer/room-composer';
 import { RoomDice } from './components/room-dice/room-dice';
 import { RoomJoin } from './components/room-join/room-join';
+import { RoomBoard } from './components/room-board/room-board';
+import { RoomPlayground } from './components/room-playground/room-playground';
+import { RoomScreen } from './components/room-screen/room-screen';
+import { RoomMediaStore } from './data-access/room-media.store';
+import { RoomVoiceStore } from './data-access/room-voice.store';
 import { ChatRoomStore } from './data-access/chat-room.store';
 import { RoomGamesStore } from './data-access/room-games.store';
 
@@ -27,12 +32,20 @@ import { RoomGamesStore } from './data-access/room-games.store';
     RoomComposer,
     RoomDice,
     RoomJoin,
+    RoomBoard,
+    RoomPlayground,
+    RoomScreen,
     SectionCard,
   ],
-  providers: [ChatRoomStore, RoomGamesStore],
+  providers: [ChatRoomStore, RoomGamesStore, RoomMediaStore, RoomVoiceStore],
   templateUrl: './chat-room.html',
   styleUrl: './chat-room.scss',
-  host: { '(window:keydown)': 'shortcut($event)' },
+  host: {
+    '(window:keydown)': 'shortcut($event)',
+    '(window:keyup)': 'releaseVoiceKey($event)',
+    '(window:blur)': 'store.voice.release()',
+    '(document:visibilitychange)': 'releaseHiddenVoice()',
+  },
 })
 export class ChatRoom {
   protected readonly store = inject(ChatRoomStore);
@@ -42,6 +55,9 @@ export class ChatRoom {
   private readonly gamePanel = viewChild<ElementRef<HTMLElement>>('gamePanel');
   private readonly chatLog = viewChild<ElementRef<HTMLElement>>('chatLog');
   private followChat = true;
+  protected attachScreen(element: HTMLElement | null): void {
+    this.canvas()?.attachScreen(element);
+  }
   constructor() {
     afterRenderEffect(() =>
       this.gamePanel()?.nativeElement.focus({ preventScroll: true }),
@@ -68,6 +84,24 @@ export class ChatRoom {
   }
   protected shortcut(event: KeyboardEvent): void {
     if (event.isComposing) return;
+    const target = event.target as HTMLElement | null;
+    if (event.code === 'KeyV' && this.store.voice.listening$()) {
+      if (
+        event.defaultPrevented ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey ||
+        this.store.chatOpen$() ||
+        target?.isContentEditable ||
+        target?.closest?.(
+          'input, textarea, select, [role="textbox"], [role="menu"], [role="menuitem"], [data-room-screen]',
+        )
+      )
+        return;
+      event.preventDefault();
+      if (!event.repeat) void this.store.voice.pressToTalk();
+      return;
+    }
     if (this.games.panel$()) {
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -75,7 +109,11 @@ export class ChatRoom {
       }
       return;
     }
-    const target = event.target as HTMLElement;
+    if (
+      event.defaultPrevented ||
+      target?.closest?.('[role="menu"], [role="menuitem"], [data-room-screen]')
+    )
+      return;
     if (
       event.code === 'Space' &&
       this.store.gesturesEnabled$() &&
@@ -99,11 +137,31 @@ export class ChatRoom {
     if (
       event.key === 'Enter' &&
       this.store.online$() &&
-      !['INPUT', 'TEXTAREA', 'BUTTON', 'SELECT'].includes(target?.tagName)
+      !['INPUT', 'TEXTAREA', 'BUTTON', 'SELECT', 'SUMMARY'].includes(
+        target?.tagName ?? '',
+      )
     ) {
       event.preventDefault();
       this.store.openChat();
     }
+  }
+  protected releaseVoiceKey(event: KeyboardEvent): void {
+    if (event.code === 'KeyV') this.store.voice.release();
+  }
+  protected releaseHiddenVoice(): void {
+    if (document.hidden) this.store.voice.release();
+  }
+  protected holdVoiceButton(event: PointerEvent): void {
+    if (!event.isPrimary || event.button !== 0) return;
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    void this.store.voice.pressToTalk();
+  }
+  protected voiceButtonKey(event: KeyboardEvent): void {
+    if (event.code !== 'Space' && event.code !== 'Enter') return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.type === 'keyup') this.store.voice.release();
+    else if (!event.repeat) void this.store.voice.pressToTalk();
   }
   protected closeChat(): void {
     this.store.closeChat();

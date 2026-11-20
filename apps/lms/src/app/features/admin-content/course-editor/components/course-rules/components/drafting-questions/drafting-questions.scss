@@ -1,0 +1,55 @@
+@use 'ui';
+
+:host {
+  display: block;
+  grid-column: 1 / -1;
+}
+
+.drafting-questions {
+  @include ui.stack(4);
+
+  &__note {
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+
+  &__meta {
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+
+  &__list {
+    @include ui.stack(5);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__question {
+    @include ui.stack(2);
+  }
+
+  &__options {
+    @include ui.stack(2);
+  }
+
+  &__head {
+    @include ui.row(2);
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  &__remove {
+    margin-inline-start: auto;
+  }
+
+  &__option {
+    @include ui.row(2);
+    align-items: center;
+  }
+
+  &__option-text {
+    flex: 1;
+    min-width: 0;
+  }
+}

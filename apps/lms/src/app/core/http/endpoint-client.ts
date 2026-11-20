@@ -32,7 +32,7 @@ export interface SocketEndpoint {
 }
 
 export interface SocketConnection<Request> {
-  send(command: Request): void;
+  send(command: Request, maxBufferedBytes?: number): void;
   close(): void;
 }
 
@@ -192,8 +192,12 @@ export class EndpointClient {
     socket.onclose = ({ code }) =>
       observer.closed(invalidResponse ? SOCKET_INVALID_RESPONSE : code);
     return {
-      send: (command) => {
-        if (socket.readyState === WebSocket.OPEN)
+      send: (command, maxBufferedBytes) => {
+        if (
+          socket.readyState === WebSocket.OPEN &&
+          (maxBufferedBytes === undefined ||
+            socket.bufferedAmount <= maxBufferedBytes)
+        )
           socket.send(JSON.stringify(endpoint.request.parse(command)));
       },
       close: () => {

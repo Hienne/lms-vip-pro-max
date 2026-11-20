@@ -17,6 +17,7 @@ const block = (over: Partial<LessonBlock>): LessonBlock => ({
   sortNo: 1,
   videoChapters: [],
   transcript: [],
+  allowSeeking: false,
   rowVersion: 0,
   ...over,
 });

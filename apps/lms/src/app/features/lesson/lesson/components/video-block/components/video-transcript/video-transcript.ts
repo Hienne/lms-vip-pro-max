@@ -1,4 +1,4 @@
-import { Component, computed, input, signal } from '@angular/core';
+import { Component, computed, input, output, signal } from '@angular/core';
 import { form, FormField } from '@angular/forms/signals';
 import type { TranscriptLine } from '@lms/contracts';
 import { Icon, Input } from '@lms/ui';
@@ -20,6 +20,10 @@ export class VideoTranscript {
   readonly lines = input.required<readonly TranscriptLine[]>();
   /** The whole second the player is at. */
   readonly second = input(0);
+  /** A line can be clicked to jump to its time; otherwise it only highlights. */
+  readonly seekable = input(false);
+  /** The second of the line the learner clicked. */
+  readonly jump = output<number>();
 
   protected readonly clock = clock;
 

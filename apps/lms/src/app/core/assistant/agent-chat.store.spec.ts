@@ -17,8 +17,8 @@ import {
   agentNavigateEvents,
   BACKEND_RESPONSES,
   backendRefusal,
+  envelopeError,
   envelopeOk,
-  knowledgeDocumentFixtures,
   seedMe,
 } from '@lms/mocks';
 import { parseAppConfig, provideAppConfig } from '../config/app-config';
@@ -32,12 +32,12 @@ import {
   FakeSessionStore,
   seedProfile,
 } from '../session/session.testing';
-import { CourseFormPrefillStore } from './course-form-prefill.store';
 import { ConversationsStore } from './conversations.store';
 import {
   AgentChatStore,
   CUT_OFF_MESSAGE,
   GENERIC_ERROR,
+  DRAFTING_SOURCE_QUESTION,
   OFFLINE_MESSAGE,
 } from './agent-chat.store';
 
@@ -853,56 +853,207 @@ describe('AgentChatStore', () => {
   });
 
   describe('a file attached to a course request', () => {
-    const FORM_PATH = '/profile';
+    const SOURCES = '/api/v1/assistant/drafting-sessions/sources';
+    const EDITOR = '/profile';
 
-    it('uploads nothing: it asks the course skill and keeps the file for the form the server opens', async () => {
-      const prefill = TestBed.inject(CourseFormPrefillStore);
+    it('uploads the file as a drafting source, then asks the course skill naming it', async () => {
       const file = new File(['x'], 'q.md');
-      store.askWithFile(
-        'Tạo khóa học từ tài liệu này, tên khóa học: [TEST-AI] Khóa thử',
-        file,
+      store.askWithFile('Tạo khóa học từ tài liệu này', file);
+      await settle();
+
+      expect(lastReply()?.status).toBe('waiting');
+      backend.expectNone(STREAM);
+      const upload = backend.expectOne(SOURCES);
+      expect((upload.request.body as FormData).get('file')).toBe(file);
+      upload.flush(
+        envelopeOk({ documentId: 40, fileName: 'q.md', status: 'UPLOADED' }),
       );
       await settle();
 
-      backend.expectNone('/api/v1/knowledge/documents');
       const stream = backend.expectOne(STREAM);
-      expect(stream.request.body).toMatchObject({ skill: 'tao_khoa_hoc' });
-      expect(
-        (stream.request.body as Record<string, unknown>)[
-          'attachmentDocumentId'
-        ],
-      ).toBeUndefined();
+      expect(stream.request.body).toMatchObject({
+        message: 'Tạo khóa học từ tài liệu này',
+        skill: 'tao_khoa_hoc',
+        attachmentDocumentId: 40,
+      });
       finish(stream, [
-        { type: 'tool', name: 'open_course_form' },
-        {
-          type: 'navigate',
-          path: FORM_PATH,
-          title: 'Khóa học mới',
-          prefill: { title: '[TEST-AI] Khóa thử' },
-        },
-        done('Đã mở form.'),
+        { type: 'tool', name: 'start_course_drafting' },
+        { type: 'navigate', path: EDITOR, title: 'Khóa học mới' },
+        done('Mình đang đọc tài liệu.'),
       ]);
       await settle();
 
-      expect(router.navigateByUrl).toHaveBeenCalledWith(FORM_PATH);
-      const handed = prefill.take();
-      expect(handed?.file).toBe(file);
-      expect(handed?.fields).toEqual({ title: '[TEST-AI] Khóa thử' });
-      expect(prefill.take()).toBeNull();
+      expect(router.navigateByUrl).toHaveBeenCalledWith(EDITOR);
+      expect(store.isAnswering$()).toBe(false);
     });
 
-    it('does not keep the file when the answer is not a navigation', async () => {
-      const prefill = TestBed.inject(CourseFormPrefillStore);
+    it('ends the turn with why when the upload is refused, and asks nothing', async () => {
+      store.askWithFile('Tạo khóa học', new File(['x'], 'q.exe'));
+      await settle();
+      backend
+        .expectOne(SOURCES)
+        .flush(
+          { success: false, message: 'Tệp không hợp lệ.', data: null },
+          { status: 400, statusText: 'Bad Request' },
+        );
+      await settle();
+
+      backend.expectNone(STREAM);
+      expect(lastReply()?.status).toBe('error');
+      expect(store.isAnswering$()).toBe(false);
+    });
+
+    it('ends the turn with how long to wait when the daily upload cap is reached', async () => {
       store.askWithFile('Tạo khóa học', new File(['x'], 'q.md'));
       await settle();
-      finish(backend.expectOne(STREAM), [done('Bạn cần chọn chương trình.')]);
-      await settle();
-      await converse(
-        'mở trang hồ sơ',
-        agentNavigateEvents('/profile', 'Hồ sơ'),
+      backend.expectOne(SOURCES).flush(
+        envelopeError(
+          'ASSISTANT-JOB_RATE_LIMITED',
+          'Đã hết lượt',
+          'Bạn đã tạo đủ số khóa học bằng AI cho phép trong ngày.',
+          [
+            {
+              field: 'limit',
+              code: 'DAILY_UPLOAD_LIMIT',
+              message:
+                'Bạn đã tải lên 10 tài liệu cho trợ lý trong ngày, thử lại sau 3 giờ.',
+            },
+          ],
+        ),
       );
+      await settle();
 
-      expect(prefill.take()).toBeNull();
+      backend.expectNone(STREAM);
+      expect(lastReply()).toMatchObject({
+        status: 'error',
+        error:
+          'Bạn đã tải lên 10 tài liệu cho trợ lý trong ngày, thử lại sau 3 giờ.',
+      });
+    });
+
+    it('uploads nothing while offline', async () => {
+      TestBed.inject(NetworkStore).goOffline();
+      store.askWithFile('Tạo khóa học', new File(['x'], 'q.md'));
+      await settle();
+
+      backend.expectNone(SOURCES);
+      expect(lastReply()?.error).toBe(OFFLINE_MESSAGE);
+    });
+  });
+
+  describe('"Soạn cùng trợ lý" from the new course page', () => {
+    const SOURCES = '/api/v1/assistant/drafting-sessions/sources';
+
+    it('opens the panel on a new conversation and sends the file picked on the page', async () => {
+      await converse('Một', [conversation(42), done('Trả lời một')]);
+      store.close();
+      const file = new File(['x'], 'q.md');
+
+      store.draftFrom(file);
+      await settle();
+
+      expect(store.isOpen$()).toBe(true);
+      expect(store.conversationId$()).toBeNull();
+      expect(store.turns$().map((t) => t.question)).toEqual([
+        DRAFTING_SOURCE_QUESTION,
+      ]);
+      const upload = backend.expectOne(SOURCES);
+      expect((upload.request.body as FormData).get('file')).toBe(file);
+      upload.flush(
+        envelopeOk({ documentId: 40, fileName: 'q.md', status: 'UPLOADED' }),
+      );
+      await settle();
+      expect(backend.expectOne(STREAM).request.body).toMatchObject({
+        message: DRAFTING_SOURCE_QUESTION,
+        skill: 'tao_khoa_hoc',
+        attachmentDocumentId: 40,
+      });
+    });
+
+    it('only opens the panel while a reply is on its way', async () => {
+      store.ask('Một');
+      await settle();
+
+      store.draftFrom(new File(['x'], 'q.md'));
+      await settle();
+
+      expect(store.isOpen$()).toBe(true);
+      expect(store.turns$()).toHaveLength(1);
+      backend.expectNone(SOURCES);
+      finish(backend.expectOne(STREAM), [done('Trả lời một')]);
+      await settle();
+    });
+
+    it('"Dừng" while the file uploads asks nothing, even when the upload ends', async () => {
+      store.askWithFile('Tạo khóa học', new File(['x'], 'q.md'));
+      await settle();
+      const upload = backend.expectOne(SOURCES);
+
+      store.stop();
+      await settle();
+      if (!upload.cancelled)
+        upload.flush(
+          envelopeOk({ documentId: 40, fileName: 'q.md', status: 'UPLOADED' }),
+        );
+      await settle();
+
+      expect(lastReply()?.status).toBe('stopped');
+      expect(store.isAnswering$()).toBe(false);
+      backend.expectNone(STREAM);
+    });
+  });
+
+  describe('a conversation read again for its drafting session', () => {
+    it('shows the step messages and cards the server has now', async () => {
+      await converse('Tạo khóa học', [conversation(5), done('Mình đang đọc.')]);
+
+      store.reloadConversation(5);
+      const card = {
+        sessionId: 1,
+        step: 1 as const,
+        state: 'proposed' as const,
+        courseId: null,
+      };
+      backend.expectOne(detailUrl(5)).flush(
+        detailBody(5, [
+          storedTurn(1, { question: 'Tạo khóa học' }),
+          storedTurn(2, {
+            question: '',
+            answer: 'Bước 1 · Thông tin cơ bản: mình đã điền…',
+            draftingCard: card,
+          }),
+        ]),
+      );
+      await settle();
+
+      expect(store.turns$().map((t) => t.question)).toEqual([
+        'Tạo khóa học',
+        '',
+      ]);
+      expect(lastReply()?.draftingCard).toEqual(card);
+    });
+
+    it('reads nothing for a conversation that is not open', async () => {
+      await converse('Một', [conversation(5), done('x')]);
+
+      store.reloadConversation(6);
+
+      backend.expectNone(detailUrl(6));
+      backend.expectNone(detailUrl(5));
+    });
+
+    it('keeps what shows when the read fails, and reports the failure', async () => {
+      const errors = vi.spyOn(TestBed.inject(ErrorHandler), 'handleError');
+      await converse('Một', [conversation(5), done('Trả lời một')]);
+
+      store.reloadConversation(5);
+      backend
+        .expectOne(detailUrl(5))
+        .flush('down', { status: 500, statusText: 'Server Error' });
+      await settle();
+
+      expect(lastReply()?.text).toBe('Trả lời một');
+      expect(errors).toHaveBeenCalledTimes(1);
     });
   });
 

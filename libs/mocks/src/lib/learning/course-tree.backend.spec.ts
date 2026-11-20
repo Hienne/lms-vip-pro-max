@@ -47,6 +47,7 @@ describe('video chapters and transcript in the course tree of the mock backend',
   function saveCommand(
     detail: CourseDetail,
     keepLists: boolean,
+    allowSeeking?: boolean,
   ): SaveDraftCommand {
     return {
       expectedVersion: detail.revision.rowVersion,
@@ -74,6 +75,7 @@ describe('video chapters and transcript in the course tree of the mock backend',
                   transcript: b.block.transcript,
                 }
               : {}),
+            ...(allowSeeking === undefined ? {} : { allowSeeking }),
           })),
         })),
       })),
@@ -85,14 +87,18 @@ describe('video chapters and transcript in the course tree of the mock backend',
       call(courseEndpoints.openDraft, { params: { courseId: '1' } }).body.data,
     );
 
-  const save = (detail: CourseDetail, keepLists: boolean): CourseDetail =>
+  const save = (
+    detail: CourseDetail,
+    keepLists: boolean,
+    allowSeeking?: boolean,
+  ): CourseDetail =>
     CourseDetailSchema.parse(
       call(courseEndpoints.saveDraft, {
         params: {
           courseId: '1',
           revisionId: String(detail.revision.id),
         },
-        body: saveCommand(detail, keepLists),
+        body: saveCommand(detail, keepLists, allowSeeking),
       }).body.data,
     );
 
@@ -135,5 +141,26 @@ describe('video chapters and transcript in the course tree of the mock backend',
     const cleared = save(kept, false);
     expect(videoOf(cleared).videoChapters).toEqual([]);
     expect(videoOf(cleared).transcript).toEqual([]);
+  });
+
+  it('seeds every block with seeking off', () => {
+    expect(videoOf(open()).allowSeeking).toBe(false);
+  });
+
+  it('round-trips allowSeeking through a save and into the next draft', () => {
+    const on = save(open(), true, true);
+    expect(videoOf(on).allowSeeking).toBe(true);
+
+    const reopened = CourseDetailSchema.parse(
+      call(courseEndpoints.getCourse, {
+        params: { courseId: '1' },
+        query: { revisionId: String(on.revision.id) },
+      }).body.data,
+    );
+    expect(videoOf(reopened).allowSeeking).toBe(true);
+
+    const off = save(on, true, false);
+    expect(videoOf(off).allowSeeking).toBe(false);
+    expect(videoOf(save(save(off, true, true), true)).allowSeeking).toBe(false);
   });
 });

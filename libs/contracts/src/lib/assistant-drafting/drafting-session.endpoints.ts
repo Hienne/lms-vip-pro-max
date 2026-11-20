@@ -1,0 +1,95 @@
+import { z } from 'zod';
+import { defineEndpoint } from '../http/endpoint';
+import {
+  ConfirmDraftingStepCommandSchema,
+  DraftingSessionSchema,
+  DraftingSourceSchema,
+  DraftingStepNumberSchema,
+  StartDraftingCommandSchema,
+  UploadDraftingSourceCommandSchema,
+} from './drafting-session.schema';
+
+const sessionParams = z.object({ sessionId: z.number().int() });
+const stepParams = sessionParams.extend({ step: DraftingStepNumberSchema });
+
+/**
+ * Drafting sessions ("Soạn cùng trợ lý"): `/api/v1/assistant/drafting-sessions`, instructors and
+ * admins with the assistant function only. No mockup file: the backend (corebanking-academy
+ * `CourseDraftingController`) is the spec, and the backend serves every endpoint here.
+ */
+export const draftingSessionEndpoints = {
+  /** Starts a session from an uploaded document; step 1 begins `proposing`. Counts against the daily course-generation limit. */
+  start: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/assistant/drafting-sessions',
+    encoding: 'multipart',
+    body: StartDraftingCommandSchema,
+    response: DraftingSessionSchema,
+  }),
+  /**
+   * Uploads the chat's attachment as a private source, not yet linked to a session. Past the daily
+   * cap of unused uploads it is `ASSISTANT-JOB_RATE_LIMITED`, field `limit` code
+   * `DAILY_UPLOAD_LIMIT`, whose message says how long to wait.
+   */
+  uploadSource: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/assistant/drafting-sessions/sources',
+    encoding: 'multipart',
+    body: UploadDraftingSourceCommandSchema,
+    response: DraftingSourceSchema,
+  }),
+  /** The caller's session; another user's id is not found. Polled while a step is `proposing`. */
+  get: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/assistant/drafting-sessions/{sessionId}',
+    params: sessionParams,
+    response: DraftingSessionSchema,
+  }),
+  /** The latest session of a course, or null: how the editor resumes after a reload. */
+  forCourse: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/assistant/drafting-sessions/course/{courseId}',
+    params: z.object({ courseId: z.number().int() }),
+    response: DraftingSessionSchema.nullable(),
+  }),
+  /**
+   * Confirms the current step with the page's values (body by step: `{course}`, `{draft}`,
+   * `{draft, competencyId, questions}`, `{}`) and starts the next one. A taken course code is
+   * `LEARNING-DUPLICATE`, and the session then proposes a new code (a code-only step 1 proposal
+   * when the author filled the step) and posts a step 1 chat card. A step 1 course for another
+   * unit than the session's is field `course.ownerOrgId` code `OWNER_MISMATCH`.
+   */
+  confirm: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/assistant/drafting-sessions/{sessionId}/steps/{step}/confirm',
+    params: stepParams,
+    body: ConfirmDraftingStepCommandSchema,
+    response: DraftingSessionSchema,
+  }),
+  /**
+   * Proposes the session's current step again ("Đề xuất lại", "Thử lại") once it is `proposed` or
+   * `failed`; any other step is `INVALID_STATE`. Other steps and the course stay, a failed session
+   * is active again. Counts against the daily
+   * course-generation limit (`ASSISTANT-JOB_RATE_LIMITED`); a finished or manual session refuses.
+   */
+  proposeAgain: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/assistant/drafting-sessions/{sessionId}/steps/{step}/propose-again',
+    params: stepParams,
+    response: DraftingSessionSchema,
+  }),
+  /** The author fills this step and the rest by hand; the assistant proposes nothing more. */
+  manual: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/assistant/drafting-sessions/{sessionId}/steps/{step}/manual',
+    params: stepParams,
+    response: DraftingSessionSchema,
+  }),
+  /** Stops the running step: it keeps what exists (`proposed`), or becomes `manual`. */
+  stop: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/assistant/drafting-sessions/{sessionId}/stop',
+    params: sessionParams,
+    response: DraftingSessionSchema,
+  }),
+} as const;

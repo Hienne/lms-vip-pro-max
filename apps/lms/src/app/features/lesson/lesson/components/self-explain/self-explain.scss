@@ -1,0 +1,31 @@
+@use 'ui';
+
+:host {
+  display: block;
+}
+
+.explain {
+  &__body {
+    @include ui.stack(3);
+  }
+
+  &__hint,
+  &__count {
+    @include ui.text(sm);
+    margin: 0;
+    color: ui.color(text-secondary);
+  }
+
+  &__count--bad {
+    color: ui.color(danger);
+  }
+
+  &__answer {
+    @include ui.stack(2);
+  }
+
+  &__actions {
+    @include ui.row(2);
+    justify-content: flex-end;
+  }
+}

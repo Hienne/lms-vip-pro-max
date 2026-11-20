@@ -16,6 +16,8 @@ import { SessionStore } from '../../../core/session/session.store';
 import { FakeSessionStore } from '../../../core/session/session.testing';
 import { ChatRoomStore } from './chat-room.store';
 import { RoomGamesStore } from './room-games.store';
+import { RoomMediaStore } from './room-media.store';
+import { RoomVoiceStore } from './room-voice.store';
 
 describe('ChatRoomStore', () => {
   let store: ChatRoomStore;
@@ -38,6 +40,8 @@ describe('ChatRoomStore', () => {
         { provide: SessionStore, useClass: FakeSessionStore },
         ChatRoomStore,
         RoomGamesStore,
+        RoomMediaStore,
+        RoomVoiceStore,
       ],
     });
     vi.spyOn(TestBed.inject(EndpointClient), 'connect').mockImplementation(
@@ -56,8 +60,12 @@ describe('ChatRoomStore', () => {
         speed: 190,
         radius: 12,
         spawn: { x: 560, y: 656 },
+        diceArea: { x: 900, y: 600, w: 160, h: 120 },
+        caroTables: [{ desk: 0, chairs: [1, 2] }],
         objects: [
           { kind: 'desk', x: 550, y: 300, w: 170, h: 68, facing: null },
+          { kind: 'chair', x: 570, y: 390, w: 44, h: 40 },
+          { kind: 'chair', x: 650, y: 390, w: 44, h: 40 },
         ],
       }),
     );
@@ -99,6 +107,11 @@ describe('ChatRoomStore', () => {
       roomGames: true,
       gestures: true,
       interactions: true,
+      reactions: true,
+      boardGames: true,
+      presentation: true,
+      voice: true,
+      voiceRelay: true,
     });
     expect(store.online$()).toBe(true);
     observer.message({
@@ -119,6 +132,77 @@ describe('ChatRoomStore', () => {
     expect(store.canvas$().speech['b'].id).toBe('m');
     observer.message({ type: 'left', id: 'b', name: 'Bình' });
     expect(store.players$()).toHaveLength(1);
+  });
+  it('approaches the dice table from the challenge menu and opens it only after server-confirmed arrival', async () => {
+    await connect();
+    observer.message({ type: 'wallet', balance: 50 });
+    send.mockClear();
+    store.chooseChallenge('dice');
+    expect(send).toHaveBeenCalledWith({ type: 'dice-approach' });
+    expect(send).not.toHaveBeenCalledWith({ type: 'dice-open' });
+    observer.message({
+      type: 'moved',
+      id: 'a',
+      x: 920,
+      y: 640,
+      approaching: false,
+    });
+    expect(send).toHaveBeenCalledWith({ type: 'dice-open' });
+    expect(TestBed.inject(RoomGamesStore).panel$()).toBe('dice');
+  });
+  it('chooses an available chair for the selected Caro table', async () => {
+    await openSocket();
+    observer.message({
+      type: 'welcome',
+      id: 'a',
+      players: [{ id: 'a', name: 'An', color: 'teal', x: 446, y: 656 }],
+      interactions: true,
+    });
+    send.mockClear();
+    store.chooseChallenge('caro:0');
+    expect(send).toHaveBeenCalledWith({
+      type: 'seat',
+      action: 'sit',
+      chair: 1,
+    });
+    expect(send).not.toHaveBeenCalledWith({ type: 'caro-stake', stake: 10 });
+  });
+  it('allows only the seated presenter to send a validated YouTube video ID', async () => {
+    await connect();
+    const state = {
+      type: 'media-state' as const,
+      id: '8cb70319-38c1-4071-877d-61c5f2533642',
+      controller: 'a',
+      name: 'An',
+      source: 'idle' as const,
+      title: '',
+      videoId: '',
+      paused: true,
+      position: 0,
+      updatedAt: 0,
+      serverTime: Date.now(),
+      iceServers: [],
+    };
+    observer.message(state);
+    send.mockClear();
+    store.media.startYouTube('https://youtu.be/dQw4w9WgXcQ?si=test');
+    expect(send).toHaveBeenCalledWith({
+      type: 'media-start',
+      id: expect.any(String),
+      source: 'youtube',
+      videoId: 'dQw4w9WgXcQ',
+      title: 'YouTube',
+    });
+    send.mockClear();
+    store.media.startYouTube(
+      'https://youtube.com.evil.example/watch?v=dQw4w9WgXcQ',
+    );
+    expect(send).not.toHaveBeenCalled();
+    expect(store.media.error$()).toContain('hợp lệ');
+    observer.message({ ...state, controller: 'b' });
+    send.mockClear();
+    store.media.startYouTube('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    expect(send).not.toHaveBeenCalled();
   });
   it('sends movement and chat only while connected, with a send cooldown', async () => {
     store.move({ x: 1, y: 1 });
@@ -222,6 +306,30 @@ describe('ChatRoomStore', () => {
     expect(store.messages$()[0].id).toBe('1');
     store.leave();
     expect(store.messages$()).toEqual([]);
+  });
+  it('replaces and clears reactions without adding them to chat history', async () => {
+    await connect();
+    vi.useFakeTimers();
+    observer.message({
+      type: 'playground-ready',
+      reactions: true,
+      boardGames: true,
+      floorGame: true,
+    });
+    store.react('love');
+    expect(send).toHaveBeenCalledWith({ type: 'reaction', reaction: 'love' });
+    observer.message({ type: 'reaction', playerId: 'a', reaction: 'love' });
+    observer.message({ type: 'reaction', playerId: 'a', reaction: 'clap' });
+    expect(store.canvas$().reactions?.['a'].reaction).toBe('clap');
+    expect(store.messages$()).toEqual([]);
+    await vi.advanceTimersByTimeAsync(2801);
+    expect(store.canvas$().reactions).toEqual({});
+    observer.message({ type: 'reaction', playerId: 'b', reaction: 'hello' });
+    observer.message({ type: 'left', id: 'b', name: 'Bình' });
+    expect(store.canvas$().reactions).toEqual({});
+    observer.message({ type: 'reaction', playerId: 'a', reaction: 'hello' });
+    store.leave();
+    expect(store.canvas$().reactions).toEqual({});
   });
   it('opens chat explicitly, closes it after send, and resumes movement', async () => {
     store.openChat();

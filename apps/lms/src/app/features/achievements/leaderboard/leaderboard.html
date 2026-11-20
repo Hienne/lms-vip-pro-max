@@ -7,7 +7,7 @@
   XP chỉ để ghi nhận quá trình học, không dùng để đánh giá hiệu suất công việc.
 </p>
 
-@if (store.isXpNoticeShown$()) {
+@if (store.hasLearningAchievements$()) { @if (store.isXpNoticeShown$()) {
 <ui-alert class="leaderboard__notice" [announce]="false">
   Điểm thưởng nay là XP, tính từ các hoạt động học của bạn. Chuỗi ngày học vẫn
   được ghi nhận nhưng không cộng XP.
@@ -53,6 +53,7 @@
     />
   </ui-stat-strip>
 </section>
+}
 <div class="leaderboard__filters">
   <ui-segmented
     class="leaderboard__scope leaderboard__view"
@@ -79,7 +80,11 @@
   />
 </div>
 
-<div class="leaderboard__layout">
+<div
+  class="leaderboard__layout"
+  [class.leaderboard__layout--board-only]="!store.hasLearningAchievements$()"
+>
+  @if (store.hasLearningAchievements$()) {
   <ui-section-card title="Điểm thưởng tích lũy" class="leaderboard__points">
     @if (store.pointsError$(); as error) {
     <ui-error-state
@@ -110,6 +115,7 @@
     }
   </ui-section-card>
 
+  }
   <ui-section-card title="Xếp hạng" class="leaderboard__ranking">
     <div slot="action" class="leaderboard__ranking-head">
       @if (store.period$() !== 'all') {
@@ -216,7 +222,8 @@
       />
       }
     </ol>
-    } @if (store.isMeBelowTop$()) { @if (store.me$(); as me) {
+    } @if (store.hasLearningAchievements$() && store.isMeBelowTop$()) { @if
+    (store.me$(); as me) {
     <p class="leaderboard__me-caption">Vị trí của bạn</p>
     <ol class="leaderboard__list" aria-label="Vị trí của bạn">
       @for (row of store.above$(); track row.userId) {

@@ -5,6 +5,7 @@ import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { createAppRoutes } from '../../app.routes';
 import { parseAppConfig, provideAppConfig } from '../config/app-config';
+import { CourseDraftingStore } from '../course-drafting/course-drafting.store';
 import { testAppConfig } from '../config/app-config.testing';
 import { SessionStore } from '../session/session.store';
 import {
@@ -43,6 +44,8 @@ describe('route table', () => {
         provideAppConfig(parseAppConfig(testAppConfig())),
         provideRouter(createAppRoutes({ devTools: true })),
         { provide: SessionStore, useClass: FakeSessionStore },
+        // The app shell provides it in the app; the harness renders the screens without the shell.
+        CourseDraftingStore,
       ],
     });
     session = fakeSession();
@@ -93,6 +96,7 @@ describe('route table', () => {
         'admin/courses/:id/edit',
         'admin/lessons',
         'admin/questions',
+        'admin/competencies',
         'admin/quizzes',
         'admin/quizzes/:id',
         'admin/import',
@@ -215,6 +219,12 @@ describe('route table', () => {
     expect(page.textContent).toContain('đang được hoàn thiện');
   });
 
+  it.each(['/admin', '/instructor'])('restricts %s to staff', async (url) => {
+    signInAs('learner');
+    await harness.navigateByUrl(url);
+    expect(router.url).toBe('/403');
+  });
+
   it.each([
     ['learner', '/admin/users', 'USER_MANAGEMENT'],
     ['reportViewer', '/learn', 'COURSE_LEARNING'],
@@ -222,7 +232,6 @@ describe('route table', () => {
     ['instructor', '/admin/roles', 'ROLE_MANAGEMENT'],
     ['admin', '/learn', 'COURSE_LEARNING'],
     ['learner', '/admin/catalog', 'TRAINING_CATALOG'],
-    ['learner', '/instructor', 'COURSE_MANAGEMENT'],
     ['reportViewer', '/catalog', 'COURSE_LEARNING'],
     ['reportViewer', '/saved', 'COURSE_LEARNING'],
     ['admin', '/certificates', 'LEARNING_PROGRESS'],

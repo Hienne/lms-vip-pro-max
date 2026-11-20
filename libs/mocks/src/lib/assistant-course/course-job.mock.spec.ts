@@ -21,21 +21,35 @@ const request = (
   params: Record<string, string> = {},
 ): FakeRequest => ({ body, params, query: {} }) as unknown as FakeRequest;
 
-const form = (patch: Record<string, unknown> = {}) => {
+const form = () => {
   const data = new FormData();
   data.set('file', new File(['x'], 'quy-trinh.md'));
-  data.set('inputs', JSON.stringify({ ...inputs, ...patch }));
+  data.set('inputs', JSON.stringify(inputs));
   return data;
 };
 
 describe('CourseJobMock', () => {
-  it('queues a job, moves it a step per look and parks it for approval', () => {
+  it('refuses to start a job with 410 like the backend, and queues nothing', () => {
     const mock = new CourseJobMock();
 
-    const started = mock.handle(courseJobEndpoints.start, request(form()), 'a');
-    const job = CourseJobSchema.parse(
-      (started?.body as { data: unknown }).data,
-    );
+    const reply = mock.handle(courseJobEndpoints.start, request(form()), 'a');
+
+    expect(reply?.status).toBe(410);
+    expect(reply?.body).toMatchObject({
+      status: 'ERROR',
+      messageCode: 'ASSISTANT-COURSE_JOBS_RETIRED',
+      message:
+        'Tạo khóa học bằng AI theo cách cũ đã ngừng. Hãy dùng Soạn cùng trợ lý.',
+      data: null,
+    });
+    const listed = mock.handle(courseJobEndpoints.list, request(), 'a');
+    expect((listed?.body as { data: unknown[] }).data).toHaveLength(0);
+  });
+
+  it('moves a job started before a step per look and parks it for approval', () => {
+    const mock = new CourseJobMock();
+
+    const job = mock.queue('a', inputs, 'quy-trinh.md');
     expect(job.status).toBe('queued');
 
     const progress = [1, 2, 3].map(() => {
@@ -52,10 +66,7 @@ describe('CourseJobMock', () => {
 
   it('lists the course of each job and stops a running job once', () => {
     const mock = new CourseJobMock();
-    const started = mock.handle(courseJobEndpoints.start, request(form()), 'a');
-    const job = CourseJobSchema.parse(
-      (started?.body as { data: unknown }).data,
-    );
+    const job = mock.queue('a', inputs, 'quy-trinh.md');
 
     const listed = mock.handle(courseJobEndpoints.list, request(), 'a');
     const rows = (listed?.body as { data: { courseId: number }[] }).data;
@@ -79,31 +90,13 @@ describe('CourseJobMock', () => {
     expect(JSON.stringify(again?.body)).toContain('JOB_FINISHED');
   });
 
-  it('refuses a start without chapters or a duration', () => {
+  it('lists only the jobs of the caller', () => {
     const mock = new CourseJobMock();
+    for (let n = 0; n < 3; n += 1) mock.queue('a', inputs, 'quy-trinh.md');
 
-    const reply = mock.handle(
-      courseJobEndpoints.start,
-      request(form({ chapters: null })),
-      'a',
-    );
-
-    expect(JSON.stringify(reply?.body)).toContain('CORE-VALIDATION_FAILED');
-  });
-
-  it('lists only the jobs of the caller and stops at three a day', () => {
-    const mock = new CourseJobMock();
-    for (let n = 0; n < 3; n += 1) {
-      mock.handle(courseJobEndpoints.start, request(form()), 'a');
-    }
-
-    const fourth = mock.handle(courseJobEndpoints.start, request(form()), 'a');
     const mine = mock.handle(courseJobEndpoints.list, request(), 'a');
     const theirs = mock.handle(courseJobEndpoints.list, request(), 'b');
 
-    expect(JSON.stringify(fourth?.body)).toContain(
-      'ASSISTANT-JOB_RATE_LIMITED',
-    );
     expect((mine?.body as { data: unknown[] }).data).toHaveLength(3);
     expect((theirs?.body as { data: unknown[] }).data).toHaveLength(0);
   });

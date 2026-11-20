@@ -6,7 +6,7 @@ import {
   navFor,
 } from '../menu/menu-catalog';
 import type { Profile, ScopeSummary } from './profile';
-import { canOpenFunction } from './function-access';
+import { canOpenFunction, staffHomeFor } from './function-access';
 
 /** The roles that make a `GLOBAL` grant a global administrator; the backend's `isGlobalAdmin`. */
 const GLOBAL_ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN'];
@@ -23,9 +23,8 @@ function scopeSummaryOf(grants: Me['roleGrants']): ScopeSummary {
 
 /**
  * Adapts the backend's `/me` to the `Profile` the app renders. The menus are the functions `/me`
- * lists that the app has a screen for; the home is the entry screen of the first of them after
- * the profile. What a role opens is the backend's call (the menus); role names are used only for the
- * display-only `scopeSummary`.
+ * lists that the app has a screen for. Staff land on their dashboard; other users land on the
+ * first available screen after their profile.
  * `isServed` drops the functions whose screens need an endpoint this build does not answer.
  */
 export function toProfile(me: Me, isServed?: IsServed): Profile {
@@ -38,6 +37,7 @@ export function toProfile(me: Me, isServed?: IsServed): Profile {
     isServed,
   );
   const roleNames = [...new Set(roleGrants.map((grant) => grant.roleName))];
+  const staffHome = staffHomeFor(roleGrants);
   return {
     userId: user.userId,
     username: user.username,
@@ -66,11 +66,11 @@ export function toProfile(me: Me, isServed?: IsServed): Profile {
           },
     grants: roleGrants,
     scopeSummary: scopeSummaryOf(roleGrants),
-    nav: navFor(functions),
+    nav: navFor(functions, staffHome),
     menus: functions.map((fn) => fn.code),
     homePath: user.mustChangePassword
       ? '/change-password'
-      : homePathFor(functions),
+      : (staffHome ?? homePathFor(functions)),
     roleText: roleNames.join(', '),
   };
 }

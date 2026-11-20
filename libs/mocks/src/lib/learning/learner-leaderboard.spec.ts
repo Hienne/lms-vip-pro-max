@@ -206,9 +206,9 @@ describe('the points and the leaderboard of the mock backend', () => {
       expect(reply.body.messageCode).toBe('CORE-VALIDATION_FAILED');
     });
 
-    it('refuses someone who is not a learner', () => {
+    it('shows the unit rankings to a signed-in administrator', () => {
       const reply = call(learnerEndpoints.unitLeaderboard, login('quantri'));
-      expect(reply.body.messageCode).toBe('CORE-ACCESS_DENIED');
+      expect(reply.body.messageCode).toBe('CORE-SUCCESS');
     });
   });
 
@@ -234,17 +234,15 @@ describe('the points and the leaderboard of the mock backend', () => {
   });
 
   it.each(['quantri', 'baocao'])(
-    'refuses %s, who is not a learner, on both reads',
+    'shows the board to %s and limits learner-only XP to learners',
     (username) => {
       const token = login(username);
-      for (const endpoint of [
-        learnerEndpoints.myPoints,
-        learnerEndpoints.leaderboard,
-      ]) {
-        expect(call(endpoint, token).body.messageCode).toBe(
-          'CORE-ACCESS_DENIED',
-        );
-      }
+      expect(call(learnerEndpoints.leaderboard, token).body.messageCode).toBe(
+        'CORE-SUCCESS',
+      );
+      expect(call(learnerEndpoints.myPoints, token).body.messageCode).toBe(
+        'CORE-ACCESS_DENIED',
+      );
     },
   );
 

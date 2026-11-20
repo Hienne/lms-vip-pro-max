@@ -10,7 +10,11 @@ const jobParams = z.object({ jobId: z.number().int() });
 
 /** Course generation from a document: `/api/v1/assistant/course-jobs` (instructors and admins only). */
 export const courseJobEndpoints = {
-  /** Queues a job from an uploaded file. One job runs at a time server-wide; at most three a day each. */
+  /**
+   * Retired: the backend answers every call with HTTP 410 `ASSISTANT-COURSE_JOBS_RETIRED` ("Soạn
+   * cùng trợ lý" replaced it, ADR 0002). Kept only so the mock can answer it; the app never calls
+   * it (`old-job-start.spec.ts`). Jobs started before still run and every other endpoint here works.
+   */
   start: defineEndpoint({
     method: 'post',
     path: '/api/v1/assistant/course-jobs',

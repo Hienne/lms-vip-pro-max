@@ -1,3 +1,4 @@
+import { AI_COURSE_COMPOSE_ENABLED } from '../../../../core/course-jobs/course-job-access';
 import {
   HttpTestingController,
   type TestRequest,
@@ -73,7 +74,8 @@ const content = {
   questions: [],
 };
 
-describe('CourseAiJobStore', () => {
+// The AI job UI is hidden while AI_COURSE_COMPOSE_ENABLED is off.
+describe.skipIf(!AI_COURSE_COMPOSE_ENABLED)('CourseAiJobStore', () => {
   let backend: HttpTestingController;
   const course = signal<CourseDetail | undefined>(undefined);
   const reloadCourse = vi.fn();

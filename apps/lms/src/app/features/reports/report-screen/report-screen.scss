@@ -5,7 +5,7 @@
   min-width: 0;
 }
 .report-screen {
-  // Three primary report groups remain on one row.
+  // Report navigation is separate from the filter controls.
   &__navigation {
     display: flex;
     flex-wrap: wrap;

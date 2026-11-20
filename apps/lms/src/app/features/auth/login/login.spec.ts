@@ -62,6 +62,7 @@ describe('Login', () => {
       (req) =>
         req.url.startsWith('/api/v1/me/learning/') ||
         req.url === '/api/v1/me/competency' ||
+        req.url === '/api/v1/me/competency/review' ||
         req.url.startsWith('/api/v1/training-catalog/'),
     );
     backend.verify();
@@ -204,6 +205,9 @@ describe('Login', () => {
     });
     await vi.waitFor(() =>
       expect(document.body.textContent).toContain('Đăng nhập thành công'),
+    );
+    expect(harness.routeNativeElement?.textContent).toContain(
+      'Chào mừng bạn đã trở lại',
     );
   });
 

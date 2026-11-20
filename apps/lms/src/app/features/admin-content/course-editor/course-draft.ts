@@ -57,10 +57,14 @@ export interface BlockValue {
    */
   readonly videoChapters: readonly VideoChapter[];
   readonly transcript: readonly TranscriptLine[];
+  /** Learners may seek freely in a video block; off for a new block and for every other type. */
+  readonly allowSeeking: boolean;
 }
 
 export interface LessonValue {
   readonly key: string;
+  /** The saved lesson this row shows; none for a lesson not saved yet. */
+  readonly id?: number;
   readonly title: string;
   readonly lessonType: LessonType;
   /** The quiz a quiz lesson holds; `null` until one is chosen, and always `null` for a content lesson. */
@@ -169,6 +173,7 @@ export function newBlock(blockType: BlockType): BlockValue {
     steps: [],
     videoChapters: [],
     transcript: [],
+    allowSeeking: false,
   };
 }
 
@@ -216,12 +221,14 @@ function toBlockValue({ block, assets, steps }: BlockDetail): BlockValue {
     // Copies, because the signal forms mark the objects they hold.
     videoChapters: block.videoChapters.map((c) => ({ ...c })),
     transcript: block.transcript.map((t) => ({ ...t })),
+    allowSeeking: block.blockType === 'video' && block.allowSeeking,
   };
 }
 
 function toLessonValue({ lesson, blocks }: LessonDetail): LessonValue {
   return {
     key: newKey(),
+    id: lesson.id,
     title: lesson.title,
     lessonType: lesson.lessonType,
     scormPackageId: lesson.scormPackageId ?? null,
@@ -316,6 +323,9 @@ function toBlockInput(block: BlockValue): BlockInput {
             text,
           })),
         }
+      : {}),
+    ...(block.blockType === 'video'
+      ? { allowSeeking: block.allowSeeking }
       : {}),
   };
 }

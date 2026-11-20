@@ -76,8 +76,21 @@ function groupBySection(items: readonly MenuItem[]): readonly NavSection[] {
  */
 export function navFor(
   functions: readonly KnownFunction[],
+  staffHome?: '/admin' | '/instructor',
 ): readonly NavSection[] {
   return groupBySection([
+    ...(staffHome
+      ? [
+          {
+            code: 'PROFILE' as const,
+            href: staffHome,
+            icon: 'chart-column' as const,
+            label: 'Tổng quan',
+            section: 'Đào tạo',
+            upcoming: false,
+          },
+        ]
+      : []),
     ...functions.flatMap((fn): MenuItem[] => {
       if (menuGroup(fn.code).nav.hidden) return [];
       if (fn.code === 'COMMUNITY') {

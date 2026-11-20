@@ -27,6 +27,8 @@ import {
 import { LEVEL_LABEL } from '../../../../../shared/course/course-labels';
 import { coverSrc } from '../../../../../shared/course/cover-image';
 import { draftTotals, type CourseDraftValue } from '../../course-draft';
+import type { FillField } from '../../data-access/drafting-fill';
+import type { DraftingHints } from '../../data-access/drafting-fill.store';
 import { PROGRAM_LOCKED_HINT } from '../../course-draft.schema';
 import {
   acceptOf,
@@ -35,8 +37,8 @@ import {
 } from '../../data-access/course-editor.store';
 import { isCancellable, itemState } from '../../data-access/upload-entry';
 import { AssetLibrary } from '../asset-library/asset-library';
+import { SuggestedMark } from '../suggested-mark/suggested-mark';
 import { AssetLibraryStore } from '../asset-library/data-access/asset-library.store';
-import { AiCourseSection } from '../../../ai-course/ai-course-section/ai-course-section';
 
 /**
  * Step 1 of the editor: the course's name, place in the catalogue, level, kind, summary and
@@ -48,8 +50,8 @@ import { AiCourseSection } from '../../../ai-course/ai-course-section/ai-course-
 @Component({
   selector: 'app-course-info',
   imports: [
-    AiCourseSection,
     AssetLibrary,
+    SuggestedMark,
     Button,
     CourseCard,
     DrawerOutlet,
@@ -78,8 +80,19 @@ export class CourseInfo {
   /** False on a published revision: the objectives cannot be added or removed. */
   readonly editable = input(true);
   readonly ownerName = input('');
-  /** Shows the "Tạo bằng AI" section: a new course, for a role that may generate. */
-  readonly ai = input(false);
+  /** The fields that still hold what the assistant wrote: each shows "AI đề xuất". */
+  readonly suggested = input<ReadonlySet<FillField>>(new Set());
+  /** What to say under a programme or module the assistant left empty. */
+  readonly hints = input<DraftingHints>({});
+  /** The hints for the programme and module while each is still empty. */
+  protected readonly shownHints = computed((): DraftingHints => {
+    const hints = this.hints();
+    const draft = this.draft();
+    return {
+      programId: draft.programId().value() ? undefined : hints.programId,
+      moduleId: draft.moduleId().value() ? undefined : hints.moduleId,
+    };
+  });
   readonly programs = input.required<readonly TrainingProgram[]>();
   readonly modules = input.required<readonly BusinessModule[]>();
   /** The cover the draft will be saved with: the stored one, or the one chosen in this page. */

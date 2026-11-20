@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { CitationSchema } from '../knowledge/knowledge.schema';
 import { ProfileChangeSchema } from '../assistant-agent/agent.schema';
+import { DraftingCardSchema } from '../assistant-drafting/drafting-session.schema';
 
 // The conversations both assistants keep on the server (CORE Academy API,
 // /api/v1/assistant/conversations). The client holds no history of its own: it lists, reopens,
@@ -124,6 +125,11 @@ export const StoredTurnSchema = z.object({
   /** False when the answer used documents but marked no source; absent means true. */
   grounded: z.boolean().optional(),
   createTime: z.iso.datetime(),
+  /**
+   * A step message of "Soạn cùng trợ lý" (no question): the step its "Đã chốt" card is about,
+   * with the step's state as the session holds it now. Absent on other turns.
+   */
+  draftingCard: DraftingCardSchema.nullish(),
 });
 export type StoredTurn = z.infer<typeof StoredTurnSchema>;
 

@@ -100,6 +100,14 @@ describe('Leaderboard', () => {
     );
   }
 
+  it('shows the rankings to an admin without requesting learner-only XP', async () => {
+    await open('/leaderboard?scope=all&period=month', 'quantri', '000002');
+    expect(rows().length).toBeGreaterThan(0);
+    expect(el.querySelector('.leaderboard__ranking ui-error-state')).toBeNull();
+    expect(el.querySelector('.leaderboard__achievements')).toBeNull();
+    expect(calls(learnerEndpoints.myPoints)).toHaveLength(0);
+  });
+
   describe('the Đơn vị board of a learner', () => {
     beforeEach(() => open());
 
@@ -559,6 +567,7 @@ describe('Leaderboard with a fake store', () => {
               rank$: signal(null),
               parts$: signal([]),
               isXpNoticeShown$: signal(false),
+              hasLearningAchievements$: signal(true),
               ...Object.fromEntries(
                 Object.entries(overrides).map(([key, value]) => [
                   key,

@@ -206,6 +206,11 @@
   // Under the block, ahead of the feedback: back, and the one primary. One row at every width, so
   // it sticks to the bottom of the viewport while a long block scrolls, floating over the content
   // there, with the bar's shadow like the course editor's foot.
+  &__explain-entry {
+    display: flex;
+    justify-content: flex-end;
+  }
+
   &__stepbar {
     position: sticky;
     bottom: ui.space(3);

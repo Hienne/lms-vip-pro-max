@@ -1,0 +1,143 @@
+@if (fill.waitingExternal$()) {
+<ui-alert
+  tone="info"
+  heading="Đang chờ Trợ lý ngoài đề xuất"
+  class="drafting-bar"
+>
+  Nhắn Trợ lý ngoài (ví dụ Claude Code) đề xuất bước này từ @if
+  (fill.externalSourceName$(); as name) { tài liệu “{{ name }}” } @else { tài
+  liệu } trên máy bạn. Các trường được điền khi đề xuất tới; bạn sửa được khi
+  điền xong hoặc khi bấm Dừng.
+  <button
+    uiButton
+    uiAlertAction
+    type="button"
+    size="sm"
+    [disabled]="drafting.isStopping$()"
+    (click)="fill.stop()"
+  >
+    Dừng
+  </button>
+</ui-alert>
+} @else if (fill.working$()) {
+<ui-alert tone="info" heading="Trợ lý đang soạn…" class="drafting-bar">
+  Các trường lần lượt được điền từ tài liệu của bạn. Bạn sửa được khi trợ lý
+  điền xong hoặc khi bấm Dừng.
+  <button
+    uiButton
+    uiAlertAction
+    type="button"
+    size="sm"
+    [disabled]="drafting.isStopping$()"
+    (click)="fill.stop()"
+  >
+    Dừng
+  </button>
+  @if (fill.confirmStep$()) {
+  <!-- The step is locked: "Đã chốt" waits, and the text above says why. -->
+  <button
+    uiButton
+    uiAlertAction
+    type="button"
+    variant="primary"
+    size="sm"
+    disabled
+  >
+    <ui-icon name="check" size="sm" />Đã chốt
+  </button>
+  }
+</ui-alert>
+} @else if (fill.failed$(); as failed) {
+<ui-alert
+  tone="danger"
+  heading="Trợ lý không soạn được bước này"
+  class="drafting-bar"
+>
+  {{ failed.error }}
+  <button
+    uiButton
+    uiAlertAction
+    type="button"
+    size="sm"
+    [disabled]="fill.isChanging$()"
+    (click)="fill.retry(failed.step)"
+  >
+    <ui-icon name="rotate-ccw" size="sm" />Thử lại
+  </button>
+  <button
+    uiButton
+    uiAlertAction
+    type="button"
+    variant="ghost"
+    size="sm"
+    [disabled]="fill.isChanging$()"
+    (click)="fill.fillByHand(failed.step)"
+  >
+    Tự điền
+  </button>
+</ui-alert>
+} @else if (fill.confirmStep$(); as step) {
+<ui-alert tone="info" heading="Chốt bước này" class="drafting-bar">
+  @if (suggestedCode(); as code) {
+  <span>Mã khóa học đã có. Trợ lý đề xuất mã {{ code }}.</span>
+  <button
+    uiButton
+    uiAlertAction
+    type="button"
+    size="sm"
+    (click)="fill.useSuggestedCode()"
+  >
+    Dùng mã {{ code }}
+  </button>
+  } @else if (problem(); as reason) {
+  <span>{{ reason }}</span>
+  } @else if (step === 4) { Trợ lý đã điền đối tượng được giao; trợ lý không
+  giao, không chia sẻ và không xuất bản khóa học. Bấm Đã chốt để kết thúc phần
+  của trợ lý, rồi tự Xuất bản khi đã sẵn sàng. } @else { Xem lại và sửa nếu cần.
+  @if (step === 2) { Nội dung từng bài để trống để bạn tự viết; bài chưa có nội
+  dung không chặn bước này. } @if (step === 3) { Các câu hỏi được giữ lại thành
+  bài kiểm tra cuối khóa mới, được chọn để xét hoàn thành. } Bấm Đã chốt để lưu
+  và để trợ lý sang bước tiếp theo. } @if (fill.proposeAgainStep$() === step) {
+  <button
+    uiButton
+    uiAlertAction
+    type="button"
+    variant="ghost"
+    size="sm"
+    [disabled]="fill.isChanging$() || fill.isConfirming$()"
+    (click)="fill.proposeAgain(step)"
+  >
+    <ui-icon name="rotate-ccw" size="sm" />Đề xuất lại
+  </button>
+  }
+  <button
+    uiButton
+    uiAlertAction
+    type="button"
+    variant="primary"
+    size="sm"
+    [disabled]="!!problem() || fill.isConfirming$()"
+    (click)="confirmed.emit(step)"
+  >
+    <ui-icon name="check" size="sm" />Đã chốt
+  </button>
+</ui-alert>
+} @else if (fill.proposeAgainStep$(); as step) {
+<!-- A step confirmed before: saved with "Lưu nháp", and the assistant may still redo it. -->
+<div class="drafting-bar drafting-bar--again">
+  <button
+    uiButton
+    type="button"
+    variant="ghost"
+    size="sm"
+    [disabled]="fill.isChanging$()"
+    (click)="fill.proposeAgain(step)"
+  >
+    <ui-icon name="rotate-ccw" size="sm" />Đề xuất lại
+  </button>
+</div>
+} @if (fill.confirmError$(); as error) {
+<ui-alert tone="danger" [heading]="error.title ?? ''" class="drafting-bar">
+  {{ error.message }}
+</ui-alert>
+}

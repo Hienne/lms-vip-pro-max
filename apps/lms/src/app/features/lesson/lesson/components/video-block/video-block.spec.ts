@@ -12,6 +12,7 @@ interface Probe {
   readonly beats: number[];
   readonly seconds: number[];
   readonly bookmarks: number[];
+  readonly sought: number[];
   readonly set: (name: string, value: unknown) => void;
   readonly retries: () => number;
 }
@@ -26,6 +27,7 @@ function render(startAt = 0): Probe {
   const beats: number[] = [];
   const seconds: number[] = [];
   const bookmarks: number[] = [];
+  const sought: number[] = [];
   let retries = 0;
   fixture.componentInstance.played.subscribe((p) => played.push(p));
   fixture.componentInstance.paused.subscribe((p) => paused.push(p));
@@ -33,6 +35,7 @@ function render(startAt = 0): Probe {
   fixture.componentInstance.secondChange.subscribe((s) => seconds.push(s));
   fixture.componentInstance.bookmark.subscribe((s) => bookmarks.push(s));
   fixture.componentInstance.retry.subscribe(() => (retries += 1));
+  fixture.componentInstance.sought.subscribe((s) => sought.push(s));
   fixture.detectChanges();
 
   const el = fixture.nativeElement as HTMLElement;
@@ -61,6 +64,7 @@ function render(startAt = 0): Probe {
     beats,
     seconds,
     bookmarks,
+    sought,
     set: (name, value) => {
       fixture.componentRef.setInput(name, value);
       fixture.detectChanges();
@@ -219,6 +223,146 @@ describe('VideoBlock', () => {
     fixture.destroy();
     vi.advanceTimersByTime(VIDEO_BEAT_MS * 2);
     expect(beats).toEqual([]);
+  });
+
+  describe('seeking', () => {
+    const chapters = [
+      { startSeconds: 0, title: 'Giới thiệu' },
+      { startSeconds: 40, title: 'Khái niệm chính' },
+    ];
+    const lines = [{ startSeconds: 25, text: 'Một dòng lời thoại.' }];
+    const bar = (probe: Probe) =>
+      probe.el.querySelector<HTMLInputElement>('input.video__seek');
+    const control = (probe: Probe, label: string) =>
+      probe.el.querySelector<HTMLButtonElement>(
+        `button[aria-label="${label}"]`,
+      );
+    /** A probe whose metadata is loaded: a 100 s video, seeking allowed or not. */
+    function ready(allowSeeking: boolean): Probe {
+      const probe = render();
+      Object.defineProperty(probe.video(), 'duration', { value: 100 });
+      probe.set('allowSeeking', allowSeeking);
+      probe.set('chapters', chapters);
+      probe.set('transcript', lines);
+      probe.fire('loadedmetadata');
+      return probe;
+    }
+
+    it('shows no bar, no ±10 s buttons and no jump links when it is off', () => {
+      const probe = ready(false);
+      expect(bar(probe)).toBeNull();
+      expect(control(probe, 'Lùi 10 giây')).toBeNull();
+      expect(control(probe, 'Tua tới 10 giây')).toBeNull();
+      expect(probe.el.querySelectorAll('.chapters button')).toHaveLength(0);
+      expect(probe.el.querySelectorAll('.transcript button')).toHaveLength(0);
+    });
+
+    it('still snaps a seek back when it is off, and reports nothing', () => {
+      const probe = ready(false);
+      probe.fire('play', false);
+      probe.time(40);
+      probe.fire('timeupdate');
+      probe.time(90);
+      probe.fire('seeking');
+      expect(probe.video()!.currentTime).toBe(40);
+      expect(probe.sought).toEqual([]);
+    });
+
+    it('ignores a jump request when it is off', () => {
+      const probe = ready(false);
+      probe.time(10);
+      probe.fire('timeupdate');
+      const block = probe.video()!;
+      block.dispatchEvent(new Event('seeking'));
+      expect(block.currentTime).toBe(10);
+    });
+
+    it('shows a named progress bar and the two ±10 s buttons when it is on', () => {
+      const probe = ready(true);
+      expect(bar(probe)?.getAttribute('aria-label')).toBe(
+        'Thanh tiến trình video',
+      );
+      expect(bar(probe)?.max).toBe('100');
+      expect(control(probe, 'Lùi 10 giây')).not.toBeNull();
+      expect(control(probe, 'Tua tới 10 giây')).not.toBeNull();
+    });
+
+    it('shows the second while the bar is dragged, then moves the video on release', () => {
+      const probe = ready(true);
+      const input = bar(probe)!;
+      input.value = '60';
+      input.dispatchEvent(new Event('input'));
+      probe.fire('timeupdate');
+      expect(input.getAttribute('aria-valuetext')).toBe('1:00 / 1:40');
+      expect(probe.video()!.currentTime).toBe(0);
+
+      input.dispatchEvent(new Event('change'));
+      expect(probe.video()!.currentTime).toBe(60);
+    });
+
+    it('moves back and forward by 10 s and stops at the start and the end', () => {
+      const probe = ready(true);
+      probe.time(5);
+      control(probe, 'Lùi 10 giây')!.click();
+      expect(probe.video()!.currentTime).toBe(0);
+
+      probe.time(30);
+      control(probe, 'Tua tới 10 giây')!.click();
+      expect(probe.video()!.currentTime).toBe(40);
+
+      probe.time(95);
+      control(probe, 'Tua tới 10 giây')!.click();
+      expect(probe.video()!.currentTime).toBe(100);
+    });
+
+    it('jumps to a chapter or a transcript line when it is clicked', () => {
+      const probe = ready(true);
+      probe.el
+        .querySelectorAll<HTMLButtonElement>('.chapters button')[1]
+        .click();
+      expect(probe.video()!.currentTime).toBe(40);
+
+      probe.el.querySelector<HTMLButtonElement>('.transcript button')!.click();
+      expect(probe.video()!.currentTime).toBe(25);
+    });
+
+    it('lets a seek stand and reports it, closing the range played before it', () => {
+      const probe = ready(true);
+      probe.time(10);
+      probe.fire('play', false);
+      probe.time(30);
+      probe.fire('timeupdate');
+      probe.time(70);
+      probe.fire('seeking');
+
+      expect(probe.video()!.currentTime).toBe(70);
+      // The range ends where playing was, the seek has none, and playing resumes at the target.
+      expect(probe.beats).toEqual([30]);
+      expect(probe.sought).toEqual([70]);
+      expect(probe.played).toEqual([10, 70]);
+      expect(probe.seconds.at(-1)).toBe(70);
+    });
+
+    it('reports a seek made while paused without a beat or a play', () => {
+      const probe = ready(true);
+      probe.time(20);
+      probe.fire('timeupdate');
+      probe.time(80);
+      probe.fire('seeking');
+      expect(probe.sought).toEqual([80]);
+      expect(probe.beats).toEqual([]);
+      expect(probe.played).toEqual([]);
+    });
+
+    it('beats from the new position after a seek', () => {
+      const probe = ready(true);
+      probe.fire('play', false);
+      probe.time(70);
+      probe.fire('seeking');
+      probe.time(85);
+      vi.advanceTimersByTime(VIDEO_BEAT_MS);
+      expect(probe.beats).toEqual([0, 85]);
+    });
   });
 
   describe('chapters', () => {

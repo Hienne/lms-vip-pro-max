@@ -103,6 +103,7 @@ describe('AppShell', () => {
         (r) =>
           r.url.startsWith('/api/v1/me/learning/') ||
           r.url === '/api/v1/me/competency' ||
+          r.url === '/api/v1/me/competency/review' ||
           r.url === '/api/v1/me/flashcard-decks' ||
           r.url === '/api/v1/training-catalog/programs' ||
           r.url === '/api/v1/orgs' ||
@@ -160,6 +161,11 @@ describe('AppShell', () => {
       )
       .filter((r) => !r.cancelled)
       .forEach((r) => r.flush(envelopeOk([])));
+    // A user with the assistant asks whether the header shows "Kết nối trợ lý ngoài"; it is off.
+    backend
+      .match('/api/v1/assistant/external-connections/status')
+      .filter((r) => !r.cancelled)
+      .forEach((r) => r.flush(envelopeOk({ enabled: false, allowed: false })));
   }
 
   async function open(url: string, counts?: Counts) {

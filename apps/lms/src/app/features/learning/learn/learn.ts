@@ -15,6 +15,7 @@ import {
 } from '@lms/ui';
 import { DueDate } from '../../../shared/course/due-date';
 import { ReminderItem } from '../../../shared/learning/reminder-item/reminder-item';
+import { ReviewSuggestions } from '../../../shared/learning/review-suggestions/review-suggestions';
 import { CourseTile } from './components/course-tile/course-tile';
 import { LearnHero } from './components/learn-hero/learn-hero';
 import { LearnKpis } from './components/learn-kpis/learn-kpis';
@@ -46,6 +47,7 @@ const TAB_LABEL: Record<LearnTab, string> = {
     List,
     ListRow,
     ReminderItem,
+    ReviewSuggestions,
     RouterLink,
     SectionCard,
     Skeleton,

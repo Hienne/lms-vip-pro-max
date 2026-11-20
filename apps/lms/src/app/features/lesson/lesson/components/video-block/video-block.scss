@@ -19,6 +19,14 @@
     }
   }
 
+  &__seek {
+    display: block;
+    width: 100%;
+    margin: ui.space(2) 0 0;
+    accent-color: ui.color(primary);
+    cursor: pointer;
+  }
+
   &__controls {
     @include ui.row(2);
     margin-top: ui.space(2);

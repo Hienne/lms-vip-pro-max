@@ -3,7 +3,7 @@
 // The top of the learner's home: the shared page header with the points as a quiet link in its
 // actions, then one card with the lesson to resume.
 :host {
-  display: block;
+  @include ui.stack(4);
 }
 
 .learn-hero {

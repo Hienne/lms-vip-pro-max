@@ -42,7 +42,7 @@ const numeric = (value: string | undefined): number | undefined =>
  * what the mock does is what a list does: pick the scope's members, order them (points, then name),
  * give ties one rank (1, 1, 3) and cut the top ten. The fixtures hold one total per learner, so the mock reads it
  * as the XP of the current month and of all time, a third of it as the current week, and nothing for earlier periods.
- * Only a learner may ask.
+ * All signed-in users may read the boards.
  */
 export class LearnerLeaderboard {
   /** Learners who hid their name from other learners' boards. */
@@ -57,7 +57,7 @@ export class LearnerLeaderboard {
 
   /** `GET /leaderboard`: the scope's learners ranked by the period's XP, the top ten and the caller's own row. */
   leaderboard(request: FakeRequest): LeaderboardView {
-    const caller = this.caller(request);
+    const caller = this.viewer(request);
     const parsed = LeaderboardQuerySchema.safeParse({
       scope: request.query['scope'],
       period: request.query['period'],
@@ -105,7 +105,7 @@ export class LearnerLeaderboard {
    * the caller's unit.
    */
   units(request: FakeRequest): UnitLeaderboard {
-    const caller = this.caller(request);
+    const caller = this.viewer(request);
     const parsed = UnitLeaderboardQuerySchema.safeParse({
       period: request.query['period'],
       offset: numeric(request.query['offset']),
@@ -177,6 +177,33 @@ export class LearnerLeaderboard {
     if (parsed.data.showOnLeaderboard) this.hidden.delete(caller.userId);
     else this.hidden.add(caller.userId);
     return parsed.data;
+  }
+
+  private viewer(request: FakeRequest): Learner {
+    const userId = this.directory.callerId(request);
+    const learner = this.learners().find((entry) => entry.userId === userId);
+    if (learner) return learner;
+    const person = this.directory
+      .people()
+      .find((entry) => entry.userId === userId);
+    return {
+      userId,
+      fullName: this.directory.nameOf('user', userId) ?? userId,
+      orgId: person?.orgId ?? null,
+      teamId: person?.teamId ?? null,
+      points: {
+        total: 0,
+        streakDays: 0,
+        parts: {
+          lessons: 0,
+          quizzes: 0,
+          firstTryBonus: 0,
+          courses: 0,
+          community: 0,
+          adjustments: 0,
+        },
+      },
+    };
   }
 
   private caller(request: FakeRequest): Learner {

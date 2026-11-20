@@ -25,6 +25,7 @@ import {
   USER_LIMITS,
   type AccessRequest,
   type AnyEndpoint,
+  type ConfirmRulesCommand,
   type Envelope,
   type PendingAction,
   type ProfileChange,
@@ -39,6 +40,8 @@ import {
   type RoleOption,
   type SaveRoleCommand,
   type ScopeType,
+  type CourseDetail,
+  type DraftingStepNumber,
   type TeamInfo,
   type UserDetail,
   type UserInfo,
@@ -67,12 +70,11 @@ import {
   AGENT_PROFILE_INVALID,
   AGENT_PROFILE_NOT_OFFERED,
   AGENT_PROFILE_UNCHANGED,
-  AGENT_COURSE_ADMIN_FORM,
   AGENT_COURSE_ATTACH_FIRST,
-  AGENT_COURSE_CARD_TITLE,
   AGENT_COURSE_FOR_INSTRUCTORS,
-  AGENT_COURSE_STARTED,
-  agentTextEvents,
+  AGENT_COURSE_SOURCE_NOT_FOUND,
+  agentCourseDraftingEvents,
+  agentToolReplyEvents,
   AGENT_SCREEN_REFUSED,
   agentActionEvents,
   agentAiErrorEvents,
@@ -103,7 +105,14 @@ import {
   type CourseOwnership,
 } from '../assessment/authoring.mock';
 import { CourseJobMock } from '../assistant-course/course-job.mock';
+import { DraftingSessionMock } from '../assistant-drafting/drafting-session.mock';
+import { ExternalConnectionMock } from '../assistant-external/external-connection.mock';
+import {
+  draftingFailedMessage,
+  draftingStepMessage,
+} from '../assistant-drafting/drafting-session.fixtures';
 import { LearnerQuizMock } from '../assessment/learner-quiz.mock';
+import { LearningLoopMock } from '../learning-loop/learning-loop.mock';
 import { learningReportHandlers } from '../reports/learning-report.handlers';
 import {
   SEED_FUNCTIONS,
@@ -249,7 +258,11 @@ export class FakeBackend {
       this.learning.courseOwnership(courseId),
   );
   private readonly learnerQuiz = new LearnerQuizMock();
+  private readonly learningLoop = new LearningLoopMock();
   private readonly courseJobs = new CourseJobMock();
+  /** Public so a spec can turn its knobs (`failNext`, `takeCodeOnConfirm`, `pollsBeforeProposal`). */
+  readonly draftingSessions = new DraftingSessionMock();
+  readonly externalConnections = new ExternalConnectionMock();
   private orgs: Mutable<SeedOrg>[] = SEED_ORGS.map((o) => ({ ...o }));
   private teams: Mutable<SeedTeam>[] = SEED_TEAMS.map((t) => ({ ...t }));
   private users: DbUser[] = SEED_USERS.map((u, index) => ({
@@ -286,6 +299,10 @@ export class FakeBackend {
   private nextActionSeq = 1;
   private book = new ConversationBook();
 
+  constructor() {
+    this.wireDraftingChat();
+  }
+
   /** Lowers the row limit of the progress export, to see the refusal without 10,000 rows. */
   limitProgressExport(rows: number): void {
     this.learning.exportRowLimit = rows;
@@ -299,7 +316,46 @@ export class FakeBackend {
         .filter((u) => u.status === 'active')
         .map((u) => ({ userId: u.userId, orgId: u.orgId, teamId: u.teamId })),
     quizStatus: (quizId) => this.authoring.quizStatus(quizId),
+    publishLessonQuizzes: (request, courseId, ids) => {
+      const undo = this.authoring.checkpointExamWrites();
+      try {
+        for (const id of ids) {
+          const params = { id: String(id) };
+          const result = this.handle(assessmentV1Endpoints.quiz, {
+            ...request,
+            params,
+          });
+          const match = QuizDetailV1Schema.safeParse(result?.body.data);
+          if (
+            !match.success ||
+            match.data.quiz.courseId !== courseId ||
+            match.data.quiz.status === 'CLOSED'
+          ) {
+            this.refuseMock(
+              envelopeError(
+                'LEARNING-QUIZ_LESSON_UNLINKED',
+                'Thiếu bài kiểm tra',
+                'Chọn bài kiểm tra còn khả dụng.',
+              ),
+            );
+          }
+          if (match.data.quiz.status === 'DRAFT') {
+            const reply = this.handle(assessmentV1Endpoints.publishQuiz, {
+              ...request,
+              params,
+              body: { expectedVersion: match.data.quiz.rowVersion },
+            });
+            if (reply && reply.body.status !== 'SUCCESS')
+              throw new Refused(reply);
+          }
+        }
+      } catch (error) {
+        undo();
+        throw error;
+      }
+    },
     reportScope: (request) => this.reportScope(request),
+    dashboardScope: (request) => this.dashboardScope(request),
     isSystemAdmin: (request) => this.isGlobalAdmin(this.caller(request)),
     nameOf: (type, id) => {
       switch (type) {
@@ -396,7 +452,10 @@ export class FakeBackend {
       this.authoring.answers(endpoint) ||
       this.assessment.answers(endpoint) ||
       this.learnerQuiz.answers(endpoint) ||
+      this.learningLoop.answers(endpoint) ||
       this.courseJobs.answers(endpoint) ||
+      this.draftingSessions.answers(endpoint) ||
+      this.externalConnections.answers(endpoint) ||
       learningReportHandlers.has(endpoint)
     );
   }
@@ -426,10 +485,93 @@ export class FakeBackend {
         throw error;
       }
     }
+    if (this.externalConnections.answers(endpoint)) {
+      try {
+        const user = this.caller(request);
+        // The server's rule: a Soạn cùng trợ lý role and the assistant function, read at each call.
+        const allowed =
+          this.hasRole(user.userId, COURSE_JOB_ROLES) &&
+          this.functionsOf(user.userId).some((f) => f.code === 'AI_ASSISTANT');
+        return this.externalConnections.handle(
+          endpoint,
+          request,
+          user.userId,
+          allowed,
+        );
+      } catch (error) {
+        if (error instanceof Refused) return error.reply;
+        throw error;
+      }
+    }
+    if (this.draftingSessions.answers(endpoint)) {
+      try {
+        const user = this.caller(request);
+        if (!this.hasRole(user.userId, COURSE_JOB_ROLES)) {
+          return refuse('accessDenied');
+        }
+        // Confirms write the course through its own endpoints, as the server does: step 1 creates
+        // the draft, step 2 saves the outline and marks the revision as AI made.
+        return this.draftingSessions.handle(endpoint, request, user.userId, {
+          create: (course) =>
+            this.handle(courseEndpoints.createCourse, {
+              ...request,
+              body: course,
+              params: {},
+              query: {},
+            }),
+          saveOutline: (courseId, revisionId, draft, aiGenerated) => {
+            const saved = this.handle(courseEndpoints.saveDraft, {
+              ...request,
+              body: draft,
+              params: {
+                courseId: String(courseId),
+                revisionId: String(revisionId),
+              },
+              query: {},
+            });
+            if (aiGenerated && saved?.body.status === 'SUCCESS') {
+              this.learning.markAiGenerated(courseId);
+              return this.handle(courseEndpoints.getCourse, {
+                ...request,
+                body: null,
+                params: { courseId: String(courseId) },
+                query: {},
+              });
+            }
+            return saved;
+          },
+          saveRules: (courseId, revisionId, rules, aiGenerated) =>
+            this.saveDraftingRules(
+              request,
+              courseId,
+              revisionId,
+              rules,
+              aiGenerated,
+            ),
+          detail: (courseId) => {
+            const reply = this.handle(courseEndpoints.getCourse, {
+              ...request,
+              body: null,
+              params: { courseId: String(courseId) },
+              query: {},
+            });
+            const body = reply?.body as { data?: CourseDetail } | undefined;
+            return body?.data;
+          },
+          markAiGenerated: (courseId) =>
+            this.learning.markAiGenerated(courseId),
+        });
+      } catch (error) {
+        if (error instanceof Refused) return error.reply;
+        throw error;
+      }
+    }
     const assessmentReply = this.assessment.handle(endpoint, request);
     if (assessmentReply) return assessmentReply;
     const quizReply = this.learnerQuiz.handle(endpoint, request);
     if (quizReply) return quizReply;
+    const loopReply = this.learningLoop.handle(endpoint, request);
+    if (loopReply) return loopReply;
     const learningReply = learningReportHandlers.get(endpoint)?.(request);
     if (learningReply) return learningReply;
     const handler = this.handlers.get(endpoint);
@@ -456,6 +598,17 @@ export class FakeBackend {
     });
     if (!parsed.success) return invalid();
     const command = parsed.data;
+    const target = command.lessonTarget;
+    if (
+      target
+        ? command.quiz.quizType !== 'PRACTICE' || command.quizId !== undefined
+        : command.quiz.quizType !== 'FINAL_EXAM'
+    )
+      return invalid();
+    const draft = command.draft ?? command.course?.draft;
+    const chapter = target ? draft?.chapters[target.chapter] : undefined;
+    if (target && chapter?.lessons[target.lesson]?.lessonType !== 'quiz')
+      return invalid();
     const undoCourse = this.learning.checkpointCourseWrites();
     const undoQuiz = this.authoring.checkpointExamWrites();
     let committed = false;
@@ -508,13 +661,27 @@ export class FakeBackend {
           command.pool.items.length !== command.quiz.questionCount)
       )
         return invalid();
-      const draft = command.draft ?? command.course?.draft;
       const linkedReply = call(
         courseEndpoints.saveDraft,
         {
           ...draft,
           expectedVersion: saved.revision.rowVersion,
-          finalQuizId: quiz.quiz.id,
+          ...(target && draft && chapter
+            ? {
+                chapters: draft.chapters.map((item, ci) =>
+                  ci === target.chapter
+                    ? {
+                        ...chapter,
+                        lessons: chapter.lessons.map((lesson, li) =>
+                          li === target.lesson
+                            ? { ...lesson, quizId: quiz.quiz.id }
+                            : lesson,
+                        ),
+                      }
+                    : item,
+                ),
+              }
+            : { finalQuizId: quiz.quiz.id }),
         },
         {
           courseId: String(saved.course.id),
@@ -523,6 +690,118 @@ export class FakeBackend {
       );
       committed = !!data(linkedReply);
       return linkedReply ?? invalid();
+    } finally {
+      if (!committed) {
+        undoCourse();
+        undoQuiz();
+      }
+    }
+  }
+
+  /**
+   * Chốt bước 3 of a drafting session, as the server's `confirmRules`: the draft is saved, the
+   * kept questions are created in the course's bank and a new fixed final exam of exactly those
+   * questions is saved and selected through the course exam save. All or nothing.
+   */
+  private saveDraftingRules(
+    request: FakeRequest,
+    courseId: number,
+    revisionId: number,
+    rules: ConfirmRulesCommand,
+    aiGenerated: boolean,
+  ): FakeReply | undefined {
+    const undoCourse = this.learning.checkpointCourseWrites();
+    const undoQuiz = this.authoring.checkpointExamWrites();
+    let committed = false;
+    const call = (
+      endpoint: AnyEndpoint,
+      body: unknown,
+      params: FakeRequest['params'] = {},
+    ) => this.handle(endpoint, { ...request, body, params, query: {} });
+    const data = (reply: FakeReply | undefined) =>
+      reply?.body.status === 'SUCCESS' ? reply.body.data : undefined;
+    const courseParams = {
+      courseId: String(courseId),
+      revisionId: String(revisionId),
+    };
+    try {
+      const savedReply = call(
+        courseEndpoints.saveDraft,
+        rules.draft,
+        courseParams,
+      );
+      if (!data(savedReply)) return savedReply;
+      let saved = CourseDetailSchema.parse(data(savedReply));
+      if (rules.questions.length > 0) {
+        const ids: number[] = [];
+        for (const question of rules.questions) {
+          const created = call(assessmentV1Endpoints.createQuestion, {
+            courseId,
+            lessonId: null,
+            competencyId: rules.competencyId,
+            code: '',
+            questionType: question.type,
+            content: question.content,
+            explanation: question.explanation,
+            difficulty: question.difficulty,
+            points: 1,
+            status: 'ACTIVE',
+            options: question.options,
+          });
+          if (!data(created)) return created;
+          ids.push((data(created) as { id: number }).id);
+        }
+        const title = rules.draft.title?.trim();
+        const examReply = this.saveCourseExam({
+          ...request,
+          params: {},
+          query: {},
+          body: {
+            courseId,
+            revisionId,
+            draft: {
+              ...rules.draft,
+              expectedVersion: saved.revision.rowVersion,
+            },
+            quiz: {
+              courseId,
+              title: title ? `Thi cuối khóa: ${title}` : 'Thi cuối khóa',
+              description: null,
+              quizType: 'FINAL_EXAM',
+              selectionMode: 'FIXED',
+              questionCount: ids.length,
+              shuffleQuestions: true,
+              shuffleOptions: true,
+              timeLimitMinutes: 15,
+              openAt: null,
+              closeAt: null,
+              graceSeconds: 0,
+              passPercent: 70,
+              scoringMode: 'ALL_OR_NOTHING',
+              scoreMethod: 'BEST',
+              reviewPolicy: 'AFTER_SUBMIT',
+              maxAttempts: 3,
+              retakeWaitHours: 0,
+              allowRetakeAfterPass: false,
+              requireLessonsCompleted: true,
+            },
+            pool: {
+              items: ids.map((questionId, sortNo) => ({
+                questionId,
+                sortNo,
+                points: null,
+              })),
+            },
+          },
+        });
+        if (!data(examReply)) return examReply;
+        saved = CourseDetailSchema.parse(data(examReply));
+        if (aiGenerated) this.learning.markAiGenerated(courseId);
+      }
+      committed = true;
+      return call(courseEndpoints.getCourse, null, {
+        courseId: String(saved.course.id),
+      });
     } finally {
       if (!committed) {
         undoCourse();
@@ -977,8 +1256,8 @@ export class FakeBackend {
         : parsed.data.skill === 'tao_khoa_hoc'
           ? this.courseTurn(
               user,
-              parsed.data.message,
               parsed.data.attachmentDocumentId,
+              conversation.conversationId,
             )
           : this.scriptedTurn(user, parsed.data.message, parsed.data.skill);
     const turnId = this.book.record(
@@ -1021,54 +1300,52 @@ export class FakeBackend {
   }
 
   /**
-   * The `tao_khoa_hoc` skill: a learner is told it is for instructors; without a file the user is
-   * asked to attach one; otherwise a card lists the inputs (the mock takes the question as the
-   * target learners and picks a programme and competency, where the real tool looks them up by the
-   * names the user gave).
+   * The `tao_khoa_hoc` skill, as `start_course_drafting` answers it: a learner is told it is for
+   * instructors; without a file the user is asked to attach one; otherwise a session starts from the
+   * uploaded source for this conversation and the editor opens on it.
    */
   private courseTurn(
     user: DbUser,
-    text: string,
     attachmentDocumentId: number | undefined,
+    conversationId: number,
   ) {
+    const tool = 'start_course_drafting';
     if (!this.hasRole(user.userId, COURSE_JOB_ROLES)) {
-      return agentTextEvents(AGENT_COURSE_FOR_INSTRUCTORS);
+      return agentToolReplyEvents(tool, AGENT_COURSE_FOR_INSTRUCTORS);
     }
-    if (this.hasRole(user.userId, ['ADMIN', 'SUPER_ADMIN'])) {
-      return agentRefusedEvents('start_course_job', AGENT_COURSE_ADMIN_FORM);
+    if (attachmentDocumentId === undefined) {
+      return agentToolReplyEvents(tool, AGENT_COURSE_ATTACH_FIRST);
     }
-    const document = this.documents.find((d) => d.id === attachmentDocumentId);
-    if (!document) {
-      return agentRefusedEvents('start_course_job', AGENT_COURSE_ATTACH_FIRST);
-    }
-    const action: PendingProposal['action'] = {
-      id: `agent-action-${this.nextActionSeq++}`,
-      tool: 'start_course_job',
-      title: AGENT_COURSE_CARD_TITLE,
-      changes: [
-        {
-          field: 'targetLearners',
-          label: 'Đối tượng học viên',
-          from: null,
-          to: text.slice(0, 500),
-        },
-        { field: 'level', label: 'Trình độ', from: null, to: 'Cơ bản' },
-        { field: 'chapters', label: 'Số chương', from: null, to: '3' },
-        {
-          field: 'file',
-          label: 'Tài liệu nguồn',
-          from: null,
-          to: document.fileName,
-        },
-      ],
-      expiresAt: new Date(Date.now() + ACTION_TTL_MS).toISOString(),
+    const session = this.draftingSessions.startFromSource(
+      user.userId,
+      attachmentDocumentId,
+      {},
+      conversationId,
+    );
+    return session
+      ? agentCourseDraftingEvents(session.id)
+      : agentToolReplyEvents(tool, AGENT_COURSE_SOURCE_NOT_FOUND);
+  }
+
+  /** Posts each ready step of a chat-started session to its conversation; cards read the step live. */
+  private wireDraftingChat(): void {
+    this.draftingSessions.onStepReady = (owner, session, step) => {
+      if (session.conversationId === null) return;
+      const answer =
+        step.state === 'failed'
+          ? draftingFailedMessage(step.step, step.error)
+          : draftingStepMessage(step.step, step.notes);
+      this.book.recordDraftingStep(owner, session.conversationId, answer, {
+        sessionId: session.id,
+        step: step.step,
+      });
     };
-    this.pendingActions.set(action.id, {
-      userId: user.userId,
-      action,
-      expiresAt: Date.now() + ACTION_TTL_MS,
-    });
-    return agentActionEvents(action);
+    this.book.draftingCards = (owner, sessionId, step) => {
+      const found = this.draftingSessions.stepState(owner, sessionId, step);
+      return found
+        ? { sessionId, step: step as DraftingStepNumber, ...found }
+        : undefined;
+    };
   }
 
   /** "đổi chức danh … thành <giá trị>": a card, or the words the tool would give back. */
@@ -1141,38 +1418,15 @@ export class FakeBackend {
     const user = this.caller(request);
     const pending = this.pendingOf(request, user);
     this.pendingActions.delete(pending.action.id);
+    // The old "Tạo bằng AI" card cannot start a job any more: the retired refusal, as the server.
     if (pending.action.tool === 'start_course_job') {
-      const fileName =
-        pending.action.changes.find((c) => c.field === 'file')?.to ??
-        'tai-lieu.md';
-      const job = this.courseJobs.queue(
-        user.userId,
-        {
-          targetLearners:
-            pending.action.changes.find((c) => c.field === 'targetLearners')
-              ?.to ?? 'Học viên',
-          level: 'BEGINNER',
-          chapters: 3,
-          programmeId: 1,
-          competencyId: 1,
-        },
-        fileName,
-      );
       this.book.settle(
         user.userId,
         pending.action.id,
-        'confirmed',
-        AGENT_COURSE_STARTED,
+        'failed',
+        BACKEND_RESPONSES.assistantCourseJobsRetired.message,
       );
-      return ok({
-        actionId: pending.action.id,
-        tool: pending.action.tool,
-        message: AGENT_COURSE_STARTED,
-        data: {
-          jobId: job.jobId,
-          path: `/admin/courses/ai-drafts/${job.jobId}`,
-        },
-      });
+      return backendRefusal('assistantCourseJobsRetired');
     }
     const changes = pending.action.changes;
     if (
@@ -1386,6 +1640,37 @@ export class FakeBackend {
       global ||
       (person.orgId !== null && orgs.has(person.orgId)) ||
       (person.teamId !== null && teams.has(person.teamId));
+  }
+
+  private dashboardScope(request: FakeRequest) {
+    const caller = this.caller(request);
+    const grants = this.activeGrants(caller.userId).filter((grant) =>
+      ['SUPER_ADMIN', 'ADMIN', 'INSTRUCTOR'].includes(this.roleOf(grant).code),
+    );
+    if (!grants.length) return refuse('accessDenied');
+    return (course: {
+      ownerOrgId: number;
+      ownerTeamId?: number | null;
+      ownerUserId?: string | null;
+    }) =>
+      grants.some((grant) => {
+        switch (grant.scope) {
+          case 'GLOBAL':
+            return true;
+          case 'ORG':
+            return (
+              grant.orgId !== null &&
+              this.subtree(grant.orgId).includes(course.ownerOrgId)
+            );
+          case 'TEAM':
+            return grant.teamId === course.ownerTeamId;
+          case 'OWN':
+            return (
+              course.ownerOrgId === caller.orgId &&
+              course.ownerUserId === caller.userId
+            );
+        }
+      });
   }
 
   private isSuperAdmin(user: DbUser): boolean {

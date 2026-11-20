@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { AI_COURSE_COMPOSE_ENABLED } from '../../../core/course-jobs/course-job-access';
 import { Router } from '@angular/router';
 import {
   scormEndpoints,
@@ -6,6 +7,7 @@ import {
   assetEndpoints,
   courseEndpoints,
   courseJobEndpoints,
+  draftingSessionEndpoints,
   knowledgeEndpoints,
   programAssessmentEndpoints,
   trainingCatalogEndpoints,
@@ -32,7 +34,11 @@ import {
 import { setUpAdminScreen } from '../../../core/dev/mock-api/admin-screen.testing';
 import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
 import { DEFAULT_COURSE_COVER } from '../../../shared/course/course-card';
-import { CourseFormPrefillStore } from '../../../core/assistant/course-form-prefill.store';
+import {
+  AgentChatStore,
+  DRAFTING_SOURCE_QUESTION,
+} from '../../../core/assistant/agent-chat.store';
+import { ChatWidget } from '../../../layout/chat-widget/chat-widget';
 import { Toaster } from '@lms/ui';
 import { KeptDrafts } from '../../../core/session/kept-drafts';
 import { CourseEditor, KEPT_DRAFT_TITLE, RESTORE_LABEL } from './course-editor';
@@ -465,6 +471,61 @@ describe('CourseEditor', () => {
       .find((b) => b.blockType === 'video');
     expect(video?.videoChapters).toEqual(ARCHITECTURE_VIDEO.videoChapters);
     expect(video?.transcript).toEqual(ARCHITECTURE_VIDEO.transcript);
+  });
+
+  describe('"Cho phép tua video"', () => {
+    const VIDEO_LESSON = 'Kiến trúc tổng thể hệ thống Core Banking';
+    const seekingSwitch = () =>
+      screen
+        .drawer()
+        ?.querySelector<HTMLInputElement>('input[role="switch"]') ?? null;
+    const sentVideo = () => {
+      const { chapters } = screen.lastCall(courseEndpoints.saveDraft)
+        ?.body as SaveDraftCommand;
+      return chapters
+        .flatMap((c) => c.lessons)
+        .flatMap((l) => l.blocks)
+        .find((b) => b.blockType === 'video');
+    };
+
+    it('is off on a loaded video block and is sent as off', async () => {
+      await screen.open('/admin/courses/1/edit');
+      await screen.click(screen.button('Mở bản nháp để sửa'));
+      await step('Nội dung khóa học');
+      await screen.click(editLessonButton(VIDEO_LESSON));
+      expect(screen.drawer()?.textContent).toContain('Cho phép tua video');
+      expect(seekingSwitch()?.checked).toBe(false);
+      await screen.click(screen.button('Lưu', screen.drawer()!));
+      await screen.click(screen.button('Lưu nháp'));
+      expect(sentVideo()?.allowSeeking).toBe(false);
+    });
+
+    it('is saved when switched on and still on when the lesson is reopened', async () => {
+      await screen.open('/admin/courses/1/edit');
+      await screen.click(screen.button('Mở bản nháp để sửa'));
+      await step('Nội dung khóa học');
+      await screen.click(editLessonButton(VIDEO_LESSON));
+      await screen.click(seekingSwitch()!);
+      expect(seekingSwitch()?.checked).toBe(true);
+      await screen.click(screen.button('Lưu', screen.drawer()!));
+      await screen.click(screen.button('Lưu nháp'));
+      expect(sentVideo()?.allowSeeking).toBe(true);
+
+      await screen.click(editLessonButton(VIDEO_LESSON));
+      expect(seekingSwitch()?.checked).toBe(true);
+    });
+
+    it('is not offered on a block that is not a video, and a new video block starts off', async () => {
+      await screen.open('/admin/courses/6/edit');
+      await step('Nội dung khóa học');
+      await screen.click(screen.button('Thêm chương'));
+      await screen.click(screen.button('Thêm bài học'));
+      const drawer = screen.drawer()!;
+      await screen.click(screen.button('Văn bản', drawer));
+      expect(seekingSwitch()).toBeNull();
+      await screen.click(screen.button('Video', drawer));
+      expect(seekingSwitch()?.checked).toBe(false);
+    });
   });
 
   it('focuses the new chapter’s title, labelled with its number, after "Thêm chương"', async () => {
@@ -1095,7 +1156,7 @@ describe('CourseEditor', () => {
       return drawer;
     }
 
-    it('lists the quizzes of the course in a select, saying which cannot be published', async () => {
+    it('lists the quizzes of the course and offers inline creation last', async () => {
       listQuizzes();
       const drawer = await addQuizLesson();
 
@@ -1108,9 +1169,10 @@ describe('CourseEditor', () => {
       expect(
         Array.from(select.options).map((o) => o.textContent?.trim()),
       ).toEqual([
-        '— Chưa chọn —',
-        'Luyện tập: Tổng quan hệ thống Core Banking · Luyện tập · Nháp, chưa thể xuất bản',
+        'Chọn bài kiểm tra',
+        'Luyện tập: Tổng quan hệ thống Core Banking · Luyện tập · Nháp',
         'Thi cuối khóa: Tổng quan hệ thống Core Banking · Thi cuối khóa',
+        'Tạo mới bài kiểm tra',
       ]);
       expect(screen.text(drawer)).not.toContain('chưa có bài kiểm tra');
     });
@@ -1993,6 +2055,76 @@ describe('CourseEditor', () => {
       await screen.click(screen.button('Lưu', drawer));
     }
 
+    it('saves an inline quiz lesson as a draft and publishes its linked quiz with the course', async () => {
+      await screen.open('/admin/courses/new');
+      await fillBasics('WIZ-LESSON-QUIZ');
+      await screen.choose(
+        screen.field('Chương trình') as HTMLSelectElement,
+        '2',
+      );
+      await screen.click(screen.button('Tiếp theo'));
+      await screen.click(screen.button('Thêm chương'));
+      await screen.click(screen.button('Thêm bài học'));
+      const drawer = screen.drawer()!;
+      await screen.choose(
+        screen.field('Loại bài', drawer) as HTMLSelectElement,
+        'quiz',
+      );
+      await screen.choose(
+        screen.field('Bài kiểm tra', drawer) as HTMLSelectElement,
+        'new',
+      );
+      expect(
+        (screen.field('Tên bài kiểm tra', drawer) as HTMLInputElement).value,
+      ).toBe('Bài kiểm tra chương 1 bài 1');
+      await screen.click(screen.button('Lưu', drawer));
+      expect(screen.callsTo(assessmentV1Endpoints.saveCourseExam)).toBe(0);
+      expect(screen.drawer()).toBeTruthy();
+      const question = drawer.querySelector<HTMLInputElement>(
+        '.course-exam-form__question input',
+      )!;
+      await screen.click(question);
+      const original = (endpoint: AnyEndpoint, request: FakeRequest) =>
+        MockBackend.prototype.handle.call(
+          TestBed.inject(MockBackend),
+          endpoint,
+          request,
+        ) as FakeReply;
+      screen.calls.mockImplementation((endpoint, request) =>
+        endpoint === assessmentV1Endpoints.saveCourseExam
+          ? backendRefusal('internalError')
+          : original(endpoint, request),
+      );
+      await screen.click(screen.button('Lưu', drawer));
+      expect(screen.drawer()).toBeTruthy();
+      expect(question.checked).toBe(true);
+      screen.calls.mockImplementation(original);
+      await screen.click(screen.button('Lưu', drawer));
+      await vi.waitFor(() => expect(screen.drawer()).toBeFalsy());
+      expect(
+        screen.lastCall(assessmentV1Endpoints.saveCourseExam)?.body,
+      ).toMatchObject({
+        lessonTarget: { chapter: 0, lesson: 0 },
+        quiz: { title: 'Bài kiểm tra chương 1 bài 1', quizType: 'PRACTICE' },
+        pool: { items: [{ sortNo: 0 }] },
+      });
+      expect(screen.text()).not.toContain('Chưa chọn bài kiểm tra');
+      await screen.click(editLessonButton('Bài 1'));
+      const savedQuiz = screen.field(
+        'Bài kiểm tra',
+        screen.drawer()!,
+      ) as HTMLSelectElement;
+      expect(savedQuiz.value).toMatch(/^\d+$/);
+      expect(savedQuiz.selectedOptions[0].textContent).toContain(
+        'Bài kiểm tra chương 1 bài 1',
+      );
+      await screen.click(screen.button('Hủy', screen.drawer()!));
+      await step('Đối tượng & xuất bản');
+      await screen.click(screen.button('Xuất bản khóa học'));
+      await screen.click(screen.button('Xuất bản', screen.alertDialog()!));
+      await vi.waitFor(() => expect(screen.url()).toBe('/admin/courses'));
+    });
+
     it('opens an empty wizard without reading any course, quiz or kept upload', async () => {
       const kept = vi.spyOn(TestBed.inject(KeptUploads), 'read');
       await screen.open('/admin/courses/new');
@@ -2013,170 +2145,110 @@ describe('CourseEditor', () => {
       expect(kept).not.toHaveBeenCalled();
     });
 
-    describe('"Tạo bằng AI" on step 1', () => {
-      const aiButton = () => screen.button('Tạo bằng AI') as HTMLButtonElement;
-      const aiProblem = () =>
-        screen.el.querySelector('#ai-problem')?.textContent?.trim();
-      const aiSwitch = () =>
-        screen.el.querySelector<HTMLInputElement>(
-          '.course-editor__ai-toggle input[type="checkbox"]',
-        )!;
-      const openWithAi = async () => {
-        await screen.open('/admin/courses/new');
-        await screen.click(aiSwitch());
-      };
+    // Hidden while AI_COURSE_COMPOSE_ENABLED is off; a test below checks it stays hidden then.
+    describe.skipIf(!AI_COURSE_COMPOSE_ENABLED)('"Soạn cùng trợ lý"', () => {
+      const draftButton = () => screen.button('Soạn cùng trợ lý');
 
-      it('is off by default and can be switched on and off', async () => {
+      it('replaces the old "Soạn bằng AI" switch, the "Tạo bằng AI" button and its section', async () => {
         await screen.open('/admin/courses/new');
 
-        expect(aiSwitch().checked).toBe(false);
-        expect(screen.button('Tạo bằng AI')).toBeFalsy();
-        expect(screen.el.querySelector('.ai-section')).toBeNull();
-
-        await screen.click(aiSwitch());
-        expect(aiSwitch().checked).toBe(true);
-        expect(aiButton()).toBeTruthy();
-        expect(screen.el.querySelector('.ai-section')).not.toBeNull();
-
-        await screen.click(aiSwitch());
-        expect(aiSwitch().checked).toBe(false);
-        expect(screen.button('Tạo bằng AI')).toBeFalsy();
-        expect(screen.el.querySelector('.ai-section')).toBeNull();
+        expect(draftButton()).toBeTruthy();
+        expect(screen.text()).not.toContain('Soạn bằng AI');
+        expect(screen.button('Tạo bằng AI')).toBeUndefined();
+        expect(screen.el.querySelector('[uiSwitch], .ai-section')).toBeNull();
+        expect(screen.field('Đối tượng học viên')).toBeUndefined();
       });
 
-      const pickSource = async (name = 'quy-trinh.md') => {
-        const input = screen.el.querySelector<HTMLInputElement>(
-          '.ai-section__file input[type="file"]',
-        )!;
-        Object.defineProperty(input, 'files', {
-          value: {
-            item: () =>
-              new File(['# Quy trình'], name, { type: 'text/markdown' }),
-            length: 1,
+      it('is absent on an existing course', async () => {
+        await screen.open('/admin/courses/6/edit');
+
+        expect(draftButton()).toBeUndefined();
+      });
+
+      it('is absent for a role that may not generate a course', async () => {
+        await screen.open('/admin/courses/new');
+        fakeSession().user.update((user) => user && { ...user, grants: [] });
+        await screen.settle();
+
+        expect(draftButton()).toBeUndefined();
+      });
+
+      it('opens the file picker in its own click, then the chat on a new conversation, and the file picked lands on step 1 of a session', async () => {
+        await screen.open('/admin/courses/new');
+        const chat = TestBed.inject(AgentChatStore);
+        chat.setTurns([
+          {
+            id: 1,
+            question: 'Câu cũ',
+            reply: {
+              status: 'done',
+              toolName: null,
+              text: 'Trả lời cũ',
+              citations: [],
+              navigatedTo: null,
+              action: null,
+              error: null,
+            },
           },
+        ]);
+        chat.setConversationId(77);
+        const widget = TestBed.createComponent(ChatWidget);
+        await screen.settle();
+        const opened = vi
+          .spyOn(HTMLInputElement.prototype, 'click')
+          .mockImplementation(() => undefined);
+        const picker = screen.el.querySelector<HTMLInputElement>(
+          '.course-editor__head-state input[type="file"]',
+        )!;
+
+        draftButton()?.click();
+        // The browser opens the picker only from the click itself, not after it.
+        expect(opened.mock.contexts).toEqual([picker]);
+        expect(chat.isOpen$()).toBe(false);
+
+        const file = new File(['# Quy trình'], 'quy-trinh.md', {
+          type: 'text/markdown',
+        });
+        Object.defineProperty(picker, 'files', {
+          value: { item: () => file, 0: file, length: 1 },
           configurable: true,
         });
-        input.dispatchEvent(new Event('change'));
-        await screen.settle();
-      };
+        picker.dispatchEvent(new Event('change'));
+        await widget.whenStable();
 
-      const fillAi = async () => {
-        await screen.type(
-          screen.field('Đối tượng học viên') as HTMLTextAreaElement,
-          'Giao dịch viên mới',
-        );
-        await screen.type(screen.field('Số chương') as HTMLInputElement, '3');
-        const competency = screen.field(
-          'Năng lực của câu hỏi',
-        ) as HTMLSelectElement;
-        await vi.waitFor(() =>
-          expect(competency.options.length).toBeGreaterThan(1),
-        );
-        const unit = screen.field(
-          'Đơn vị sở hữu khóa học',
-        ) as HTMLSelectElement | null;
-        if (unit) {
-          await vi.waitFor(() =>
-            expect(unit.options.length).toBeGreaterThan(1),
-          );
-          unit.value = unit.options[1].value;
-          unit.dispatchEvent(new Event('input'));
-          unit.dispatchEvent(new Event('change'));
-          await screen.settle();
-        }
-        competency.value = competency.options[1].value;
-        competency.dispatchEvent(new Event('input'));
-        competency.dispatchEvent(new Event('change'));
-        await screen.settle();
-      };
-
-      it('stays disabled and says why, until step 1 and the AI fields are valid', async () => {
-        await openWithAi();
-
-        expect(aiButton().disabled).toBe(true);
-        expect(aiProblem()).toContain('thông tin cơ bản');
-
-        await fillBasics();
-        expect(aiButton().disabled).toBe(true);
-        expect(aiProblem()).toBe('Chọn tệp nguồn');
-
-        await pickSource();
-        expect(aiProblem()).toBe('Nhập đối tượng học viên');
-
-        await fillAi();
-        expect(aiProblem()).toBe('');
-        expect(aiButton().disabled).toBe(false);
-      });
-
-      it('creates the job and moves to step 2 of the course it made', async () => {
-        const navigate = vi
-          .spyOn(TestBed.inject(Router), 'navigate')
-          .mockResolvedValue(true);
-        await openWithAi();
-        await fillBasics();
-        await pickSource();
-        await fillAi();
-
-        await screen.click(aiButton());
+        const panel = widget.nativeElement as HTMLElement;
+        expect(panel.querySelector('[role="dialog"]')).not.toBeNull();
+        expect(chat.turns$().map((turn) => turn.question)).toEqual([
+          DRAFTING_SOURCE_QUESTION,
+        ]);
+        opened.mockRestore();
 
         await vi.waitFor(() =>
-          expect(screen.callsTo(courseJobEndpoints.start)).toBe(1),
+          expect(screen.url()).toMatch(/^\/admin\/courses\/new\?session=\d+$/),
         );
-        await vi.waitFor(() =>
-          expect(navigate).toHaveBeenCalledWith(
-            ['/admin/courses', expect.any(Number), 'edit'],
-            { replaceUrl: true, queryParams: { step: 1 } },
-          ),
-        );
-        expect(screen.callsTo(courseEndpoints.createCourse)).toBe(0);
-      });
-
-      it('opens filled in from the chat: title, what was said and the kept file, with nothing uploaded', async () => {
-        TestBed.inject(CourseFormPrefillStore).set({
-          file: new File(['# Quy trình'], 'quy-trinh.md', {
-            type: 'text/markdown',
-          }),
-          fields: {
-            title: '[TEST-AI] Khóa thử',
-            targetLearners: 'Giao dịch viên mới',
-            chapters: 3,
-          },
-        });
-        await screen.open('/admin/courses/new');
-
-        expect((screen.field('Tên khóa học') as HTMLInputElement).value).toBe(
-          '[TEST-AI] Khóa thử',
-        );
-        expect(
-          (screen.field('Đối tượng học viên') as HTMLTextAreaElement).value,
-        ).toBe('Giao dịch viên mới');
-        expect((screen.field('Số chương') as HTMLInputElement).value).toBe('3');
-        expect(aiSwitch().checked).toBe(true);
-        expect(aiProblem()).not.toBe('Chọn tệp nguồn');
-        expect(screen.text()).toContain('quy-trinh.md');
+        expect(screen.callsTo(draftingSessionEndpoints.uploadSource)).toBe(1);
         expect(screen.callsTo(courseJobEndpoints.start)).toBe(0);
-        expect(screen.callsTo(knowledgeEndpoints.uploadDocument)).toBe(0);
-      });
-
-      it('shows an empty form when it is opened directly', async () => {
-        await openWithAi();
-
-        expect((screen.field('Tên khóa học') as HTMLInputElement).value).toBe(
-          '',
-        );
-        expect(
-          (screen.field('Đối tượng học viên') as HTMLTextAreaElement).value,
-        ).toBe('');
-        expect(aiProblem()).toContain('thông tin cơ bản');
-      });
-
-      it('offers no free text for the programme or the competency', async () => {
-        await openWithAi();
-
-        expect(screen.field('Năng lực của câu hỏi')?.tagName).toBe('SELECT');
-        expect(screen.field('Chương trình')?.tagName).toBe('SELECT');
+        await screen.settle();
+        expect(currentStep()).toContain('Thông tin cơ bản');
+        expect(screen.callsTo(draftingSessionEndpoints.get)).toBeGreaterThan(0);
+        expect(draftButton()).toBeUndefined();
+        widget.destroy();
       });
     });
+
+    it.skipIf(AI_COURSE_COMPOSE_ENABLED)(
+      'offers no "Soạn cùng trợ lý" while drafting with the in-house assistant is off',
+      async () => {
+        await screen.open('/admin/courses/new');
+
+        expect(screen.button('Soạn cùng trợ lý')).toBeUndefined();
+        expect(
+          screen.el.querySelector(
+            '.course-editor__head-state input[type="file"]',
+          ),
+        ).toBeNull();
+      },
+    );
 
     it('stays on an empty first step on "Tiếp theo", lists it and focuses its first error', async () => {
       await screen.open('/admin/courses/new');

@@ -65,3 +65,27 @@ describe('turnFromStored: the card outcome after a reload', () => {
     expect(messageOf(turnWith('pending', null))).toBeNull();
   });
 });
+
+describe('turnFromStored: a drafting step message', () => {
+  it('keeps the card with the step state the server read now', () => {
+    const card = { sessionId: 7, step: 2, state: 'confirmed', courseId: 40 };
+    const stored = {
+      ...turnWith('pending', null),
+      question: '',
+      action: null,
+      actionId: null,
+      draftingCard: card,
+    } as StoredTurn;
+
+    const turn = turnFromStored(stored);
+
+    expect(turn.question).toBe('');
+    expect(turn.reply.draftingCard).toEqual(card);
+  });
+
+  it('has no card on any other turn', () => {
+    expect(
+      turnFromStored(turnWith('pending', null)).reply.draftingCard,
+    ).toBeNull();
+  });
+});
