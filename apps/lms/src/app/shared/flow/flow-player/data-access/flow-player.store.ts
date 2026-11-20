@@ -25,6 +25,8 @@ export class FlowPlayerStore {
     index: signal(0),
     playing: signal(false),
     sceneFailed: signal(false),
+    /** Playback was asked for (play, a step, prev or next) since the last stop. */
+    started: signal(false),
   };
 
   private timer: ReturnType<typeof setTimeout> | undefined;
@@ -32,6 +34,7 @@ export class FlowPlayerStore {
   readonly flow$ = this.state.flow.asReadonly();
   readonly index$ = this.state.index.asReadonly();
   readonly playing$ = this.state.playing.asReadonly();
+  readonly started$ = this.state.started.asReadonly();
   readonly reducedMotion$ = computed(() => this.reducedMotion);
   readonly showScene$ = computed(() => this.webgl && !this.state.sceneFailed());
   readonly total$ = computed(() => this.state.flow().steps.length);
@@ -72,6 +75,10 @@ export class FlowPlayerStore {
     this.state.playing.set(playing);
   }
 
+  setStarted(started: boolean): void {
+    this.state.started.set(started);
+  }
+
   setSceneFailed(failed: boolean): void {
     this.state.sceneFailed.set(failed);
   }
@@ -80,6 +87,7 @@ export class FlowPlayerStore {
   play(): void {
     if (!this.total$() || this.reducedMotion$()) return;
     if (this.atEnd$()) this.setIndex(0);
+    this.setStarted(true);
     this.setPlaying(true);
     this.schedule();
   }
@@ -111,8 +119,15 @@ export class FlowPlayerStore {
   seek(index: number): void {
     const last = this.total$() - 1;
     if (last < 0) return;
+    this.setStarted(true);
     this.setIndex(Math.max(0, Math.min(index, last)));
     if (this.state.playing()) this.schedule();
+  }
+
+  /** Pauses and goes back to no step shown, as before the first play. */
+  stop(): void {
+    this.pause();
+    this.setStarted(false);
   }
 
   sceneFailed(): void {

@@ -3,12 +3,23 @@ import { TestBed } from '@angular/core/testing';
 import { FLOW_LIMITS } from '@lms/contracts';
 import { NAPAS_FLOW } from '@lms/mocks';
 import { of } from 'rxjs';
+import { FlowPlayerStore } from '../../../../../../shared/flow/flow-player/data-access/flow-player.store';
+import {
+  FLOW_REDUCED_MOTION,
+  FLOW_WEBGL,
+} from '../../../../../../shared/flow/flow-support';
 import { FlowEditorStore } from './flow-editor.store';
 
 function setup(answer = true) {
   const open = vi.fn(() => ({ closed: of(answer) }));
   TestBed.configureTestingModule({
-    providers: [FlowEditorStore, { provide: Dialog, useValue: { open } }],
+    providers: [
+      FlowEditorStore,
+      FlowPlayerStore,
+      { provide: Dialog, useValue: { open } },
+      { provide: FLOW_WEBGL, useValue: true },
+      { provide: FLOW_REDUCED_MOTION, useValue: false },
+    ],
   });
   return { store: TestBed.inject(FlowEditorStore), open };
 }
@@ -132,12 +143,24 @@ describe('FlowEditorStore', () => {
     expect(store.editingStepId$()).toBeNull();
 
     store.openBuilder();
-    store.togglePreview();
+    store.focusStep(2);
     store.closeBuilder();
-    expect(store.previewing$()).toBe(false);
+    expect(store.activeStep$()).toBeNull();
     expect(store.summary$()).toBe(
       `${NAPAS_FLOW.objects.length} đối tượng · 10 bước chuyển`,
     );
+  });
+
+  it('lights nothing until a step is clicked, then the step in the form wins', () => {
+    const { store } = setup();
+    store.setFlow(NAPAS_FLOW);
+    expect(store.activeStep$()).toBeNull();
+    store.focusStep(2);
+    expect(store.activeStep$()?.id).toBe(NAPAS_FLOW.steps[2].id);
+    store.editStep(NAPAS_FLOW.steps[5].id);
+    expect(store.activeStep$()?.id).toBe(NAPAS_FLOW.steps[5].id);
+    store.closeStep(true);
+    expect(store.activeStep$()).toBeNull();
   });
 
   it('reorders, edits and deletes steps; the 101st step is refused', () => {

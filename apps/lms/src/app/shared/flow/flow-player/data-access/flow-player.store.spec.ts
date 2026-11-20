@@ -84,6 +84,19 @@ describe('FlowPlayerStore', () => {
     expect(store.index$()).toBe(1);
   });
 
+  it('counts as started after a play or a step, until stop', () => {
+    const store = setup();
+    expect(store.started$()).toBe(false);
+    store.seek(3);
+    expect(store.started$()).toBe(true);
+    store.play();
+    store.stop();
+    expect(store.playing$()).toBe(false);
+    expect(store.started$()).toBe(false);
+    vi.advanceTimersByTime(FLOW_STEP_MS);
+    expect(store.step$()?.id).toBe('s4');
+  });
+
   it('falls back to the list when the scene fails', () => {
     const store = setup();
     expect(store.showScene$()).toBe(true);

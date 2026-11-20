@@ -44,10 +44,15 @@
   </button>
 </ng-template>
 
-<!-- The builder lays itself out by its own width (ui.cq), wherever it is shown. -->
+<!-- Variant A: palette and selection | scene with the player bar under it | steps. It lays itself
+     out by its own width (ui.cq), wherever it is shown. -->
 <ng-template #builder>
   <div class="flow-editor-frame">
-    <div class="flow-editor" [class.flow-editor--narrow]="!canBuild()">
+    <div
+      class="flow-editor"
+      [class.flow-editor--scene]="canBuild()"
+      [class.flow-editor--narrow]="!canBuild()"
+    >
       @if (!canBuild()) {
       <ui-alert class="flow-editor__notice" tone="info" [announce]="false">
         Trình dựng 3D cần màn hình rộng hơn. Ở đây bạn vẫn thêm đối tượng và sửa
@@ -65,10 +70,11 @@
             <li>
               <button
                 uiButton
-                variant="ghost"
+                variant="secondary"
                 size="sm"
                 class="flow-editor__kind"
                 draggable="true"
+                [attr.data-family]="kindFamily[kind]"
                 [disabled]="!store.canAddObject$()"
                 (dragstart)="dragKind($event, kind)"
                 (click)="store.addObject(kind)"
@@ -81,10 +87,10 @@
           </ul>
         </ui-section-card>
 
-        @if (store.selected$(); as object) {
-        <ui-section-card title="Đối tượng đang chọn">
+        <ui-section-card title="Đang chọn">
+          @if (store.selected$(); as object) {
           <div class="flow-editor__form">
-            <ui-field label="Tên">
+            <ui-field label="Tên đối tượng">
               <input
                 uiInput
                 [attr.maxlength]="nameLimit"
@@ -103,7 +109,7 @@
                 }
               </select>
             </ui-field>
-            <div>
+            <div class="flow-editor__actions">
               <button
                 uiButton
                 variant="danger-ghost"
@@ -112,11 +118,21 @@
               >
                 <ui-icon name="trash-2" size="sm" />Xóa đối tượng
               </button>
+              <button
+                uiButton
+                variant="ghost"
+                size="sm"
+                (click)="store.select(null)"
+              >
+                Bỏ chọn
+              </button>
             </div>
           </div>
-        </ui-section-card>
-        } @else if (!canBuild()) {
-        <ui-section-card title="Các đối tượng">
+          } @else if (canBuild()) {
+          <p class="flow-editor__hint">
+            Bấm vào một đối tượng trên sàn để đổi tên, đổi loại hoặc xóa.
+          </p>
+          } @else {
           <ul class="flow-editor__objects">
             @for (object of store.objects$(); track object.id) {
             <li>
@@ -130,37 +146,16 @@
                 object.name }}
               </button>
             </li>
+            } @empty {
+            <li class="flow-editor__hint">Chưa có đối tượng nào.</li>
             }
           </ul>
+          }
         </ui-section-card>
-        }
       </div>
 
       @if (canBuild()) {
       <div class="flow-editor__centre">
-        <div class="flow-editor__toolbar">
-          <button
-            uiButton
-            [variant]="store.previewing$() ? 'secondary' : 'primary'"
-            size="sm"
-            [disabled]="!store.steps$().length"
-            (click)="store.togglePreview()"
-          >
-            <ui-icon
-              [name]="store.previewing$() ? 'pen-line' : 'play'"
-              size="sm"
-            />
-            {{ store.previewing$() ? 'Quay lại chỉnh sửa' : 'Xem thử' }}
-          </button>
-          @if (!store.previewing$()) {
-          <button uiButton variant="ghost" size="sm" (click)="reframe()">
-            <ui-icon name="maximize" size="sm" />Về góc nhìn ban đầu
-          </button>
-          }
-        </div>
-        @if (store.previewing$()) {
-        <app-flow-player [flow]="store.flow$()" />
-        } @else {
         <div
           uiCard
           class="flow-editor__stage"
@@ -173,22 +168,33 @@
             [steps]="store.steps$()"
             [active]="store.activeStep$()"
             [selectedId]="store.selectedId$()"
+            [reducedMotion]="store.reducedMotion$()"
             (selected)="store.select($event)"
             (moved)="store.moveObject($event.id, $event.x, $event.z)"
             (linked)="store.link($event.from, $event.to)"
           />
+          <button
+            uiButton
+            variant="secondary"
+            size="sm"
+            class="flow-editor__reframe"
+            (click)="reframe()"
+          >
+            <ui-icon name="maximize" size="sm" />Về góc nhìn ban đầu
+          </button>
           @if (!store.objects$().length) {
           <p class="flow-editor__empty">
             Kéo một đối tượng từ bảng bên trái xuống sàn để bắt đầu.
           </p>
+          } @else {
+          <p class="flow-editor__overlay-hint">
+            Kéo chấm tròn ở góc đối tượng sang đối tượng khác để nối (thả lại
+            chính nó = tự xử lý) · kéo đối tượng để di chuyển · kéo nền để dịch
+            khung · cuộn để phóng to
+          </p>
           }
         </div>
-        <p class="flow-editor__hint">
-          Rê chuột vào đối tượng, kéo chấm tròn ở góc sang đối tượng khác để nối
-          (thả lại chính nó = tự xử lý) · kéo đối tượng để di chuyển · kéo nền
-          để dịch khung · cuộn để phóng to
-        </p>
-        }
+        <app-flow-player-bar [waiting]="true" />
       </div>
       }
 
@@ -223,6 +229,7 @@
                 [variant]="store.activeStep$()?.id === row.step.id ? 'secondary' : 'ghost'"
                 size="sm"
                 class="flow-editor__step-body"
+                [attr.aria-current]="store.activeStep$()?.id === row.step.id ? 'step' : null"
                 (click)="store.focusStep(i)"
               >
                 <span class="flow-editor__no">{{ i + 1 }}</span>
@@ -231,41 +238,43 @@
                   <span class="flow-editor__route">{{ row.route }}</span>
                 </span>
               </button>
-              <button
-                uiIconButton
-                size="sm"
-                label="Chuyển lên"
-                [disabled]="i === 0"
-                (click)="store.moveStepBy(row.step.id, -1)"
-              >
-                <ui-icon name="chevron-up" size="sm" />
-              </button>
-              <button
-                uiIconButton
-                size="sm"
-                label="Chuyển xuống"
-                [disabled]="last"
-                (click)="store.moveStepBy(row.step.id, 1)"
-              >
-                <ui-icon name="chevron-down" size="sm" />
-              </button>
-              <button
-                uiIconButton
-                size="sm"
-                label="Sửa bước"
-                (click)="store.editStep(row.step.id)"
-              >
-                <ui-icon name="pen-line" size="sm" />
-              </button>
-              <button
-                uiIconButton
-                variant="danger"
-                size="sm"
-                label="Xóa bước"
-                (click)="store.removeStep(row.step.id)"
-              >
-                <ui-icon name="trash-2" size="sm" />
-              </button>
+              <span class="flow-editor__tools">
+                <button
+                  uiIconButton
+                  size="sm"
+                  label="Chuyển lên"
+                  [disabled]="i === 0"
+                  (click)="store.moveStepBy(row.step.id, -1)"
+                >
+                  <ui-icon name="chevron-up" size="sm" />
+                </button>
+                <button
+                  uiIconButton
+                  size="sm"
+                  label="Chuyển xuống"
+                  [disabled]="last"
+                  (click)="store.moveStepBy(row.step.id, 1)"
+                >
+                  <ui-icon name="chevron-down" size="sm" />
+                </button>
+                <button
+                  uiIconButton
+                  size="sm"
+                  label="Sửa bước"
+                  (click)="store.editStep(row.step.id)"
+                >
+                  <ui-icon name="pen-line" size="sm" />
+                </button>
+                <button
+                  uiIconButton
+                  variant="danger"
+                  size="sm"
+                  label="Xóa bước"
+                  (click)="store.removeStep(row.step.id)"
+                >
+                  <ui-icon name="trash-2" size="sm" />
+                </button>
+              </span>
               }
             </li>
             } @empty {

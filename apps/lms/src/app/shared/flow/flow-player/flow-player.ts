@@ -7,8 +7,9 @@ import {
   viewChild,
 } from '@angular/core';
 import type { FlowModel } from '@lms/contracts';
-import { Button, Card, Icon, IconButton } from '@lms/ui';
+import { Button, Card, Icon } from '@lms/ui';
 import { FlowCanvas } from '../flow-canvas/flow-canvas';
+import { FlowPlayerBar } from '../flow-player-bar/flow-player-bar';
 import { FlowPlayerStore } from './data-access/flow-player.store';
 
 /**
@@ -18,7 +19,7 @@ import { FlowPlayerStore } from './data-access/flow-player.store';
  */
 @Component({
   selector: 'app-flow-player',
-  imports: [FlowCanvas, Button, Card, Icon, IconButton],
+  imports: [FlowCanvas, FlowPlayerBar, Button, Card, Icon],
   providers: [FlowPlayerStore],
   templateUrl: './flow-player.html',
   styleUrl: './flow-player.scss',

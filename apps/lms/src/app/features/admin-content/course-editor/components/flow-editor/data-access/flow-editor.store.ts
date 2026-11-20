@@ -16,6 +16,7 @@ import {
   type FlowStep,
 } from '@lms/contracts';
 import { confirm } from '@lms/ui';
+import { FlowPlayerStore } from '../../../../../../shared/flow/flow-player/data-access/flow-player.store';
 import { filter, map } from 'rxjs';
 import {
   emptyFlow,
@@ -48,27 +49,30 @@ export class FlowEditorStore {
     selectedId: signal<string | null>(null),
     editingStepId: signal<string | null>(null),
     freshStepId: signal<string | null>(null),
-    previewIndex: signal<number | null>(null),
-    previewing: signal(false),
     /** The builder is open in its full-screen dialog. */
     open: signal(false),
   };
 
   private readonly dialog = inject(Dialog);
+  private readonly player = inject(FlowPlayerStore);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly flow$ = this.state.flow.asReadonly();
   readonly selectedId$ = this.state.selectedId.asReadonly();
   readonly editingStepId$ = this.state.editingStepId.asReadonly();
   readonly freshStepId$ = this.state.freshStepId.asReadonly();
-  readonly previewIndex$ = this.state.previewIndex.asReadonly();
-  readonly previewing$ = this.state.previewing.asReadonly();
   readonly open$ = this.state.open.asReadonly();
-  /** The step the author last clicked or linked: its packet runs in the editing scene. */
+  /**
+   * The step lit in the scene: the one in the form, else the player's once the author has played
+   * or clicked a step. Before that nothing is lit, so every cable reads the same.
+   */
   readonly activeStep$ = computed(() => {
-    const index = this.state.previewIndex();
-    return index === null ? null : (this.state.flow().steps[index] ?? null);
+    const editing = this.state.editingStepId();
+    if (editing)
+      return this.state.flow().steps.find((s) => s.id === editing) ?? null;
+    return this.player.started$() ? this.player.step$() : null;
   });
+  readonly reducedMotion$ = computed(() => this.player.reducedMotion$());
   /** The 3D editor needs the `lg` width; below it only the list and the form edit. */
   readonly wide$ = toSignal(
     inject(BreakpointObserver)
@@ -114,6 +118,7 @@ export class FlowEditorStore {
 
   setFlow(flow: FlowModel): void {
     this.state.flow.set(flow);
+    this.player.setFlow(flow);
   }
 
   setSelectedId(id: string | null): void {
@@ -126,14 +131,6 @@ export class FlowEditorStore {
 
   setFreshStepId(id: string | null): void {
     this.state.freshStepId.set(id);
-  }
-
-  setPreviewIndex(index: number | null): void {
-    this.state.previewIndex.set(index);
-  }
-
-  setPreviewing(previewing: boolean): void {
-    this.state.previewing.set(previewing);
   }
 
   setOpen(open: boolean): void {
@@ -150,14 +147,8 @@ export class FlowEditorStore {
   /** "Xong" or a dismissal: a step still in its form keeps what the drag gave it. */
   closeBuilder(): void {
     this.closeStep(true);
-    this.setPreviewing(false);
+    this.player.stop();
     this.setOpen(false);
-  }
-
-  /** "Xem thử": plays the flow as a learner sees it, in place of the editing scene. */
-  togglePreview(): void {
-    this.setPreviewing(!this.state.previewing());
-    this.closeStep(false);
   }
 
   /** Takes the document the lesson form holds, unless it is the one this store just reported. */
@@ -257,7 +248,7 @@ export class FlowEditorStore {
     this.setFlow({ ...flow, steps: [...flow.steps, step] });
     this.setFreshStepId(id);
     this.setEditingStepId(id);
-    this.setPreviewIndex(flow.steps.length);
+    this.player.stop();
     return id;
   }
 
@@ -267,11 +258,13 @@ export class FlowEditorStore {
     if (a) this.link(a.id, b?.id ?? null);
   }
 
+  /** A click in the step list: the player shows that step on the scene. */
   focusStep(index: number): void {
-    this.setPreviewIndex(index);
+    this.player.seek(index);
   }
 
   editStep(id: string): void {
+    this.player.stop();
     this.setFreshStepId(null);
     this.setEditingStepId(id);
   }

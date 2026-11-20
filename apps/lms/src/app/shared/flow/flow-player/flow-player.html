@@ -23,54 +23,7 @@
       Kéo để xoay · chuột phải để dịch · cuộn để phóng to
     </p>
 
-    <div class="flow-player__bar">
-      <div class="flow-player__controls">
-        <button
-          uiIconButton
-          size="sm"
-          label="Bước trước"
-          [disabled]="store.index$() <= 0"
-          (click)="store.prev()"
-        >
-          <ui-icon name="chevron-left" size="sm" />
-        </button>
-        <button
-          uiIconButton
-          size="sm"
-          [label]="store.playing$() ? 'Tạm dừng' : 'Phát'"
-          [disabled]="!store.total$() || store.reducedMotion$()"
-          (click)="store.toggle()"
-        >
-          <ui-icon [name]="store.playing$() ? 'pause' : 'play'" size="sm" />
-        </button>
-        <button
-          uiIconButton
-          size="sm"
-          label="Bước sau"
-          [disabled]="store.atEnd$()"
-          (click)="store.next()"
-        >
-          <ui-icon name="chevron-right" size="sm" />
-        </button>
-        <button
-          uiIconButton
-          size="sm"
-          label="Xem lại từ đầu"
-          [disabled]="!store.total$()"
-          (click)="store.replay()"
-        >
-          <ui-icon name="rotate-ccw" size="sm" />
-        </button>
-      </div>
-      <div class="flow-player__caption" aria-live="polite">
-        @if (store.step$(); as step) {
-        <span class="flow-player__count">{{ store.counter$() }}</span>
-        <strong class="flow-player__title">{{ step.title }}</strong>
-        @if (step.description) {
-        <span class="flow-player__description">{{ step.description }}</span>
-        } }
-      </div>
-    </div>
+    <app-flow-player-bar />
   </div>
 
   <ol class="flow-player__steps" aria-label="Các bước chuyển">

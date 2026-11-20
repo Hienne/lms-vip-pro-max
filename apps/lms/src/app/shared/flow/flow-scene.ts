@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import type { FlowKind, FlowObject, FlowStep } from '@lms/contracts';
+import { FLOW_KIND_FAMILY } from './flow-support';
 
 /** What the scene tells its host; the host owns the document and decides what changes. */
 export interface FlowSceneEvents {
@@ -464,7 +465,9 @@ export class FlowScene {
     const body = new THREE.Group();
     group.add(body);
     const materials: THREE.MeshStandardMaterial[] = [];
-    const family = new THREE.Color(this.colors.family[FAMILY[o.kind]]);
+    const family = new THREE.Color(
+      this.colors.family[FLOW_KIND_FAMILY[o.kind]],
+    );
     const make = (color: THREE.ColorRepresentation, roughness = 0.4) => {
       const m = new THREE.MeshStandardMaterial({
         color,
@@ -818,20 +821,6 @@ const EDGE = PLINTH / 2 + 0.1;
 const CABLE_Y = 0.12;
 const DIM = 0.35;
 const B = 0.16; // top of the plinth
-
-/** Colour family per kind (chart palette): the shape tells the kind, the colour its family. */
-const FAMILY: Record<FlowKind, 1 | 2 | 3 | 4 | 5> = {
-  system: 1,
-  database: 1,
-  queue: 1,
-  channel: 2,
-  gateway: 2,
-  customer: 3,
-  staff: 3,
-  external: 4,
-  document: 5,
-  decision: 5,
-};
 
 const rbox = (w: number, h: number, d: number, r = 0.06) =>
   new RoundedBoxGeometry(w, h, d, 4, Math.min(r, w / 2, h / 2, d / 2) - 0.001);

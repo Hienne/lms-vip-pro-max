@@ -35,8 +35,10 @@ import {
   Select,
 } from '@lms/ui';
 import { FlowCanvas } from '../../../../../shared/flow/flow-canvas/flow-canvas';
-import { FlowPlayer } from '../../../../../shared/flow/flow-player/flow-player';
+import { FlowPlayerStore } from '../../../../../shared/flow/flow-player/data-access/flow-player.store';
+import { FlowPlayerBar } from '../../../../../shared/flow/flow-player-bar/flow-player-bar';
 import {
+  FLOW_KIND_FAMILY,
   FLOW_KIND_ICON,
   FLOW_KIND_LABEL,
   FLOW_WEBGL,
@@ -70,10 +72,10 @@ const DRAG_TYPE = 'application/x-flow-kind';
     SectionCard,
     Select,
     FlowCanvas,
-    FlowPlayer,
+    FlowPlayerBar,
     FlowStepForm,
   ],
-  providers: [FlowEditorStore],
+  providers: [FlowEditorStore, FlowPlayerStore],
   templateUrl: './flow-editor.html',
   styleUrl: './flow-editor.scss',
 })
@@ -87,6 +89,7 @@ export class FlowEditor {
   protected readonly nameLimit = FLOW_LIMITS.name;
   protected readonly kindLabel = FLOW_KIND_LABEL;
   protected readonly kindIcon = FLOW_KIND_ICON;
+  protected readonly kindFamily = FLOW_KIND_FAMILY;
   /** The 3D builder needs WebGL and a wide screen; otherwise the block is edited as lists. */
   protected readonly canBuild = computed(
     () => this.webgl && this.store.wide$(),

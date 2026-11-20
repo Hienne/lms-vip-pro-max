@@ -1,0 +1,30 @@
+@use 'ui';
+
+.flow-player-bar {
+  @include ui.row(3);
+  align-items: flex-start;
+
+  &__controls {
+    @include ui.row(1);
+    flex: none;
+  }
+
+  &__caption {
+    display: grid;
+    gap: ui.space(1);
+    min-width: 0;
+  }
+
+  &__count {
+    @include ui.text(sm, muted);
+    @include ui.num;
+  }
+
+  &__title {
+    font-weight: ui.weight(semibold);
+  }
+
+  &__muted {
+    @include ui.text(sm, muted);
+  }
+}

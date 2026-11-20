@@ -46,6 +46,23 @@ export const FLOW_KIND_ICON: Record<FlowKind, IconName> = {
   decision: 'workflow',
 };
 
+/**
+ * Colour family per kind, a key of the chart palette: the shape tells the kind, the colour its
+ * family. The scene paints the models with it and the editor's palette uses it as a legend.
+ */
+export const FLOW_KIND_FAMILY: Record<FlowKind, 1 | 2 | 3 | 4 | 5> = {
+  system: 1,
+  database: 1,
+  queue: 1,
+  channel: 2,
+  gateway: 2,
+  customer: 3,
+  staff: 3,
+  external: 4,
+  document: 5,
+  decision: 5,
+};
+
 /** Whether this browser can draw the scene; a token so specs can stub it. */
 export const FLOW_WEBGL = new InjectionToken<boolean>('FLOW_WEBGL', {
   providedIn: 'root',

@@ -6,7 +6,10 @@ import type { FlowModel } from '@lms/contracts';
 import { NAPAS_FLOW } from '@lms/mocks';
 import { of } from 'rxjs';
 import { FlowCanvas } from '../../../../../shared/flow/flow-canvas/flow-canvas';
-import { FLOW_WEBGL } from '../../../../../shared/flow/flow-support';
+import {
+  FLOW_REDUCED_MOTION,
+  FLOW_WEBGL,
+} from '../../../../../shared/flow/flow-support';
 import { FlowEditor } from './flow-editor';
 
 /** Stands in for the three.js canvas, which jsdom cannot draw. */
@@ -17,6 +20,7 @@ async function render(flow: FlowModel, wide = true) {
   TestBed.configureTestingModule({
     providers: [
       { provide: FLOW_WEBGL, useValue: true },
+      { provide: FLOW_REDUCED_MOTION, useValue: false },
       {
         provide: BreakpointObserver,
         useValue: { observe: () => of({ matches: wide, breakpoints: {} }) },
@@ -67,6 +71,13 @@ describe('FlowEditor', () => {
     expect(builder.textContent).toContain(
       'Kéo một đối tượng từ bảng bên trái xuống sàn để bắt đầu.',
     );
+    expect(builder.textContent).toContain(
+      'Bấm vào một đối tượng trên sàn để đổi tên, đổi loại hoặc xóa.',
+    );
+    expect(builder.querySelector('app-flow-player-bar')).not.toBeNull();
+    expect(builder.textContent).toContain(
+      'Nối hai đối tượng để có bước chuyển đầu tiên.',
+    );
 
     buttons(builder, 'Cơ sở dữ liệu')[0].click();
     await fixture.whenStable();
@@ -74,7 +85,7 @@ describe('FlowEditor', () => {
       { id: 'o1', name: 'Cơ sở dữ liệu', kind: 'database', x: 0, z: 0 },
     ]);
     expect(builder.textContent).toContain('1/30 đối tượng');
-    expect(builder.textContent).toContain('Đối tượng đang chọn');
+    expect(buttons(builder, 'Bỏ chọn')).toHaveLength(1);
 
     buttons(builder, 'Xong')[0].click();
     await fixture.whenStable();
