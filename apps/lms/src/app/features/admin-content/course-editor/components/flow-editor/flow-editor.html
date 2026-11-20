@@ -37,7 +37,7 @@
         <ui-field label="Tên">
           <input
             uiInput
-            [maxlength]="nameLimit"
+            [attr.maxlength]="nameLimit"
             [value]="object.name"
             (change)="rename(object.id, $event)"
           />
