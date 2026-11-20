@@ -1,0 +1,113 @@
+<div class="flow-player">
+  @if (store.showScene$()) {
+  <div class="flow-player__main">
+    <div uiCard class="flow-player__stage">
+      <app-flow-canvas
+        [objects]="store.flow$().objects"
+        [steps]="store.flow$().steps"
+        [active]="store.step$()"
+        [reducedMotion]="store.reducedMotion$()"
+        (failed)="store.sceneFailed()"
+      />
+      <button
+        uiButton
+        variant="secondary"
+        size="sm"
+        class="flow-player__reframe"
+        (click)="reframe()"
+      >
+        <ui-icon name="maximize" size="sm" />Về góc nhìn ban đầu
+      </button>
+    </div>
+    <p class="flow-player__hint">
+      Kéo để xoay · chuột phải để dịch · cuộn để phóng to
+    </p>
+
+    <div class="flow-player__bar">
+      <div class="flow-player__controls">
+        <button
+          uiIconButton
+          size="sm"
+          label="Bước trước"
+          [disabled]="store.index$() <= 0"
+          (click)="store.prev()"
+        >
+          <ui-icon name="chevron-left" size="sm" />
+        </button>
+        <button
+          uiButton
+          variant="primary"
+          size="sm"
+          [attr.aria-label]="store.playing$() ? 'Tạm dừng' : 'Phát'"
+          [disabled]="!store.total$() || store.reducedMotion$()"
+          (click)="store.toggle()"
+        >
+          <ui-icon [name]="store.playing$() ? 'pause' : 'play'" size="sm" />
+        </button>
+        <button
+          uiIconButton
+          size="sm"
+          label="Bước sau"
+          [disabled]="store.atEnd$()"
+          (click)="store.next()"
+        >
+          <ui-icon name="chevron-right" size="sm" />
+        </button>
+        <button
+          uiIconButton
+          size="sm"
+          label="Xem lại từ đầu"
+          [disabled]="!store.total$()"
+          (click)="store.replay()"
+        >
+          <ui-icon name="rotate-ccw" size="sm" />
+        </button>
+      </div>
+      <div class="flow-player__caption" aria-live="polite">
+        @if (store.step$(); as step) {
+        <span class="flow-player__count">{{ store.counter$() }}</span>
+        <strong class="flow-player__title">{{ step.title }}</strong>
+        @if (step.description) {
+        <span class="flow-player__description">{{ step.description }}</span>
+        } }
+      </div>
+    </div>
+  </div>
+
+  <ol class="flow-player__steps" aria-label="Các bước chuyển">
+    @for (step of store.flow$().steps; track step.id; let i = $index) {
+    <li>
+      <button
+        uiButton
+        [variant]="store.index$() === i ? 'secondary' : 'ghost'"
+        class="flow-player__step"
+        [class.flow-player__step--active]="store.index$() === i"
+        [attr.aria-current]="store.index$() === i ? 'step' : null"
+        (click)="store.seek(i)"
+      >
+        <span class="flow-player__no">{{ i + 1 }}</span>
+        <span class="flow-player__step-text">
+          <span class="flow-player__step-title">{{ step.title }}</span>
+          <span class="flow-player__step-route">
+            {{ nameOf(step.from) }} → {{ step.to ? nameOf(step.to) : 'tự xử lý'
+            }}
+          </span>
+        </span>
+      </button>
+    </li>
+    }
+  </ol>
+  } @else {
+  <ol class="flow-player__fallback">
+    @for (step of store.flow$().steps; track step.id) {
+    <li class="flow-player__fallback-step">
+      <strong class="flow-player__title">{{ step.title }}</strong>
+      <span class="flow-player__step-route">{{ route(step) }}</span>
+      @if (step.description) {
+      <span class="flow-player__description">{{ step.description }}</span>
+      }
+    </li>
+    }
+  </ol>
+  }
+</div>

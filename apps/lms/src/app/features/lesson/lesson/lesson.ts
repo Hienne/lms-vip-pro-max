@@ -34,6 +34,7 @@ import { LessonFeedback } from './components/lesson-feedback/lesson-feedback';
 import { LessonNotes } from './components/lesson-notes/lesson-notes';
 import { LessonOutline } from './components/lesson-outline/lesson-outline';
 import { PdfBlock } from './components/pdf-block/pdf-block';
+import { FlowBlock } from './components/flow-block/flow-block';
 import { ProcessBlock } from './components/process-block/process-block';
 import { SessionAlert } from './components/session-alert/session-alert';
 import { TextBlock } from './components/text-block/text-block';
@@ -71,6 +72,7 @@ import { ScormBlock } from './components/scorm-block/scorm-block';
     NgTemplateOutlet,
     PdfBlock,
     ProcessBlock,
+    FlowBlock,
     Progress,
     QuizCard,
     RouterLink,

@@ -302,7 +302,9 @@
           />
           } @case ('process') {
           <app-process-block [steps]="active.detail.steps" />
-          } } }
+          } @case ('flow') { @if (active.detail.block.flow; as flow) {
+          <app-flow-block [flow]="flow" />
+          } } } }
         </div>
       </section>
 
