@@ -125,6 +125,7 @@ export {
   Drawer,
   type DrawerContext,
   type DrawerSide,
+  type DrawerSize,
 } from './lib/organisms/drawer/drawer';
 
 // Declarative drawer, FormActions

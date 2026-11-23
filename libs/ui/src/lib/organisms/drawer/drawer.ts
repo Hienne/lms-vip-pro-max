@@ -19,6 +19,9 @@ export type DrawerContext = { close: () => void };
 
 export type DrawerSide = 'start' | 'end';
 
+/** `lg` suits forms with paired fields; `full` fills the screen less a margin, for a whole editor. */
+export type DrawerSize = 'md' | 'lg' | 'full';
+
 export type DrawerOptions = {
   /** Heading of the drawer; it is also the dialog's accessible name. */
   title: string;
@@ -122,7 +125,7 @@ export function openLiveDrawer(
   sideOption: DrawerSide | undefined,
   live: DrawerLive,
   variant: 'drawer' | 'dialog' = 'drawer',
-  size: 'md' | 'lg' = 'md',
+  size: DrawerSize = 'md',
 ): DialogRef<void, Drawer> {
   const side = sideOption ?? 'end';
   const position = createGlobalPositionStrategy(Injector.NULL);

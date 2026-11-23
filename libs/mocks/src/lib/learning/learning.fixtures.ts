@@ -14,6 +14,7 @@ import type {
   TrainingProgram,
 } from '@lms/contracts';
 import { SEED_TIME } from '../backend/seed';
+import { NAPAS_FLOW } from './flow.fixtures';
 import {
   ARCHITECTURE_VIDEO,
   CHANGE_VIDEO,
@@ -180,6 +181,7 @@ const SEED_COURSES: readonly SeedCourse[] = [
             minutes: 15,
             blocks: [
               ['process', 'Các bước xử lý giao dịch'],
+              ['flow', 'Chuyển tiền liên ngân hàng qua NAPAS'],
               ['image', 'Sơ đồ luồng giao dịch'],
               ['attachment', 'Bảng mã giao dịch'],
             ],
@@ -429,6 +431,7 @@ const COMPLETION: Record<BlockType, CompletionMode> = {
   process: 'manual',
   image: 'open',
   attachment: 'open',
+  flow: 'manual',
 };
 
 const ASSET_FILES: Record<
@@ -610,6 +613,7 @@ function courseDetail(seed: SeedCourse, ids: () => number): CourseDetail {
                     videoChapters: [...(notes?.videoChapters ?? [])],
                     transcript: [...(notes?.transcript ?? [])],
                     allowSeeking: false,
+                    flow: type === 'flow' ? structuredClone(NAPAS_FLOW) : null,
                     rowVersion: 0,
                     ...stamp,
                   },

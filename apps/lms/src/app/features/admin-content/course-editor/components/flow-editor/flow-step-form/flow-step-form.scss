@@ -1,0 +1,23 @@
+@use 'ui';
+
+.flow-step-form {
+  @include ui.stack(3);
+
+  &__hint {
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+
+  &__pair {
+    @include ui.grid(
+      (
+        base: 2,
+      ),
+      2
+    );
+  }
+
+  &__actions {
+    @include ui.row(2);
+  }
+}

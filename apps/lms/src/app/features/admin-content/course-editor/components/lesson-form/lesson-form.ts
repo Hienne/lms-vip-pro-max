@@ -50,6 +50,7 @@ import {
   UploadItem,
 } from '@lms/ui';
 import { AssetLibrary } from '../asset-library/asset-library';
+import { FlowEditor } from '../flow-editor/flow-editor';
 import { LessonTextEditor } from './lesson-text-editor';
 import { AssetLibraryStore } from '../asset-library/data-access/asset-library.store';
 import {
@@ -157,6 +158,7 @@ const quizLabel = (quiz: QuizSummary): string =>
   selector: 'app-lesson-form',
   imports: [
     Alert,
+    FlowEditor,
     AssetLibrary,
     Button,
     CourseExamForm,

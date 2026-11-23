@@ -25,6 +25,24 @@ _Avoid_: video lesson, bài học video (a lesson may hold several blocks of dif
 The spoken words of one Video Block as ordered text lines, each optionally anchored to a time in the video. A Video Block has at most one Transcript; it is the only text the lesson assistant can read from a video.
 _Avoid_: subtitle, phụ đề, script, caption
 
+**Mô phỏng luồng**:
+A block of a lesson that shows a business process as named Đối tượng laid out on a floor, and plays it
+back to the learner one step at a time, each step a hand-off between two Đối tượng. Only the author builds
+it; the assistant never proposes one. It sits beside the Quy trình block, which stays a plain numbered list.
+_Avoid_: sơ đồ 3D, flow diagram, quy trình 3D (the Quy trình block is a different, simpler block)
+
+**Đối tượng**:
+One participant of a Mô phỏng luồng, such as a customer, a teller, a channel or a system, with a name the
+author gives it and one kind from a fixed set.
+_Avoid_: node, vật thể, thành phần
+
+**Bước chuyển**:
+One action in the ordered playback of a Mô phỏng luồng: one Đối tượng hands something to another, or one
+Đối tượng works on its own. It has a title and an optional description. The author makes one by dragging a line
+from one Đối tượng to another. A line between two Đối tượng exists only while at least one Bước chuyển
+uses it; it is never a thing of its own.
+_Avoid_: liên kết, link, edge, bước (also used for Quy trình steps and for the steps of the course editor)
+
 ## Soạn cùng trợ lý
 
 The way an author builds a new course with the assistant from one source document: the assistant reads

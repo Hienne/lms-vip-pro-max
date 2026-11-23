@@ -13,6 +13,7 @@ import {
   type Drawer,
   type DrawerContext,
   type DrawerSide,
+  type DrawerSize,
   openLiveDrawer,
 } from './drawer';
 
@@ -45,8 +46,8 @@ export class DrawerOutlet {
   readonly uiDrawerSide = input<DrawerSide>();
   /** Compact centered dialog for short forms; read when opened. */
   readonly uiDrawerVariant = input<'drawer' | 'dialog'>('drawer');
-  /** Wider drawer for forms with paired fields; read when opened. */
-  readonly uiDrawerSize = input<'md' | 'lg'>('md');
+  /** `lg` for forms with paired fields, `full` for a whole editor; read when opened. */
+  readonly uiDrawerSize = input<DrawerSize>('md');
   /** While true the user cannot close the drawer and an overlay covers its body and footer. */
   readonly uiDrawerBusy = input(false);
   /** Text of the busy overlay, read by screen readers. The library ships no default copy. */

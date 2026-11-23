@@ -10,6 +10,7 @@ export const BLOCK_TYPE_LABEL: Record<BlockType, string> = {
   process: 'Quy trình',
   image: 'Hình ảnh',
   attachment: 'Tệp đính kèm',
+  flow: 'Mô phỏng luồng',
 };
 
 /**

@@ -1,0 +1,53 @@
+<div class="flow-player-bar">
+  <div class="flow-player-bar__controls">
+    <button
+      uiIconButton
+      size="sm"
+      label="Bước trước"
+      [disabled]="store.index$() <= 0"
+      (click)="store.prev()"
+    >
+      <ui-icon name="chevron-left" size="sm" />
+    </button>
+    <button
+      uiIconButton
+      size="sm"
+      [label]="store.playing$() ? 'Tạm dừng' : 'Phát'"
+      [disabled]="!store.total$() || store.reducedMotion$()"
+      (click)="store.toggle()"
+    >
+      <ui-icon [name]="store.playing$() ? 'pause' : 'play'" size="sm" />
+    </button>
+    <button
+      uiIconButton
+      size="sm"
+      label="Bước sau"
+      [disabled]="store.atEnd$()"
+      (click)="store.next()"
+    >
+      <ui-icon name="chevron-right" size="sm" />
+    </button>
+    <button
+      uiIconButton
+      size="sm"
+      label="Xem lại từ đầu"
+      [disabled]="!store.total$()"
+      (click)="store.replay()"
+    >
+      <ui-icon name="rotate-ccw" size="sm" />
+    </button>
+  </div>
+  <div class="flow-player-bar__caption" aria-live="polite">
+    @if (waiting() && !store.started$()) {
+    <span class="flow-player-bar__muted">
+      @if (store.total$()) { Bấm phát để xem luồng chạy từng bước. } @else { Nối
+      hai đối tượng để có bước chuyển đầu tiên. }
+    </span>
+    } @else if (store.step$(); as step) {
+    <span class="flow-player-bar__count">{{ store.counter$() }}</span>
+    <strong class="flow-player-bar__title">{{ step.title }}</strong>
+    @if (step.description) {
+    <span class="flow-player-bar__muted">{{ step.description }}</span>
+    } }
+  </div>
+</div>

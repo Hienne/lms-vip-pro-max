@@ -1,0 +1,65 @@
+<div class="flow-player">
+  @if (store.showScene$()) {
+  <div class="flow-player__main">
+    <div uiCard class="flow-player__stage">
+      <app-flow-canvas
+        [objects]="store.flow$().objects"
+        [steps]="store.flow$().steps"
+        [active]="store.step$()"
+        [reducedMotion]="store.reducedMotion$()"
+        (failed)="store.sceneFailed()"
+      />
+      <button
+        uiButton
+        variant="secondary"
+        size="sm"
+        class="flow-player__reframe"
+        (click)="reframe()"
+      >
+        <ui-icon name="maximize" size="sm" />Về góc nhìn ban đầu
+      </button>
+    </div>
+    <p class="flow-player__hint">
+      Kéo để xoay · chuột phải để dịch · cuộn để phóng to
+    </p>
+
+    <app-flow-player-bar />
+  </div>
+
+  <ol class="flow-player__steps" aria-label="Các bước chuyển">
+    @for (row of store.rows$(); track row.step.id; let i = $index) {
+    <li>
+      <button
+        uiButton
+        [variant]="store.index$() === i ? 'secondary' : 'ghost'"
+        class="flow-player__step"
+        [class.flow-player__step--active]="store.index$() === i"
+        [attr.aria-current]="store.index$() === i ? 'step' : null"
+        (click)="store.seek(i)"
+      >
+        <span class="flow-player__no">{{ i + 1 }}</span>
+        <span class="flow-player__step-text">
+          <span class="flow-player__step-title">{{ row.step.title }}</span>
+          <span class="flow-player__step-route"> {{ row.route }} </span>
+        </span>
+      </button>
+    </li>
+    }
+  </ol>
+  } @else {
+  <p class="flow-player__hint">
+    Máy không hiển thị được 3D, các bước được liệt kê theo thứ tự.
+  </p>
+  <ol class="flow-player__fallback">
+    @for (row of store.rows$(); track row.step.id) {
+    <li class="flow-player__fallback-step">
+      <strong class="flow-player__title">{{ row.step.title }}</strong>
+      <span class="flow-player__step-route">{{ row.fullRoute }}</span>
+      @if (row.step.description) {
+      <span class="flow-player__description">{{ row.step.description }}</span>
+      }
+    </li>
+    }
+  </ol>
+  }
+</div>

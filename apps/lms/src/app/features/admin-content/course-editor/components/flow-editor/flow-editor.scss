@@ -1,0 +1,215 @@
+@use 'ui';
+
+// The builder measures its own width, not the screen's: it is shown in the lesson drawer (lists
+// only) and in a full-screen dialog (with the scene).
+.flow-editor-frame {
+  container-type: inline-size;
+}
+
+// In the drawer: the counts, the steps in order and the way into the builder.
+.flow-editor__summary {
+  @include ui.stack(3);
+}
+
+.flow-editor__digest {
+  @include ui.stack(2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    @include ui.row(2);
+    align-items: flex-start;
+  }
+}
+
+// Variant A, mobile-first: one column (palette as a wrapping row, scene, steps). From `lg` of its
+// own width: palette and selection | scene with the player bar | steps, the three as tall as the
+// dialog, each side scrolling on its own.
+.flow-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: ui.space(4);
+  align-items: start;
+
+  @include ui.cq(lg) {
+    &--scene {
+      grid-template-columns: minmax(13rem, 15rem) minmax(0, 1fr) minmax(
+          18rem,
+          20rem
+        );
+      align-items: stretch;
+      // The dialog's height less its header, footer and padding.
+      height: max(32rem, calc(100dvh - 15rem));
+    }
+  }
+
+  &__notice {
+    grid-column: 1 / -1;
+  }
+
+  &__side,
+  &__form {
+    @include ui.stack(3);
+    min-width: 0;
+  }
+
+  &--scene &__side {
+    @include ui.cq(lg) {
+      @include ui.scrollbar;
+      min-height: 0;
+      overflow-y: auto;
+    }
+  }
+
+  &__centre {
+    @include ui.stack(3);
+    min-width: 0;
+    min-height: 0;
+  }
+
+  &__count,
+  &__route,
+  &__hint {
+    @include ui.text(sm, muted);
+  }
+
+  &__hint {
+    margin: 0;
+  }
+
+  &__palette,
+  &__objects,
+  &__steps {
+    @include ui.stack(1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  // Above the scene the palette is a wrapping row; beside it, a column of tiles.
+  &__palette {
+    flex-flow: row wrap;
+
+    @include ui.cq(lg) {
+      flex-flow: column;
+    }
+  }
+
+  &__kind,
+  &__step-body {
+    justify-content: flex-start;
+    height: auto;
+    text-align: left;
+    white-space: normal;
+  }
+
+  &__kind {
+    cursor: grab;
+
+    @include ui.cq(lg) {
+      width: 100%;
+    }
+
+    // The icon takes the colour family of the kind's model in the scene: a legend.
+    @each $family in (1, 2, 3, 4, 5) {
+      &[data-family='#{$family}'] ui-icon {
+        color: ui.chart($family);
+      }
+    }
+  }
+
+  &__actions {
+    @include ui.row(2);
+    flex-wrap: wrap;
+  }
+
+  // The scene fills the centre; the reframe button, the hint and the empty line sit on it.
+  &__stage {
+    position: relative;
+    height: 28rem;
+    overflow: hidden;
+  }
+
+  &--scene &__stage {
+    @include ui.cq(lg) {
+      flex: 1;
+      height: auto;
+      min-height: 0;
+    }
+  }
+
+  &__reframe {
+    position: absolute;
+    top: ui.space(3);
+    right: ui.space(3);
+  }
+
+  &__empty,
+  &__overlay-hint {
+    position: absolute;
+    margin: 0;
+    pointer-events: none;
+    @include ui.text(sm, muted);
+  }
+
+  &__empty {
+    inset: auto 0 ui.space(4);
+    text-align: center;
+  }
+
+  &__overlay-hint {
+    right: ui.space(3);
+    bottom: ui.space(2);
+    left: ui.space(3);
+  }
+
+  &__step {
+    @include ui.row(1);
+    flex-wrap: wrap;
+    align-items: flex-start;
+
+    app-flow-step-form {
+      flex: 1;
+    }
+  }
+
+  &__grip {
+    display: flex;
+    padding-top: ui.space(2);
+    color: ui.color(text-muted);
+    cursor: grab;
+  }
+
+  &__step-body {
+    flex: 1 1 12rem;
+    min-width: 0;
+  }
+
+  // Beside the step when there is room, else on its own line under it.
+  &__tools {
+    display: flex;
+    margin-left: auto;
+  }
+
+  &__no {
+    @include ui.num;
+    flex: none;
+    color: ui.color(text-muted);
+  }
+
+  &__step-text {
+    display: grid;
+    gap: ui.space(1);
+    min-width: 0;
+  }
+
+  &__more {
+    @include ui.stack(2);
+    margin-top: ui.space(3);
+
+    summary {
+      cursor: pointer;
+    }
+  }
+}

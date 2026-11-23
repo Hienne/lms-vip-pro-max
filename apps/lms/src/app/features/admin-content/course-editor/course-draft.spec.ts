@@ -1,5 +1,5 @@
 import { CreateCourseCommandSchema } from '@lms/contracts';
-import { courseDetailFixtures } from '@lms/mocks';
+import { courseDetailFixtures, NAPAS_FLOW } from '@lms/mocks';
 import {
   draftChecks,
   emptyDraftValue,
@@ -237,6 +237,40 @@ describe('course draft', () => {
     const quiz = { ...newLesson(1), lessonType: 'quiz' as const };
     expect(lessonProblem(quiz)).toBe('Chưa chọn bài kiểm tra');
     expect(lessonProblem({ ...quiz, quizId: 3 })).toBeNull();
+  });
+
+  it('sends back the Mô phỏng luồng of a loaded flow block, and no flow for other blocks', () => {
+    const detail = courseDetailFixtures.find((d) =>
+      d.chapters
+        .flatMap((c) => c.lessons)
+        .some((l) => l.blocks.some((b) => b.block.blockType === 'flow')),
+    )!;
+    const blocks = toSaveDraftCommand(toDraftValue(detail), 0)
+      .chapters.flatMap((c) => c.lessons)
+      .flatMap((l) => l.blocks);
+    const flow = blocks.find((b) => b.blockType === 'flow')!;
+
+    expect(flow.flow).toEqual(NAPAS_FLOW);
+    expect(flow.steps).toEqual([]);
+    expect(blocks.find((b) => b.blockType === 'process')).not.toHaveProperty(
+      'flow',
+    );
+  });
+
+  it('starts a new flow block empty and flags it until it has a step', () => {
+    const block = newBlock('flow');
+    expect(block.flow).toEqual({ version: 1, objects: [], steps: [] });
+    expect(block.completionMode).toBe('manual');
+    expect(lessonProblem({ ...newLesson(1), blocks: [block] })).toBe(
+      'Khối Mô phỏng luồng “Mô phỏng luồng” chưa có bước chuyển nào.',
+    );
+    expect(
+      lessonProblem({
+        ...newLesson(1),
+        blocks: [{ ...block, flow: NAPAS_FLOW }],
+      }),
+    ).toBeNull();
+    expect(newBlock('text').flow).toBeNull();
   });
 
   it('flags a content lesson without blocks or without its file', () => {

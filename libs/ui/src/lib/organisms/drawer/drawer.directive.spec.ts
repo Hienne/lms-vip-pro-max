@@ -2,6 +2,7 @@ import { Dialog } from '@angular/cdk/dialog';
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { DrawerOutlet } from './drawer.directive';
+import type { DrawerSize } from './drawer';
 
 @Component({
   imports: [DrawerOutlet],
@@ -28,7 +29,7 @@ import { DrawerOutlet } from './drawer.directive';
 })
 class Host {
   readonly variant = signal<'drawer' | 'dialog'>('drawer');
-  readonly size = signal<'md' | 'lg'>('md');
+  readonly size = signal<DrawerSize>('md');
   readonly open = signal(false);
   readonly title = signal('Drawer mẫu');
   readonly busy = signal(false);
@@ -201,6 +202,15 @@ describe.each(['drawer', 'dialog'] as const)('uiDrawer (%s)', (variant) => {
 
     await vi.waitFor(() => expect(panel()).toBeNull());
     expect(host.dismissed()).toBe(0);
+  });
+
+  it('fills the screen less a margin when its size is full', async () => {
+    const { host } = setup(variant);
+    host.size.set('full');
+    host.open.set(true);
+    await settle();
+
+    expect(document.querySelector('.drawer-pane--full')).not.toBeNull();
   });
 
   describe('while guarded', () => {

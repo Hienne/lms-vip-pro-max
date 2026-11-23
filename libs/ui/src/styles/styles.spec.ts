@@ -309,6 +309,12 @@ describe('ui style module', () => {
     ).toThrow(/ui\.bp: unknown key/);
   });
 
+  it('writes container steps as resolved container queries', () => {
+    expect(compile("@use 'ui'; .a { @include ui.cq(lg) { b: c; } }")).toContain(
+      '@container (min-width: 1100px)',
+    );
+  });
+
   it('offers the one below-breakpoint query for narrow-only styles', () => {
     expect(
       compile("@use 'ui'; .a { @include ui.bp-below(md) { b: c; } }"),

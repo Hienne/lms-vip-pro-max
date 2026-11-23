@@ -20,6 +20,14 @@
   }
 }
 
+// A step measured against the nearest `container-type: inline-size` ancestor instead of the
+// screen, for a block that sits in panels of different widths (a drawer, a full-screen dialog).
+@mixin cq($key) {
+  @container (min-width: #{lookup(cq, tokens.$breakpoints, $key)}) {
+    @content;
+  }
+}
+
 // ---- Layout ----
 @mixin stack($gap: 4) {
   display: flex;
