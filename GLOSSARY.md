@@ -17,6 +17,14 @@ _Avoid_: Core Banking Academy, CHANX Academy.
 
 ## Lessons
 
+**Video Block**:
+A block of a lesson whose primary resource is one video file.
+_Avoid_: video lesson, bài học video (a lesson may hold several blocks of different types)
+
+**Transcript**:
+The spoken words of one Video Block as ordered text lines, each optionally anchored to a time in the video. A Video Block has at most one Transcript; it is the only text the lesson assistant can read from a video.
+_Avoid_: subtitle, phụ đề, script, caption
+
 **Mô phỏng luồng**:
 A block of a lesson that shows a business process as named Đối tượng laid out on a floor, and plays it
 back to the learner one step at a time, each step a hand-off between two Đối tượng. Only the author builds

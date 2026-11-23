@@ -208,9 +208,12 @@ export const VideoChapterSchema = z.object({
 });
 export type VideoChapter = z.infer<typeof VideoChapterSchema>;
 
-/** A timed line of a video's transcript. */
+/**
+ * A line of a video's transcript. `startSeconds` is `null` when the transcript has no times: the
+ * backend takes either all lines timed or none, so a transcript never mixes them.
+ */
 export const TranscriptLineSchema = z.object({
-  startSeconds: z.number(),
+  startSeconds: z.number().nullable(),
   text: z.string(),
 });
 export type TranscriptLine = z.infer<typeof TranscriptLineSchema>;

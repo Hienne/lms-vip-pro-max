@@ -73,7 +73,15 @@ export const DEPOSIT_VIDEO: VideoNotes = {
     { startSeconds: 0, title: 'Mở tài khoản' },
     { startSeconds: 360, title: 'Tất toán' },
   ],
-  transcript: lines([
-    'Vòng đời tài khoản tiền gửi gồm mở, duy trì, tái tục và tất toán.',
-  ]),
+  // The one untimed Transcript of the mock tree: lines without a time, as an author uploads a plain .txt.
+  transcript: [
+    {
+      startSeconds: null,
+      text: 'Vòng đời tài khoản tiền gửi gồm mở, duy trì, tái tục và tất toán.',
+    },
+    {
+      startSeconds: null,
+      text: 'Khi tất toán, lãi được tính đến ngày trước ngày rút và chuyển về tài khoản thanh toán.',
+    },
+  ],
 };
